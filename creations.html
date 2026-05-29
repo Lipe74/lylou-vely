@@ -28,23 +28,21 @@
     .page-header h1 { font-family:'Dancing Script',cursive; font-size:clamp(2.5rem,7vw,5rem); color:var(--violet); }
     .page-header p { font-family:'Playfair Display',serif; font-size:1.1rem; color:var(--text-mid); margin-top:0.8rem; font-style:italic; }
 
-    /* ── GALERIE STAND ── */
+    /* GALERIE STAND */
     .galerie-section { max-width:1100px; margin:0 auto; padding:60px 2rem 0; }
     .section-title { font-family:'Dancing Script',cursive; font-size:clamp(2rem,4vw,3rem); color:var(--violet); margin-bottom:0.3rem; }
     .section-sub { color:var(--text-light); font-size:0.85rem; letter-spacing:0.15em; text-transform:uppercase; margin-bottom:2rem; }
 
-    /* Grande photo hero + grille */
     .stand-hero { border-radius:20px; overflow:hidden; margin-bottom:1.2rem; box-shadow:0 12px 40px rgba(107,63,160,0.15); }
     .stand-hero img { width:100%; height:480px; object-fit:cover; display:block; transition:transform 0.5s; }
     .stand-hero:hover img { transform:scale(1.02); }
-
     .stand-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:1rem; }
     .stand-thumb { border-radius:14px; overflow:hidden; cursor:pointer; box-shadow:0 4px 16px rgba(107,63,160,0.1); }
-    .stand-thumb img { width:100%; height:160px; object-fit:cover; display:block; transition:transform 0.35s, opacity 0.2s; }
+    .stand-thumb img { width:100%; height:160px; object-fit:cover; display:block; transition:transform 0.35s; }
     .stand-thumb:hover img { transform:scale(1.06); }
     .stand-thumb.active { outline:3px solid var(--violet); outline-offset:2px; }
 
-    /* CATÉGORIES APERÇU */
+    /* CATÉGORIES */
     .categories { max-width:1100px; margin:0 auto; padding:60px 2rem 0; }
     .cat-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:1.5rem; }
     .cat-card { background:#fff; border:1px solid var(--lavande); border-radius:18px; padding:1.6rem 1.4rem; display:flex; flex-direction:column; gap:0.6rem; transition:transform 0.2s, box-shadow 0.2s; }
@@ -54,58 +52,37 @@
     .cat-card p { font-size:0.88rem; color:var(--text-mid); line-height:1.6; flex:1; }
     .cat-tag { display:inline-block; background:var(--lavande); color:var(--violet-dark); font-size:0.72rem; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; padding:0.25rem 0.8rem; border-radius:50px; width:fit-content; }
 
-    /* ── FACEBOOK SECTION ── */
+    /* FACEBOOK SECTION */
     .fb-section { max-width:1100px; margin:0 auto; padding:60px 2rem 80px; }
-    .fb-box {
+    .fb-layout { display:grid; grid-template-columns:340px 1fr; gap:2.5rem; align-items:start; }
+
+    .fb-info { background:linear-gradient(160deg, var(--violet) 0%, var(--violet-dark) 100%); border-radius:24px; padding:2.5rem 2rem; color:#fff; display:flex; flex-direction:column; gap:1.4rem; position:sticky; top:90px; }
+    .fb-info h2 { font-family:'Dancing Script',cursive; font-size:2rem; line-height:1.1; }
+    .fb-info p { opacity:0.9; font-size:0.92rem; line-height:1.7; }
+    .fb-highlights { display:flex; flex-direction:column; gap:0.6rem; }
+    .fb-highlight { display:flex; align-items:center; gap:0.7rem; background:rgba(255,255,255,0.12); border-radius:10px; padding:0.55rem 0.8rem; font-size:0.88rem; }
+    .fb-btn { display:inline-flex; align-items:center; gap:0.7rem; background:#fff; color:var(--violet); padding:0.85rem 1.6rem; border-radius:50px; text-decoration:none; font-weight:700; font-size:0.92rem; transition:background 0.2s, transform 0.15s; width:fit-content; }
+    .fb-btn:hover { background:var(--lavande); transform:translateY(-2px); }
+
+    /* Widget Facebook */
+    .fb-widget-wrap {
       background:#fff;
       border:1px solid var(--lavande);
-      border-radius:24px;
+      border-radius:20px;
       overflow:hidden;
-      display:grid;
-      grid-template-columns:1fr 1fr;
-      gap:0;
-      box-shadow:0 8px 30px rgba(107,63,160,0.1);
+      box-shadow:0 8px 30px rgba(107,63,160,0.08);
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      padding:1.5rem;
+      min-height:500px;
     }
-    .fb-left {
-      background:linear-gradient(160deg, var(--violet) 0%, var(--violet-dark) 100%);
-      padding:3rem 2.5rem;
-      display:flex; flex-direction:column; justify-content:center; gap:1.5rem;
-      color:#fff;
+    .fb-widget-wrap .fb-page {
+      width:100% !important;
     }
-    .fb-left h2 { font-family:'Dancing Script',cursive; font-size:2.4rem; line-height:1.1; }
-    .fb-left p { opacity:0.9; font-size:0.95rem; line-height:1.75; }
-    .fb-highlights { display:flex; flex-direction:column; gap:0.7rem; }
-    .fb-highlight { display:flex; align-items:center; gap:0.8rem; background:rgba(255,255,255,0.12); border-radius:10px; padding:0.6rem 0.9rem; font-size:0.9rem; }
-    .fb-btn {
-      display:inline-flex; align-items:center; gap:0.7rem;
-      background:#fff; color:var(--violet);
-      padding:0.9rem 1.8rem; border-radius:50px;
-      text-decoration:none; font-weight:700; font-size:0.95rem;
-      transition:background 0.2s, transform 0.15s;
-      width:fit-content;
-    }
-    .fb-btn:hover { background:var(--lavande); transform:translateY(-2px); }
-    .fb-btn svg { flex-shrink:0; }
 
-    .fb-right { padding:2rem; display:flex; flex-direction:column; gap:1rem; justify-content:center; }
-    .fb-post-preview {
-      background:var(--lavande-pale);
-      border:1px solid var(--lavande);
-      border-radius:14px;
-      overflow:hidden;
-      transition:transform 0.2s, box-shadow 0.2s;
-    }
-    .fb-post-preview:hover { transform:translateY(-3px); box-shadow:0 8px 24px rgba(107,63,160,0.15); }
-    .fb-post-img { width:100%; height:160px; object-fit:cover; display:block; }
-    .fb-post-caption { padding:0.8rem 1rem; }
-    .fb-post-caption .fb-badge { display:flex; align-items:center; gap:0.5rem; margin-bottom:0.4rem; }
-    .fb-post-caption .fb-badge img { width:28px; height:28px; border-radius:50%; border:2px solid var(--violet-light); }
-    .fb-post-caption .fb-badge strong { font-size:0.82rem; color:var(--violet); }
-    .fb-post-caption .fb-badge span { font-size:0.72rem; color:var(--text-light); margin-left:auto; }
-    .fb-post-caption p { font-size:0.82rem; color:var(--text-mid); line-height:1.5; }
-
-    /* CTA COMMANDE */
-    .cta-commande { background:linear-gradient(135deg, var(--violet) 0%, var(--violet-dark) 100%); border-radius:24px; padding:3rem 2rem; text-align:center; color:#fff; margin:0 2rem 4rem; max-width:1100px; margin-left:auto; margin-right:auto; }
+    /* CTA */
+    .cta-commande { background:linear-gradient(135deg, var(--violet) 0%, var(--violet-dark) 100%); border-radius:24px; padding:3rem 2rem; text-align:center; color:#fff; max-width:1100px; margin:0 auto 4rem; }
     .cta-commande h3 { font-family:'Dancing Script',cursive; font-size:2.2rem; margin-bottom:0.6rem; }
     .cta-commande p { opacity:0.88; max-width:500px; margin:0 auto 1.8rem; font-size:0.95rem; line-height:1.7; }
     .btn-white { display:inline-block; background:#fff; color:var(--violet); padding:0.85rem 2rem; border-radius:50px; text-decoration:none; font-weight:700; font-size:0.9rem; letter-spacing:0.05em; text-transform:uppercase; transition:background 0.2s,transform 0.15s; margin:0.4rem; }
@@ -114,15 +91,25 @@
     footer { background:var(--text-dark); color:var(--lavande-pale); text-align:center; padding:2rem; font-size:0.82rem; }
     footer a { color:var(--violet-light); text-decoration:none; }
 
+    @media(max-width:900px){
+      .fb-layout { grid-template-columns:1fr; }
+      .fb-info { position:static; }
+    }
     @media(max-width:700px){
       .stand-grid { grid-template-columns:repeat(2,1fr); }
       .stand-hero img { height:260px; }
-      .fb-box { grid-template-columns:1fr; }
       .galerie-section, .categories, .fb-section { padding-left:1.2rem; padding-right:1.2rem; }
+      .cta-commande { margin-left:1.2rem; margin-right:1.2rem; }
     }
   </style>
 </head>
 <body>
+
+  <!-- SDK Facebook -->
+  <div id="fb-root"></div>
+  <script async defer crossorigin="anonymous"
+    src="https://connect.facebook.net/fr_FR/sdk.js#xfbml=1&version=v19.0">
+  </script>
 
   <nav>
     <a href="index.html" class="nav-logo"><img src="images/logo.png" alt="Lylou-vely"></a>
@@ -143,16 +130,15 @@
   <div class="galerie-section">
     <h2 class="section-title">Le stand Lylou-vely</h2>
     <p class="section-sub">Photos du marché de Chaudfontaine · 29 mai 2026</p>
-
-    <div class="stand-hero" id="heroWrap">
+    <div class="stand-hero">
       <img id="heroImg" src="images/stand03.jpg" alt="Stand Lylou-vely">
     </div>
     <div class="stand-grid">
-      <div class="stand-thumb" onclick="changeHero('images/stand03.jpg', this)">
-        <img src="images/stand03.jpg" alt="Stand vue générale">
+      <div class="stand-thumb active" onclick="changeHero('images/stand03.jpg', this)">
+        <img src="images/stand03.jpg" alt="Vue générale du stand">
       </div>
       <div class="stand-thumb" onclick="changeHero('images/stand02.jpg', this)">
-        <img src="images/stand02.jpg" alt="Stand bijoux">
+        <img src="images/stand02.jpg" alt="Bijoux au stand">
       </div>
       <div class="stand-thumb" onclick="changeHero('images/stand01.jpg', this)">
         <img src="images/stand01.jpg" alt="Créations crochet">
@@ -171,19 +157,19 @@
       <div class="cat-card">
         <div class="cat-icon">💎</div>
         <h3>Bijoux faits main</h3>
-        <p>Colliers, bracelets, boucles d'oreilles — chaque pièce est unique, imaginée et créée à la main avec des matériaux soigneusement sélectionnés.</p>
+        <p>Colliers, bracelets, boucles d'oreilles — chaque pièce est unique, imaginée et créée à la main.</p>
         <span class="cat-tag">Artisanal</span>
       </div>
       <div class="cat-card">
         <div class="cat-icon">👜</div>
         <h3>Sacs au crochet</h3>
-        <p>Sacs, pochettes et paniers réalisés au crochet avec des fils de qualité. Chaque modèle est robuste, tendance et unique.</p>
+        <p>Sacs, pochettes et paniers réalisés au crochet avec des fils de qualité. Robustes, tendance et uniques.</p>
         <span class="cat-tag">Mode</span>
       </div>
       <div class="cat-card">
         <div class="cat-icon">🕯️</div>
         <h3>Bougies & Encens</h3>
-        <p>Une belle sélection de bougies artisanales et d'encens pour créer une ambiance douce et apaisante chez vous.</p>
+        <p>Une belle sélection de bougies artisanales et d'encens pour une ambiance douce et apaisante.</p>
         <span class="cat-tag">Bien-être</span>
       </div>
       <div class="cat-card">
@@ -197,14 +183,15 @@
 
   <!-- FACEBOOK -->
   <div class="fb-section">
-    <h2 class="section-title" style="margin-bottom:0.3rem;">Suivez nos nouveautés</h2>
-    <p class="section-sub" style="margin-bottom:2rem;">Toutes nos créations en photos sur Facebook</p>
+    <h2 class="section-title" style="margin-bottom:0.3rem;">Nos posts Facebook</h2>
+    <p class="section-sub" style="margin-bottom:2rem;">Toutes les nouveautés en direct</p>
 
-    <div class="fb-box">
-      <div class="fb-left">
+    <div class="fb-layout">
+
+      <div class="fb-info">
         <div>
-          <h2>Nos créations en photos 📸</h2>
-          <p>Retrouvez toutes nos dernières créations, les photos des marchés et les nouveautés en avant-première sur notre page Facebook !</p>
+          <h2>Suivez-nous sur Facebook 💜</h2>
+          <p>Toutes nos créations, les photos des marchés et les nouveautés en avant-première directement dans votre fil !</p>
         </div>
         <div class="fb-highlights">
           <div class="fb-highlight">📸 Photos des nouveautés chaque semaine</div>
@@ -213,37 +200,28 @@
           <div class="fb-highlight">⭐ Avis et retours de nos clientes</div>
         </div>
         <a class="fb-btn" href="https://www.facebook.com/lylouvely" target="_blank">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="#1877F2"><path d="M24 12.073C24 5.404 18.627 0 12 0S0 5.404 0 12.073C0 18.1 4.388 23.094 10.125 24v-8.437H7.078v-3.49h3.047V9.41c0-3.025 1.792-4.697 4.533-4.697 1.312 0 2.686.235 2.686.235v2.97h-1.514c-1.491 0-1.956.93-1.956 1.886v2.268h3.328l-.532 3.49h-2.796V24C19.612 23.094 24 18.1 24 12.073z"/></svg>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="#1877F2"><path d="M24 12.073C24 5.404 18.627 0 12 0S0 5.404 0 12.073C0 18.1 4.388 23.094 10.125 24v-8.437H7.078v-3.49h3.047V9.41c0-3.025 1.792-4.697 4.533-4.697 1.312 0 2.686.235 2.686.235v2.97h-1.514c-1.491 0-1.956.93-1.956 1.886v2.268h3.328l-.532 3.49h-2.796V24C19.612 23.094 24 18.1 24 12.073z"/></svg>
           Voir la page Facebook
         </a>
       </div>
 
-      <div class="fb-right">
-        <!-- Aperçu post 1 -->
-        <div class="fb-post-preview">
-          <img class="fb-post-img" src="images/stand02.jpg" alt="Post Facebook bijoux">
-          <div class="fb-post-caption">
-            <div class="fb-badge">
-              <img src="images/logo.png" alt="Lylou-vely">
-              <strong>Lylou-vely</strong>
-              <span>Aujourd'hui</span>
-            </div>
-            <p>💎 Nouveaux bracelets et colliers disponibles sur le stand ! Venez nous retrouver au marché de Vaux-sous-Chèvremont tous les vendredis 🌸</p>
-          </div>
-        </div>
-        <!-- Aperçu post 2 -->
-        <div class="fb-post-preview">
-          <img class="fb-post-img" src="images/stand01.jpg" alt="Post Facebook crochet">
-          <div class="fb-post-caption">
-            <div class="fb-badge">
-              <img src="images/logo.png" alt="Lylou-vely">
-              <strong>Lylou-vely</strong>
-              <span>Cette semaine</span>
-            </div>
-            <p>🧶 Petits animaux au crochet, scrunchies colorés et sacs tendance... Le stand est bien garni pour ce weekend ! 💜</p>
-          </div>
+      <!-- WIDGET FACEBOOK OFFICIEL -->
+      <div class="fb-widget-wrap">
+        <div class="fb-page"
+          data-href="https://www.facebook.com/lylouvely"
+          data-tabs="timeline"
+          data-width="600"
+          data-height="700"
+          data-small-header="false"
+          data-adapt-container-width="true"
+          data-hide-cover="false"
+          data-show-facepile="true">
+          <blockquote cite="https://www.facebook.com/lylouvely" class="fb-xfbml-parse-ignore">
+            <a href="https://www.facebook.com/lylouvely">Lylou-vely</a>
+          </blockquote>
         </div>
       </div>
+
     </div>
   </div>
 
@@ -266,7 +244,6 @@
       document.querySelectorAll('.stand-thumb').forEach(t => t.classList.remove('active'));
       el.classList.add('active');
     }
-    document.querySelector('.stand-thumb').classList.add('active');
   </script>
 </body>
 </html>
