@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Les Marchés – Lylou-Vely</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=Dancing+Script:wght@600;700&family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --violet:#6B3FA0; --violet-dark:#4A2870; --violet-light:#C4A8E0;
+      --lavande:#E8D9F5; --lavande-pale:#F5EEFF;
+      --rose-pale:#FBF0F3; --creme:#FDF8F0;
+      --text-dark:#2C1A3E; --text-mid:#5A3A72; --text-light:#9A7AB8;
+    }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family:'Lato',sans-serif; background:var(--creme); color:var(--text-dark); overflow-x:hidden; }
+
+    nav { position:fixed; top:0; left:0; right:0; z-index:100; background:rgba(253,248,240,0.96); backdrop-filter:blur(8px); border-bottom:1px solid var(--lavande); padding:0 2rem; display:flex; align-items:center; justify-content:space-between; height:72px; }
+    .nav-logo img { height:48px; width:auto; display:block; }
+    .nav-links { display:flex; gap:2rem; list-style:none; }
+    .nav-links a { text-decoration:none; color:var(--text-mid); font-size:0.9rem; letter-spacing:0.06em; text-transform:uppercase; font-weight:700; transition:color 0.2s; }
+    .nav-links a:hover, .nav-links a.active { color:var(--violet); }
+    .nav-cta { background:var(--violet); color:#fff !important; padding:0.5rem 1.2rem; border-radius:50px; }
+    .nav-cta:hover { background:var(--violet-dark) !important; }
+    @media(max-width:768px){ .nav-links{display:none;} nav{padding:0 1.2rem;} }
+
+    .page-header { padding:130px 2rem 70px; background: radial-gradient(ellipse at 15% 50%, rgba(196,168,224,0.4) 0%, transparent 55%), radial-gradient(ellipse at 85% 30%, rgba(232,160,176,0.25) 0%, transparent 55%), var(--lavande-pale); text-align:center; }
+    .page-header h1 { font-family:'Dancing Script',cursive; font-size:clamp(2.5rem,7vw,5rem); color:var(--violet); }
+    .page-header p { font-family:'Playfair Display',serif; font-size:1.1rem; color:var(--text-mid); margin-top:0.8rem; font-style:italic; }
+
+    main { max-width:1100px; margin:0 auto; padding:60px 2rem 80px; }
+
+    /* GRILLE 2 colonnes affiche + infos */
+    .marche-bloc { display:grid; grid-template-columns:1fr 1fr; gap:0; background:#fff; border:1px solid var(--lavande); border-radius:24px; overflow:hidden; margin-bottom:2.5rem; transition:box-shadow 0.25s; }
+    .marche-bloc:hover { box-shadow:0 12px 36px rgba(107,63,160,0.13); }
+
+    .marche-photo { min-height:320px; overflow:hidden; display:flex; align-items:center; justify-content:center; background:var(--lavande-pale); }
+    .marche-photo img { width:100%; height:100%; object-fit:cover; display:block; transition:transform 0.4s; }
+    .marche-bloc:hover .marche-photo img { transform:scale(1.03); }
+
+    .marche-info { padding:2.2rem 2.2rem; display:flex; flex-direction:column; justify-content:center; gap:1rem; }
+    .marche-badge { display:inline-block; font-size:0.72rem; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; padding:0.28rem 0.8rem; border-radius:50px; width:fit-content; }
+    .marche-badge.hebdo { background:#E8F5EF; color:#1A6B50; }
+    .marche-badge.bi { background:var(--lavande); color:var(--violet-dark); }
+    .marche-badge.mensuel { background:#FFF0E0; color:#8A5200; }
+    .marche-nom { font-family:'Dancing Script',cursive; font-size:2rem; color:var(--violet); line-height:1.15; }
+    .marche-detail { display:flex; align-items:flex-start; gap:0.8rem; font-size:0.92rem; color:var(--text-mid); }
+    .marche-detail-icon { width:34px; height:34px; flex-shrink:0; background:var(--lavande-pale); border:1px solid var(--lavande); border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:0.95rem; }
+    .marche-detail-text strong { display:block; color:var(--text-dark); font-size:0.95rem; }
+    .marche-detail-text span { color:var(--text-mid); font-size:0.87rem; }
+    .marche-map-link { display:inline-flex; align-items:center; gap:0.5rem; margin-top:0.5rem; color:var(--violet); font-size:0.85rem; font-weight:700; text-decoration:none; border:1.5px solid var(--violet); padding:0.5rem 1rem; border-radius:50px; width:fit-content; transition:all 0.2s; }
+    .marche-map-link:hover { background:var(--violet); color:#fff; }
+
+    /* CONTACT BAS */
+    .info-pratique { margin-top:3.5rem; background:linear-gradient(135deg, var(--violet) 0%, var(--violet-dark) 100%); border-radius:24px; padding:2.5rem; color:#fff; display:grid; grid-template-columns:1fr 1fr; gap:2rem; align-items:center; }
+    .info-pratique h3 { font-family:'Dancing Script',cursive; font-size:2rem; margin-bottom:0.5rem; }
+    .info-pratique p { opacity:0.88; font-size:0.95rem; line-height:1.7; }
+    .contacts { display:flex; flex-direction:column; gap:0.8rem; }
+    .contact-item { display:flex; align-items:center; gap:0.8rem; background:rgba(255,255,255,0.12); border-radius:12px; padding:0.7rem 1rem; text-decoration:none; color:#fff; transition:background 0.2s; }
+    .contact-item:hover { background:rgba(255,255,255,0.22); }
+    .contact-item span { font-size:1.1rem; }
+    .contact-item div small { display:block; font-size:0.72rem; opacity:0.7; text-transform:uppercase; letter-spacing:0.08em; }
+    .contact-item div strong { font-size:0.95rem; }
+
+    footer { background:var(--text-dark); color:var(--lavande-pale); text-align:center; padding:2rem; font-size:0.82rem; }
+    footer a { color:var(--violet-light); text-decoration:none; }
+
+    @media(max-width:700px) {
+      .marche-bloc { grid-template-columns:1fr; }
+      .marche-photo { min-height:220px; }
+      .info-pratique { grid-template-columns:1fr; }
+    }
+  </style>
+</head>
+<body>
+
+  <nav>
+    <a href="index.html" class="nav-logo"><img src="images/logo.png" alt="Lylou-vely"></a>
+    <ul class="nav-links">
+      <li><a href="index.html">Accueil</a></li>
+      <li><a href="creations.html">Créations</a></li>
+      <li><a href="marches.html" class="active">Les Marchés</a></li>
+      <li><a href="mailto:infos@lylou-vely.be" class="nav-cta">Contact</a></li>
+    </ul>
+  </nav>
+
+  <div class="page-header">
+    <h1>Les Marchés de Lylou-vely</h1>
+    <p>Venez me retrouver près de chez vous 📍</p>
+  </div>
+
+  <main>
+
+    <!-- VAUX -->
+    <div class="marche-bloc">
+      <div class="marche-photo">
+        <img src="images/marche-vaux.png" alt="Marché de Vaux-sous-Chèvremont">
+      </div>
+      <div class="marche-info">
+        <span class="marche-badge hebdo">Hebdomadaire</span>
+        <div class="marche-nom">Marché de<br>Vaux-sous-Chèvremont</div>
+        <div class="marche-detail">
+          <div class="marche-detail-icon">🕐</div>
+          <div class="marche-detail-text">
+            <strong>8h00 – 13h00</strong>
+            <span>Tous les vendredis</span>
+          </div>
+        </div>
+        <div class="marche-detail">
+          <div class="marche-detail-icon">📍</div>
+          <div class="marche-detail-text">
+            <strong>Vaux-sous-Chèvremont</strong>
+            <span>Liège, Belgique</span>
+          </div>
+        </div>
+        <a class="marche-map-link" href="https://maps.google.com/?q=Vaux-sous-Chevremont+marche" target="_blank">🗺️ Voir sur Google Maps</a>
+      </div>
+    </div>
+
+    <!-- NINANE -->
+    <div class="marche-bloc">
+      <div class="marche-info">
+        <span class="marche-badge bi">2× par mois</span>
+        <div class="marche-nom">Marché<br>de Ninane</div>
+        <div class="marche-detail">
+          <div class="marche-detail-icon">🕐</div>
+          <div class="marche-detail-text">
+            <strong>16h00 – 20h00</strong>
+            <span>1<sup>er</sup> et 3<sup>ème</sup> vendredi du mois</span>
+          </div>
+        </div>
+        <div class="marche-detail">
+          <div class="marche-detail-icon">📍</div>
+          <div class="marche-detail-text">
+            <strong>Ninane</strong>
+            <span>Liège, Belgique</span>
+          </div>
+        </div>
+        <a class="marche-map-link" href="https://maps.google.com/?q=Ninane+marche" target="_blank">🗺️ Voir sur Google Maps</a>
+      </div>
+      <div class="marche-photo">
+        <img src="images/marche-ninane.png" alt="Marché de Ninane">
+      </div>
+    </div>
+
+    <!-- ROUVREUX -->
+    <div class="marche-bloc">
+      <div class="marche-photo">
+        <img src="images/marche-rouvreux.png" alt="Marché de Rouvreux">
+      </div>
+      <div class="marche-info">
+        <span class="marche-badge mensuel">1× par mois</span>
+        <div class="marche-nom">Marché<br>de Rouvreux</div>
+        <div class="marche-detail">
+          <div class="marche-detail-icon">🕐</div>
+          <div class="marche-detail-text">
+            <strong>10h00 – 14h00</strong>
+            <span>1<sup>er</sup> dimanche du mois</span>
+          </div>
+        </div>
+        <div class="marche-detail">
+          <div class="marche-detail-icon">📍</div>
+          <div class="marche-detail-text">
+            <strong>Rouvreux</strong>
+            <span>Liège, Belgique</span>
+          </div>
+        </div>
+        <a class="marche-map-link" href="https://maps.google.com/?q=Rouvreux+marche" target="_blank">🗺️ Voir sur Google Maps</a>
+      </div>
+    </div>
+
+    <!-- BONCELLES -->
+    <div class="marche-bloc">
+      <div class="marche-info">
+        <span class="marche-badge mensuel">1× par mois</span>
+        <div class="marche-nom">Marché<br>de Boncelles</div>
+        <div class="marche-detail">
+          <div class="marche-detail-icon">🕐</div>
+          <div class="marche-detail-text">
+            <strong>10h00 – 15h00</strong>
+            <span>2<sup>ème</sup> dimanche du mois</span>
+          </div>
+        </div>
+        <div class="marche-detail">
+          <div class="marche-detail-icon">📍</div>
+          <div class="marche-detail-text">
+            <strong>Boncelles</strong>
+            <span>Liège, Belgique</span>
+          </div>
+        </div>
+        <a class="marche-map-link" href="https://maps.google.com/?q=Boncelles+marche" target="_blank">🗺️ Voir sur Google Maps</a>
+      </div>
+      <div class="marche-photo">
+        <img src="images/marche-boncelles.png" alt="Marché de Boncelles">
+      </div>
+    </div>
+
+    <!-- CONTACT -->
+    <div class="info-pratique">
+      <div>
+        <h3>Une question ? 💜</h3>
+        <p>N'hésitez pas à me contacter pour savoir si je serai présente à un marché, ou pour passer une commande personnalisée !</p>
+        <p style="margin-top:1rem; font-size:0.9rem; opacity:0.75;">Retrouvez toutes nos créations sur <strong>lylou-vely.be</strong></p>
+      </div>
+      <div class="contacts">
+        <a class="contact-item" href="tel:+32498594242"><span>📞</span><div><small>Téléphone</small><strong>+32 498 59 42 42</strong></div></a>
+        <a class="contact-item" href="mailto:infos@lylou-vely.be"><span>✉️</span><div><small>Email</small><strong>infos@lylou-vely.be</strong></div></a>
+        <a class="contact-item" href="https://lylou-vely.be" target="_blank"><span>🌐</span><div><small>Site web</small><strong>lylou-vely.be</strong></div></a>
+      </div>
+    </div>
+
+  </main>
+
+  <footer>
+    <p>© 2025 Lylou-vely — Créations artisanales · Handmade with love 💜</p>
+    <p style="margin-top:0.4rem;"><a href="https://lylou-vely.be">lylou-vely.be</a></p>
+  </footer>
+
+</body>
+</html>

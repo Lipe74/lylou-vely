@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Créations – Lylou-Vely</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=Dancing+Script:wght@600;700&family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --violet:#6B3FA0; --violet-dark:#4A2870; --violet-light:#C4A8E0;
+      --lavande:#E8D9F5; --lavande-pale:#F5EEFF;
+      --rose-pale:#FBF0F3; --creme:#FDF8F0;
+      --text-dark:#2C1A3E; --text-mid:#5A3A72; --text-light:#9A7AB8;
+    }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family:'Lato',sans-serif; background:var(--creme); color:var(--text-dark); overflow-x:hidden; }
+
+    nav { position:fixed; top:0; left:0; right:0; z-index:100; background:rgba(253,248,240,0.96); backdrop-filter:blur(8px); border-bottom:1px solid var(--lavande); padding:0 2rem; display:flex; align-items:center; justify-content:space-between; height:72px; }
+    .nav-logo img { height:48px; width:auto; display:block; }
+    .nav-links { display:flex; gap:2rem; list-style:none; }
+    .nav-links a { text-decoration:none; color:var(--text-mid); font-size:0.9rem; letter-spacing:0.06em; text-transform:uppercase; font-weight:700; transition:color 0.2s; }
+    .nav-links a:hover, .nav-links a.active { color:var(--violet); }
+    .nav-cta { background:var(--violet); color:#fff !important; padding:0.5rem 1.2rem; border-radius:50px; }
+    .nav-cta:hover { background:var(--violet-dark) !important; }
+    @media(max-width:768px){ .nav-links{display:none;} nav{padding:0 1.2rem;} }
+
+    .page-header { padding:130px 2rem 70px; background: radial-gradient(ellipse at 80% 40%, rgba(232,160,176,0.3) 0%, transparent 55%), radial-gradient(ellipse at 20% 60%, rgba(196,168,224,0.35) 0%, transparent 55%), var(--lavande-pale); text-align:center; }
+    .page-header h1 { font-family:'Dancing Script',cursive; font-size:clamp(2.5rem,7vw,5rem); color:var(--violet); }
+    .page-header p { font-family:'Playfair Display',serif; font-size:1.1rem; color:var(--text-mid); margin-top:0.8rem; font-style:italic; }
+
+    /* VITRINE HERO avec affiche + post facebook */
+    .vitrine { max-width:1100px; margin:0 auto; padding:60px 2rem 0; display:grid; grid-template-columns:1fr 1fr; gap:2rem; align-items:start; }
+    .vitrine-img { border-radius:20px; overflow:hidden; box-shadow:0 16px 50px rgba(107,63,160,0.16); }
+    .vitrine-img img { width:100%; display:block; }
+    .vitrine-text { padding:2rem 0; }
+    .vitrine-text h2 { font-family:'Dancing Script',cursive; font-size:2.4rem; color:var(--violet); margin-bottom:0.8rem; }
+    .vitrine-text p { font-size:1rem; color:var(--text-mid); line-height:1.75; margin-bottom:1.5rem; }
+    .vitrine-tags { display:flex; flex-wrap:wrap; gap:0.6rem; margin-bottom:2rem; }
+    .vtag { background:var(--lavande); color:var(--violet-dark); font-size:0.8rem; font-weight:700; letter-spacing:0.07em; text-transform:uppercase; padding:0.4rem 1rem; border-radius:50px; }
+    .btn-primary { background:var(--violet); color:#fff; padding:0.85rem 2rem; border-radius:50px; text-decoration:none; font-weight:700; font-size:0.9rem; letter-spacing:0.05em; text-transform:uppercase; transition:background 0.2s,transform 0.15s; display:inline-block; }
+    .btn-primary:hover { background:var(--violet-dark); transform:translateY(-2px); }
+
+    /* FILTRES */
+    .filters { max-width:1100px; margin:2.5rem auto 0; padding:0 2rem; display:flex; gap:0.7rem; flex-wrap:wrap; justify-content:center; }
+    .filter-btn { border:1.5px solid var(--lavande); background:#fff; color:var(--text-mid); padding:0.55rem 1.3rem; border-radius:50px; font-family:'Lato',sans-serif; font-size:0.85rem; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; cursor:pointer; transition:all 0.2s; }
+    .filter-btn:hover, .filter-btn.active { background:var(--violet); color:#fff; border-color:var(--violet); }
+
+    main { max-width:1100px; margin:0 auto; padding:2.5rem 2rem 80px; }
+    .category-section { margin-bottom:4rem; }
+    .category-title { font-family:'Dancing Script',cursive; font-size:2rem; color:var(--violet); margin-bottom:0.3rem; padding-bottom:0.7rem; border-bottom:2px solid var(--lavande); display:flex; align-items:center; gap:0.6rem; }
+    .category-desc { color:var(--text-light); font-size:0.88rem; margin-bottom:1.8rem; font-style:italic; }
+
+    .gallery-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(250px,1fr)); gap:1.4rem; }
+    .gallery-card { background:#fff; border:1px solid var(--lavande); border-radius:18px; overflow:hidden; transition:transform 0.22s,box-shadow 0.22s; }
+    .gallery-card:hover { transform:translateY(-5px); box-shadow:0 14px 32px rgba(107,63,160,0.15); }
+    .gallery-img { width:100%; height:220px; overflow:hidden; display:flex; align-items:center; justify-content:center; background:var(--lavande-pale); position:relative; }
+    .gallery-img img { width:100%; height:100%; object-fit:cover; transition:transform 0.35s; }
+    .gallery-card:hover .gallery-img img { transform:scale(1.06); }
+    .gallery-img-placeholder { text-align:center; padding:1rem; }
+    .gallery-img-placeholder .emoji { font-size:3rem; display:block; margin-bottom:0.4rem; }
+    .gallery-img-placeholder small { font-size:0.68rem; letter-spacing:0.1em; text-transform:uppercase; color:var(--text-light); display:block; }
+    .gallery-body { padding:1rem 1.1rem 0.5rem; }
+    .gallery-body h4 { font-family:'Playfair Display',serif; font-size:1rem; color:var(--text-dark); margin-bottom:0.3rem; }
+    .gallery-body p { font-size:0.85rem; color:var(--text-mid); line-height:1.55; }
+    .gallery-footer { display:flex; align-items:center; justify-content:space-between; padding:0.5rem 1.1rem 1rem; border-top:1px solid var(--lavande); margin-top:0.7rem; }
+    .gallery-footer span { font-size:0.72rem; letter-spacing:0.08em; text-transform:uppercase; color:var(--text-light); font-weight:700; }
+    .gallery-footer a { font-size:0.8rem; color:var(--violet); text-decoration:none; font-weight:700; transition:color 0.2s; }
+    .gallery-footer a:hover { color:var(--violet-dark); text-decoration:underline; }
+
+    .cta-commande { background:linear-gradient(135deg, var(--violet) 0%, var(--violet-dark) 100%); border-radius:24px; padding:3rem 2rem; text-align:center; color:#fff; margin-top:2rem; }
+    .cta-commande h3 { font-family:'Dancing Script',cursive; font-size:2.2rem; margin-bottom:0.6rem; }
+    .cta-commande p { opacity:0.88; max-width:500px; margin:0 auto 1.8rem; font-size:0.95rem; line-height:1.7; }
+    .btn-white { display:inline-block; background:#fff; color:var(--violet); padding:0.85rem 2rem; border-radius:50px; text-decoration:none; font-weight:700; font-size:0.9rem; letter-spacing:0.05em; text-transform:uppercase; transition:background 0.2s,transform 0.15s; margin:0.4rem; }
+    .btn-white:hover { background:var(--lavande); transform:translateY(-2px); }
+
+    footer { background:var(--text-dark); color:var(--lavande-pale); text-align:center; padding:2rem; font-size:0.82rem; }
+    footer a { color:var(--violet-light); text-decoration:none; }
+
+    @media(max-width:700px){
+      .vitrine { grid-template-columns:1fr; }
+      main { padding:2rem 1.2rem 60px; }
+    }
+  </style>
+</head>
+<body>
+
+  <nav>
+    <a href="index.html" class="nav-logo"><img src="images/logo.png" alt="Lylou-vely"></a>
+    <ul class="nav-links">
+      <li><a href="index.html">Accueil</a></li>
+      <li><a href="creations.html" class="active">Créations</a></li>
+      <li><a href="marches.html">Les Marchés</a></li>
+      <li><a href="mailto:infos@lylou-vely.be" class="nav-cta">Contact</a></li>
+    </ul>
+  </nav>
+
+  <div class="page-header">
+    <h1>Nos Créations</h1>
+    <p>Chaque pièce est unique, faite avec amour 💜</p>
+  </div>
+
+  <!-- VITRINE avec les 2 grandes images -->
+  <div class="vitrine">
+    <div class="vitrine-img">
+      <img src="images/post-facebook.png" alt="Lylou-vely créations">
+    </div>
+    <div class="vitrine-text">
+      <h2>Handmade with love</h2>
+      <p>Chaque création Lylou-vely est imaginée et réalisée entièrement à la main. Bijoux, sacs au crochet, cadeaux originaux — des pièces uniques qui portent un peu de cœur.</p>
+      <div class="vitrine-tags">
+        <span class="vtag">💎 Bijoux</span>
+        <span class="vtag">👜 Sacs crochet</span>
+        <span class="vtag">🎁 Cadeaux</span>
+        <span class="vtag">✨ Sur mesure</span>
+        <span class="vtag">🚚 Livraison</span>
+      </div>
+      <a href="mailto:infos@lylou-vely.be" class="btn-primary">Commander une pièce unique</a>
+    </div>
+  </div>
+
+  <!-- FILTRES -->
+  <div class="filters">
+    <button class="filter-btn active" onclick="filterAll(this)">Tout voir</button>
+    <button class="filter-btn" onclick="filterCat(this,'bijoux')">💎 Bijoux</button>
+    <button class="filter-btn" onclick="filterCat(this,'sacs')">👜 Sacs au crochet</button>
+    <button class="filter-btn" onclick="filterCat(this,'cadeaux')">🎁 Cadeaux</button>
+    <button class="filter-btn" onclick="filterCat(this,'perso')">✨ Sur mesure</button>
+  </div>
+
+  <main>
+
+    <!-- BIJOUX -->
+    <div class="category-section" data-cat="bijoux">
+      <h2 class="category-title">💎 Bijoux faits main</h2>
+      <p class="category-desc">Boucles d'oreilles, colliers, bracelets — pièces uniques imaginées et créées à la main</p>
+      <div class="gallery-grid">
+        <div class="gallery-card">
+          <div class="gallery-img" style="background:var(--lavande);">
+            <div class="gallery-img-placeholder"><span class="emoji">💜</span><small>Photo à venir</small></div>
+          </div>
+          <div class="gallery-body"><h4>Boucles d'oreilles florales</h4><p>Délicates boucles en résine avec fleurs séchées, pièces uniques.</p></div>
+          <div class="gallery-footer"><span>Bijoux</span><a href="mailto:infos@lylou-vely.be">Commander →</a></div>
+        </div>
+        <div class="gallery-card">
+          <div class="gallery-img" style="background:#F0E8FB;">
+            <div class="gallery-img-placeholder"><span class="emoji">✨</span><small>Photo à venir</small></div>
+          </div>
+          <div class="gallery-body"><h4>Collier perles artisanal</h4><p>Collier en perles naturelles, chaque modèle est unique.</p></div>
+          <div class="gallery-footer"><span>Bijoux</span><a href="mailto:infos@lylou-vely.be">Commander →</a></div>
+        </div>
+        <div class="gallery-card">
+          <div class="gallery-img" style="background:var(--rose-pale);">
+            <div class="gallery-img-placeholder"><span class="emoji">💎</span><small>Photo à venir</small></div>
+          </div>
+          <div class="gallery-body"><h4>Bracelet personnalisé</h4><p>Bracelet avec prénom ou message, idéal en cadeau.</p></div>
+          <div class="gallery-footer"><span>Bijoux · Perso</span><a href="mailto:infos@lylou-vely.be">Commander →</a></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SACS -->
+    <div class="category-section" data-cat="sacs">
+      <h2 class="category-title">👜 Sacs au crochet</h2>
+      <p class="category-desc">Sacs, paniers et accessoires réalisés au crochet avec des fils de qualité</p>
+      <div class="gallery-grid">
+        <div class="gallery-card">
+          <div class="gallery-img" style="background:#EDE0F8;">
+            <div class="gallery-img-placeholder"><span class="emoji">👜</span><small>Photo à venir</small></div>
+          </div>
+          <div class="gallery-body"><h4>Sac cabas violet</h4><p>Grand sac au crochet en fil trapilho, résistant et élégant.</p></div>
+          <div class="gallery-footer"><span>Sacs</span><a href="mailto:infos@lylou-vely.be">Commander →</a></div>
+        </div>
+        <div class="gallery-card">
+          <div class="gallery-img" style="background:#FCEEF2;">
+            <div class="gallery-img-placeholder"><span class="emoji">🧺</span><small>Photo à venir</small></div>
+          </div>
+          <div class="gallery-body"><h4>Panier rangement</h4><p>Panier décoratif au crochet, parfait pour la maison.</p></div>
+          <div class="gallery-footer"><span>Sacs · Déco</span><a href="mailto:infos@lylou-vely.be">Commander →</a></div>
+        </div>
+        <div class="gallery-card">
+          <div class="gallery-img" style="background:#FFF5E0;">
+            <div class="gallery-img-placeholder"><span class="emoji">👛</span><small>Photo à venir</small></div>
+          </div>
+          <div class="gallery-body"><h4>Mini pochette crochet</h4><p>Petite pochette tendance avec anses dorées, idéale en soirée.</p></div>
+          <div class="gallery-footer"><span>Sacs</span><a href="mailto:infos@lylou-vely.be">Commander →</a></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CADEAUX -->
+    <div class="category-section" data-cat="cadeaux">
+      <h2 class="category-title">🎁 Cadeaux originaux</h2>
+      <p class="category-desc">Des idées cadeaux uniques pour faire plaisir à vos proches</p>
+      <div class="gallery-grid">
+        <div class="gallery-card">
+          <div class="gallery-img" style="background:#E8F5EF;">
+            <div class="gallery-img-placeholder"><span class="emoji">🎁</span><small>Photo à venir</small></div>
+          </div>
+          <div class="gallery-body"><h4>Box cadeau artisanale</h4><p>Composition unique de créations Lylou-vely, emballage soigné.</p></div>
+          <div class="gallery-footer"><span>Cadeaux</span><a href="mailto:infos@lylou-vely.be">Commander →</a></div>
+        </div>
+        <div class="gallery-card">
+          <div class="gallery-img" style="background:#FFF0E8;">
+            <div class="gallery-img-placeholder"><span class="emoji">🌸</span><small>Photo à venir</small></div>
+          </div>
+          <div class="gallery-body"><h4>Cadeau naissance</h4><p>Création douce pour accueillir un nouveau-né avec amour.</p></div>
+          <div class="gallery-footer"><span>Cadeaux · Bébé</span><a href="mailto:infos@lylou-vely.be">Commander →</a></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SUR MESURE -->
+    <div class="category-section" data-cat="perso">
+      <h2 class="category-title">✨ Commandes sur mesure</h2>
+      <p class="category-desc">Vous avez une idée ? On la crée ensemble selon vos envies, couleurs et budget</p>
+      <div class="gallery-grid">
+        <div class="gallery-card">
+          <div class="gallery-img" style="background:var(--lavande-pale);">
+            <div class="gallery-img-placeholder"><span class="emoji">💌</span><small>Sur mesure pour vous</small></div>
+          </div>
+          <div class="gallery-body"><h4>Création sur mesure</h4><p>Décrivez votre projet — couleurs, taille, matière — et je vous propose quelque chose d'unique.</p></div>
+          <div class="gallery-footer"><span>Sur demande</span><a href="mailto:infos@lylou-vely.be">Me contacter →</a></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="cta-commande">
+      <h3>Une idée de commande ? 💜</h3>
+      <p>Contactez-moi pour discuter de votre projet. Je crée sur mesure selon vos envies et vos couleurs préférées !</p>
+      <a href="mailto:infos@lylou-vely.be" class="btn-white">✉️ Envoyer un message</a>
+      <a href="tel:+32498594242" class="btn-white">📞 +32 498 59 42 42</a>
+    </div>
+
+  </main>
+
+  <footer>
+    <p>© 2025 Lylou-vely — Créations artisanales · Handmade with love 💜</p>
+    <p style="margin-top:0.4rem;"><a href="https://lylou-vely.be">lylou-vely.be</a></p>
+  </footer>
+
+  <script>
+    function filterAll(btn) {
+      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      document.querySelectorAll('.category-section').forEach(s => s.style.display = '');
+    }
+    function filterCat(btn, cat) {
+      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      document.querySelectorAll('.category-section').forEach(s => {
+        s.style.display = s.dataset.cat === cat ? '' : 'none';
+      });
+    }
+  </script>
+</body>
+</html>
