@@ -1,0 +1,21 @@
+{
+  "name": "Lylou-Vely · Créations artisanales",
+  "short_name": "Lylou-Vely",
+  "description": "Bijoux faits main, sacs au crochet et cadeaux originaux - Handmade with love",
+  "start_url": "/index.html",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#6B3FA0",
+  "orientation": "portrait",
+  "lang": "fr",
+  "id": "lylou-vely-site",
+  "icons": [
+    {
+      "src": "images/logo.png",
+      "sizes": "any",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
