@@ -4,29 +4,104 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Facebook – Lylou-Vely</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600;700&family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
   <link rel="icon" type="image/png" href="images/logo.png">
   <style>
+    :root {
+      --violet:#6B3FA0; --violet-dark:#4A2870; --violet-light:#C4A8E0;
+      --lavande:#E8D9F5; --lavande-pale:#F5EEFF;
+      --creme:#FDF8F0; --text-dark:#2C1A3E; --text-mid:#5A3A72; --text-light:#9A7AB8;
+    }
     * { margin:0; padding:0; box-sizing:border-box; }
-    body { font-family:Arial,sans-serif; background:#F5EEFF; height:100vh; display:flex; flex-direction:column; overflow:hidden; }
-    .fb-header { background:linear-gradient(135deg, #6B3FA0 0%, #4A2870 100%); padding:10px 20px; text-align:center; flex-shrink:0; }
-    .fb-header p { font-family:'Dancing Script',cursive; font-size:18px; color:white; }
-    .fb-container { flex:1; overflow:hidden; display:flex; align-items:stretch; }
-    .fb-container iframe { width:100%; height:100%; border:none; flex:1; }
+    body { font-family:'Lato',sans-serif; background:var(--creme); color:var(--text-dark); }
+
+    nav { background:rgba(253,248,240,0.97); backdrop-filter:blur(8px); border-bottom:1px solid var(--lavande); padding:0 2rem; display:flex; align-items:center; justify-content:space-between; height:68px; box-shadow:0 2px 16px rgba(107,63,160,0.08); }
+    .nav-logo { display:flex; align-items:center; gap:10px; text-decoration:none; }
+    .nav-logo img { height:44px; }
+    .nav-logo span { font-family:'Dancing Script',cursive; font-size:22px; color:var(--violet); }
+    .nav-back { display:flex; align-items:center; gap:6px; background:var(--violet); color:white; padding:8px 18px; border-radius:50px; font-size:13px; font-weight:700; text-decoration:none; transition:all 0.2s; }
+    .nav-back:hover { background:var(--violet-dark); }
+
+    .fb-section { max-width:1100px; margin:0 auto; padding:50px 2rem 80px; }
+    .section-title { font-family:'Dancing Script',cursive; font-size:clamp(2rem,4vw,3rem); color:var(--violet); margin-bottom:0.3rem; }
+    .section-sub { color:var(--text-light); font-size:0.85rem; letter-spacing:0.15em; text-transform:uppercase; margin-bottom:2rem; }
+
+    .fb-layout { display:grid; grid-template-columns:340px 1fr; gap:2.5rem; align-items:start; }
+
+    .fb-info { background:linear-gradient(160deg, var(--violet) 0%, var(--violet-dark) 100%); border-radius:24px; padding:2.5rem 2rem; color:#fff; display:flex; flex-direction:column; gap:1.4rem; position:sticky; top:20px; }
+    .fb-info h2 { font-family:'Dancing Script',cursive; font-size:2rem; line-height:1.1; }
+    .fb-info p { opacity:0.9; font-size:0.92rem; line-height:1.7; }
+    .fb-highlights { display:flex; flex-direction:column; gap:0.6rem; }
+    .fb-highlight { display:flex; align-items:center; gap:0.7rem; background:rgba(255,255,255,0.12); border-radius:10px; padding:0.55rem 0.8rem; font-size:0.88rem; }
+    .fb-btn { display:inline-flex; align-items:center; gap:0.7rem; background:#fff; color:var(--violet); padding:0.85rem 1.6rem; border-radius:50px; text-decoration:none; font-weight:700; font-size:0.92rem; transition:all 0.2s; width:fit-content; }
+    .fb-btn:hover { background:var(--lavande); transform:translateY(-2px); }
+
+    .fb-widget-wrap { background:#fff; border:1px solid var(--lavande); border-radius:20px; overflow:hidden; box-shadow:0 8px 30px rgba(107,63,160,0.08); display:flex; flex-direction:column; align-items:center; padding:1.5rem; min-height:600px; }
+
+    footer { background:var(--text-dark); color:var(--lavande-pale); text-align:center; padding:2rem; font-size:0.82rem; }
+    footer a { color:var(--violet-light); text-decoration:none; }
+
+    @media(max-width:900px){ .fb-layout { grid-template-columns:1fr; } .fb-info { position:static; } }
+    @media(max-width:600px){ .fb-section { padding:30px 1.2rem 60px; } nav { padding:0 1.2rem; } }
   </style>
 </head>
 <body>
-<div class="fb-header">
-  <p>Notre page Facebook 💜</p>
+
+<div id="fb-root"></div>
+<script async defer crossorigin="anonymous" src="https://connect.facebook.net/fr_FR/sdk.js#xfbml=1&version=v19.0"></script>
+
+<nav>
+  <a href="index.html" class="nav-logo">
+    <img src="images/logo.png" alt="Lylou-Vely">
+    <span>Lylou-Vely</span>
+  </a>
+  <a href="index.html" class="nav-back">← Retour au site</a>
+</nav>
+
+<div class="fb-section">
+  <h2 class="section-title">Notre page Facebook</h2>
+  <p class="section-sub">Toutes les nouveautés en direct</p>
+
+  <div class="fb-layout">
+    <div class="fb-info">
+      <div>
+        <h2>Suivez-nous sur Facebook 💜</h2>
+        <p>Toutes nos créations, les photos des marchés et les nouveautés en avant-première directement dans votre fil !</p>
+      </div>
+      <div class="fb-highlights">
+        <div class="fb-highlight">📸 Photos des nouveautés chaque semaine</div>
+        <div class="fb-highlight">🗓️ Annonces des prochains marchés</div>
+        <div class="fb-highlight">💜 Commandes perso en message privé</div>
+        <div class="fb-highlight">⭐ Avis et retours de nos clientes</div>
+      </div>
+      <a class="fb-btn" href="https://www.facebook.com/lylouvely" target="_blank">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="#1877F2"><path d="M24 12.073C24 5.404 18.627 0 12 0S0 5.404 0 12.073C0 18.1 4.388 23.094 10.125 24v-8.437H7.078v-3.49h3.047V9.41c0-3.025 1.792-4.697 4.533-4.697 1.312 0 2.686.235 2.686.235v2.97h-1.514c-1.491 0-1.956.93-1.956 1.886v2.268h3.328l-.532 3.49h-2.796V24C19.612 23.094 24 18.1 24 12.073z"/></svg>
+        Voir la page Facebook
+      </a>
+    </div>
+
+    <div class="fb-widget-wrap">
+      <div class="fb-page"
+        data-href="https://www.facebook.com/lylouvely"
+        data-tabs="timeline"
+        data-width="600"
+        data-height="700"
+        data-small-header="false"
+        data-adapt-container-width="true"
+        data-hide-cover="false"
+        data-show-facepile="true">
+        <blockquote cite="https://www.facebook.com/lylouvely" class="fb-xfbml-parse-ignore">
+          <a href="https://www.facebook.com/lylouvely">Lylou-vely</a>
+        </blockquote>
+      </div>
+    </div>
+  </div>
 </div>
-<div class="fb-container">
-  <iframe
-    src="https://www.facebook.com/plugins/page.php?href=https%3A%2F%2Fwww.facebook.com%2Flylouvely&tabs=timeline&width=1200&height=900&small_header=false&adapt_container_width=true&hide_cover=false&show_facepile=true"
-    style="width:100%;height:100%;border:none;"
-    scrolling="yes"
-    frameborder="0"
-    allowfullscreen="true"
-    allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share">
-  </iframe>
-</div>
+
+<footer>
+  <p>© 2025 Lylou-Vely — Créations artisanales · Handmade with love 💜</p>
+</footer>
+
 </body>
 </html>
