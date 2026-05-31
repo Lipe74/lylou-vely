@@ -37,10 +37,10 @@
     /* BURGER */
     .burger { display:none; flex-direction:column; gap:5px; cursor:pointer; padding:6px; border:none; background:none; }
     .burger span { display:block; width:24px; height:2px; background:var(--violet); border-radius:2px; transition:all 0.3s; }
-    .mobile-menu { display:none; background:var(--creme); border-top:1px solid var(--lavande); padding:12px 20px 16px; }
+    .mobile-menu { display:none; background:var(--creme); border-top:1px solid var(--lavande); padding:12px 20px 16px; position:sticky; top:68px; z-index:998; box-shadow:0 4px 16px rgba(107,63,160,0.1); }
     .mobile-menu.open { display:block; }
     .mobile-menu a { display:block; font-size:15px; font-weight:700; color:var(--text-dark); text-decoration:none; padding:12px 0; border-bottom:1px solid var(--lavande); text-transform:uppercase; letter-spacing:0.05em; }
-    .mobile-menu a:last-child { border-bottom:none; margin-top:8px; background:var(--violet); color:white; padding:12px 16px; border-radius:10px; text-align:center; }
+    .mobile-menu a:last-child { border-bottom:none; margin-top:8px; background:var(--violet); color:white !important; padding:12px 16px; border-radius:10px; text-align:center; }
     @media(max-width:640px){ .nav-links{display:none;} .burger{display:flex;} nav{padding:0 1.2rem;} }
 
     /* HERO */
