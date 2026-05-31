@@ -164,7 +164,6 @@
     <li><a href="#">🏠 Accueil</a></li>
     <li><a href="#creations">Créations</a></li>
     <li><a href="#galerie">Galerie</a></li>
-    <li><a href="facebook.html?menu=1">📘 Facebook</a></li>
     <li><a href="#marches">Marchés</a></li>
     <li><a href="#contact" class="nav-cta">Contact</a></li>
   </ul>
@@ -176,7 +175,6 @@
   <a href="#" onclick="toggleMenu()">🏠 Accueil</a>
   <a href="#creations" onclick="toggleMenu()">💎 Créations</a>
   <a href="#galerie" onclick="toggleMenu()">📸 Galerie</a>
-  <a href="facebook.html?menu=1" onclick="toggleMenu()">📘 Facebook</a>
   <a href="#marches" onclick="toggleMenu()">📍 Marchés</a>
   <a href="#contact" onclick="toggleMenu()">✉️ Contact</a>
 </div>
@@ -302,14 +300,23 @@
           Voir la page Facebook
         </a>
       </div>
-      <div class="fb-widget-wrap" style="padding:0;min-height:700px;overflow:hidden;">
-        <iframe
-          src="facebook.html"
-          width="100%"
-          height="700"
-          style="border:none;width:100%;"
-          scrolling="yes">
-        </iframe>
+      <div style="max-width:500px;margin:0 auto;">
+        <div class="fb-info">
+          <div>
+            <h2>Suivez-nous sur Facebook 💜</h2>
+            <p>Toutes nos créations, les photos des marchés et les nouveautés en avant-première directement dans votre fil !</p>
+          </div>
+          <div class="fb-highlights">
+            <div class="fb-highlight">📸 Photos des nouveautés chaque semaine</div>
+            <div class="fb-highlight">🗓️ Annonces des prochains marchés</div>
+            <div class="fb-highlight">💜 Commandes perso en message privé</div>
+            <div class="fb-highlight">⭐ Avis et retours de nos clientes</div>
+          </div>
+          <a class="fb-btn" href="facebook.html?menu=1">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="#1877F2"><path d="M24 12.073C24 5.404 18.627 0 12 0S0 5.404 0 12.073C0 18.1 4.388 23.094 10.125 24v-8.437H7.078v-3.49h3.047V9.41c0-3.025 1.792-4.697 4.533-4.697 1.312 0 2.686.235 2.686.235v2.97h-1.514c-1.491 0-1.956.93-1.956 1.886v2.268h3.328l-.532 3.49h-2.796V24C19.612 23.094 24 18.1 24 12.073z"/></svg>
+            Voir notre page Facebook
+          </a>
+        </div>
       </div>
     </div>
   </div>
