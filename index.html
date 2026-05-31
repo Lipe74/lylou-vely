@@ -385,14 +385,70 @@
 </div>
 
 <!-- CONTACT -->
-<div class="contact-band" id="contact">
-  <h2>Passez commande ♥</h2>
-  <p>Une question, une commande personnalisée ou simplement envie de dire bonjour ? N'hésitez pas !</p>
-  <a href="mailto:infos@lylou-vely.be" class="btn-white">✉️ Envoyer un message</a>
-  <a href="https://wa.me/32498594242" class="btn-white">💬 WhatsApp</a>
-  <a href="tel:+32498594242" class="btn-white">📞 +32 498 59 42 42</a>
-  <div class="contact-infos">
-    <span>✉️ <a href="mailto:infos@lylou-vely.be">infos@lylou-vely.be</a></span>
+<div class="section bg-lavande" id="contact">
+  <div class="section-inner">
+    <h2 class="section-title">Passez commande ♥</h2>
+    <p class="section-sub">Une question ou une commande personnalisée</p>
+    <div style="max-width:640px;margin:0 auto;">
+      <div style="background:#fff;border:1.5px solid var(--lavande);border-radius:20px;padding:28px 24px;box-shadow:0 8px 30px rgba(107,63,160,0.08);">
+        <form action="https://formspree.io/f/xgoqbnkv" method="POST" onsubmit="handleSubmit(event,'success-contact')">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">
+            <div>
+              <label style="display:block;font-size:13px;font-weight:700;color:var(--text-dark);margin-bottom:6px;">Prénom *</label>
+              <input type="text" name="prenom" required placeholder="Marie" style="width:100%;padding:11px 14px;border:1.5px solid var(--lavande);border-radius:10px;font-family:'Lato',sans-serif;font-size:13px;background:var(--creme);color:var(--text-dark);outline:none;">
+            </div>
+            <div>
+              <label style="display:block;font-size:13px;font-weight:700;color:var(--text-dark);margin-bottom:6px;">Nom *</label>
+              <input type="text" name="nom" required placeholder="Dupont" style="width:100%;padding:11px 14px;border:1.5px solid var(--lavande);border-radius:10px;font-family:'Lato',sans-serif;font-size:13px;background:var(--creme);color:var(--text-dark);outline:none;">
+            </div>
+          </div>
+          <div style="margin-bottom:14px;">
+            <label style="display:block;font-size:13px;font-weight:700;color:var(--text-dark);margin-bottom:6px;">Email *</label>
+            <input type="email" name="email" required placeholder="vous@exemple.be" style="width:100%;padding:11px 14px;border:1.5px solid var(--lavande);border-radius:10px;font-family:'Lato',sans-serif;font-size:13px;background:var(--creme);color:var(--text-dark);outline:none;">
+          </div>
+          <div style="margin-bottom:14px;">
+            <label style="display:block;font-size:13px;font-weight:700;color:var(--text-dark);margin-bottom:6px;">Téléphone</label>
+            <input type="tel" name="telephone" placeholder="+32 4xx xx xx xx" style="width:100%;padding:11px 14px;border:1.5px solid var(--lavande);border-radius:10px;font-family:'Lato',sans-serif;font-size:13px;background:var(--creme);color:var(--text-dark);outline:none;">
+          </div>
+          <div style="margin-bottom:14px;">
+            <label style="display:block;font-size:13px;font-weight:700;color:var(--text-dark);margin-bottom:6px;">Je souhaite des infos sur</label>
+            <select name="sujet" style="width:100%;padding:11px 14px;border:1.5px solid var(--lavande);border-radius:10px;font-family:'Lato',sans-serif;font-size:13px;background:var(--creme);color:var(--text-dark);outline:none;">
+              <option>💎 Bijoux faits main</option>
+              <option>👜 Sacs au crochet</option>
+              <option>🕯️ Bougies & Encens</option>
+              <option>🎁 Cadeau personnalisé</option>
+              <option>📦 Autre</option>
+            </select>
+          </div>
+          <div style="margin-bottom:14px;">
+            <label style="display:block;font-size:13px;font-weight:700;color:var(--text-dark);margin-bottom:6px;">Comment nous avez-vous connu ?</label>
+            <select name="source" style="width:100%;padding:11px 14px;border:1.5px solid var(--lavande);border-radius:10px;font-family:'Lato',sans-serif;font-size:13px;background:var(--creme);color:var(--text-dark);outline:none;">
+              <option>📍 Au marché</option>
+              <option>🌐 Via le site web</option>
+              <option>📱 Via Facebook</option>
+              <option>👥 Bouche à oreille</option>
+              <option>🔍 Autre</option>
+            </select>
+          </div>
+          <div style="margin-bottom:14px;">
+            <label style="display:block;font-size:13px;font-weight:700;color:var(--text-dark);margin-bottom:6px;">Votre message</label>
+            <textarea name="message" placeholder="Décrivez votre demande ou votre idée de création..." style="width:100%;padding:11px 14px;border:1.5px solid var(--lavande);border-radius:10px;font-family:'Lato',sans-serif;font-size:13px;background:var(--creme);color:var(--text-dark);outline:none;resize:vertical;min-height:100px;"></textarea>
+          </div>
+          <input type="hidden" name="_subject" value="💜 Nouvelle demande – Lylou-Vely">
+          <input type="hidden" name="_language" value="fr">
+          <button type="submit" style="width:100%;padding:14px;background:var(--violet);color:white;border:none;border-radius:50px;font-family:'Lato',sans-serif;font-size:15px;font-weight:700;cursor:pointer;transition:all 0.2s;margin-top:4px;">💜 Envoyer ma demande</button>
+          <div id="success-contact" style="display:none;text-align:center;padding:20px;background:#f0fdf4;border:1px solid #86efac;border-radius:12px;margin-top:14px;font-size:14px;color:#166534;font-weight:700;">✅ Merci ! Nous vous recontactons très vite 💜</div>
+        </form>
+        <div style="text-align:center;margin:20px 0;position:relative;font-size:12px;color:var(--text-light);font-weight:700;letter-spacing:1px;">
+          <span style="background:#fff;padding:0 14px;position:relative;z-index:1;">OU</span>
+          <div style="position:absolute;top:50%;left:0;right:0;height:1px;background:var(--lavande);"></div>
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+          <a href="https://wa.me/32498594242?text=Bonjour%20Lylou-Vely%20!" style="flex:1;display:flex;align-items:center;justify-content:center;gap:8px;background:#25d366;color:white;padding:12px;border-radius:50px;font-size:14px;font-weight:700;text-decoration:none;">💬 WhatsApp</a>
+          <a href="mailto:infos@lylou-vely.be" style="flex:1;display:flex;align-items:center;justify-content:center;gap:8px;background:var(--violet);color:white;padding:12px;border-radius:50px;font-size:14px;font-weight:700;text-decoration:none;">✉️ Email</a>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -409,6 +465,11 @@
 <script>
 function toggleMenu() {
   document.getElementById('mobileMenu').classList.toggle('open');
+}
+function handleSubmit(e, successId) {
+  e.preventDefault();
+  fetch(e.target.action, { method:'POST', body:new FormData(e.target), headers:{'Accept':'application/json'} })
+    .then(r => { if(r.ok) { e.target.reset(); document.getElementById(successId).style.display='block'; } });
 }
 </script>
 </body>
