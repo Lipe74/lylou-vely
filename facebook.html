@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Facebook – Lylou-Vely</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600;700&family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/png" href="images/logo.png">
+  <style>
+    :root {
+      --violet:#6B3FA0; --violet-dark:#4A2870;
+      --lavande:#E8D9F5; --lavande-pale:#F5EEFF;
+      --creme:#FDF8F0; --text-dark:#2C1A3E; --text-mid:#5A3A72;
+    }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family:'Lato',sans-serif; background:var(--creme); color:var(--text-dark); height:100vh; display:flex; flex-direction:column; overflow:hidden; }
+
+    nav {
+      background:rgba(253,248,240,0.97); backdrop-filter:blur(8px);
+      border-bottom:1px solid var(--lavande);
+      padding:0 20px; display:flex; align-items:center;
+      justify-content:space-between; height:60px; flex-shrink:0;
+      box-shadow:0 2px 16px rgba(107,63,160,0.08);
+    }
+    .nav-logo { display:flex; align-items:center; gap:10px; text-decoration:none; }
+    .nav-logo img { height:38px; width:auto; }
+    .nav-logo span { font-family:'Dancing Script',cursive; font-size:20px; color:var(--violet); }
+    .nav-back {
+      display:flex; align-items:center; gap:6px;
+      background:var(--violet); color:white;
+      padding:8px 16px; border-radius:50px;
+      font-size:13px; font-weight:700; text-decoration:none;
+      transition:all 0.2s;
+    }
+    .nav-back:hover { background:var(--violet-dark); transform:translateY(-1px); }
+
+    .fb-header {
+      background:linear-gradient(135deg, var(--violet) 0%, var(--violet-dark) 100%);
+      padding:12px 20px; text-align:center; flex-shrink:0;
+    }
+    .fb-header p {
+      font-family:'Dancing Script',cursive;
+      font-size:20px; color:white;
+    }
+
+    .fb-container {
+      flex:1; overflow:hidden; display:flex; align-items:stretch;
+    }
+    .fb-container iframe {
+      width:100%; height:100%; border:none; flex:1;
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a href="index.html" class="nav-logo">
+    <img src="images/logo.png" alt="Lylou-Vely">
+    <span>Lylou-Vely</span>
+  </a>
+  <a href="index.html" class="nav-back">← Retour au site</a>
+</nav>
+
+<!-- HEADER -->
+<div class="fb-header">
+  <p>Notre page Facebook 💜</p>
+</div>
+
+<!-- FACEBOOK PLEIN ÉCRAN -->
+<div class="fb-container">
+  <iframe
+    src="https://www.facebook.com/plugins/page.php?href=https%3A%2F%2Fwww.facebook.com%2Flylouvely&tabs=timeline&width=1200&height=900&small_header=false&adapt_container_width=true&hide_cover=false&show_facepile=true"
+    scrolling="yes"
+    frameborder="0"
+    allowfullscreen="true"
+    allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share">
+  </iframe>
+</div>
+
+</body>
+</html>
