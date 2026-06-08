@@ -1,6 +1,6 @@
 // Lylou-Vely Service Worker
 // Change ce numéro à chaque mise à jour du site pour forcer le rechargement
-const CACHE_VERSION = 'lylou-vely-v9';
+const CACHE_VERSION = 'lylou-vely-v10';
 
 const FICHIERS_A_CACHER = [
   '/',
