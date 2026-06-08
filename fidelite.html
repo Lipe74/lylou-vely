@@ -59,11 +59,12 @@
   .loyalty-card::after { content:''; position:absolute; bottom:-30px; left:40px; width:120px; height:120px; border-radius:50%; background:rgba(255,255,255,0.04); }
 .card-logo {
   position:absolute;
-  top:15px;
-  right:15px;
-  width:140px;
-  height:140px;
-  object-fit:contain;
+  top:20px;
+  right:10px;
+  width:180px;
+  height:auto;
+  opacity:0.9;
+  z-index:2;
 }
   .card-name { font-family:'Cormorant Garamond',serif; font-size:22px; font-weight:400; margin-bottom:2px; }
   .card-num { font-size:11px; opacity:0.6; letter-spacing:2px; margin-bottom:1.5rem; }
@@ -161,7 +162,7 @@
   <div id="section-carte">
 
     <div class="loyalty-card">
-      <img src="images/logo02.svg" alt="Lylou-Vely" class="card-logo">
+      <img src="images/logo02.png" alt="Lylou-Vely" class="card-logo">
       <div class="card-name" id="card-name">—</div>
       <div class="card-num" id="card-num">N° LL-0000</div>
       <div class="card-tier-badge" id="card-tier">Quartz</div>
