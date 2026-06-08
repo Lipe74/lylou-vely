@@ -511,6 +511,23 @@
 </footer>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+  .update-banner {
+    display:none; position:fixed; bottom:20px; left:50%; transform:translateX(-50%);
+    background:var(--violet); color:white; padding:12px 20px; border-radius:50px;
+    font-size:13px; font-weight:700; z-index:9999; gap:12px; align-items:center;
+    box-shadow:0 4px 20px rgba(107,63,160,0.35); white-space:nowrap;
+  }
+  .update-banner.show { display:flex; }
+  .update-banner button {
+    background:white; color:var(--violet); border:none; padding:5px 14px;
+    border-radius:50px; font-size:12px; font-weight:700; cursor:pointer;
+  }
+</style>
+<div class="update-banner" id="update-banner">
+  🎉 Nouvelle version disponible !
+  <button onclick="applyUpdate()">Mettre à jour</button>
+</div>
 <script>
 function toggleMenu() {
   document.getElementById('mobileMenu').classList.toggle('open');
@@ -520,6 +537,8 @@ function handleSubmit(e, successId) {
   fetch(e.target.action, { method:'POST', body:new FormData(e.target), headers:{'Accept':'application/json'} })
     .then(r => { if(r.ok) { e.target.reset(); document.getElementById(successId).style.display='block'; } });
 }
+
+// QR Code
 window.addEventListener('load', function() {
   new QRCode(document.getElementById('qr-home'), {
     text: 'https://lylou-vely.be/fidelite.html',
@@ -529,6 +548,35 @@ window.addEventListener('load', function() {
     correctLevel: QRCode.CorrectLevel.H
   });
 });
+
+// Service Worker
+let swRegistration = null;
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').then(reg => {
+      swRegistration = reg;
+      reg.addEventListener('updatefound', () => {
+        const newWorker = reg.installing;
+        newWorker.addEventListener('statechange', () => {
+          if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+            // Nouvelle version prête → affiche la bannière
+            document.getElementById('update-banner').classList.add('show');
+          }
+        });
+      });
+    });
+    // Détecte si le SW vient de prendre le contrôle (après mise à jour)
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      window.location.reload();
+    });
+  });
+}
+
+function applyUpdate() {
+  if (swRegistration && swRegistration.waiting) {
+    swRegistration.waiting.postMessage('SKIP_WAITING');
+  }
+}
 </script>
 </body>
 </html>
