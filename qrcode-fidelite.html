@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QR Code Fidélité — Lylou-Vely</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600&family=Jost:wght@300;400;500&display=swap');
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Jost', sans-serif; background: #F7F3FC; min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 2rem 1rem; }
+
+  h1 { font-family: 'Cormorant Garamond', serif; font-size: 24px; font-weight: 400; color: #6B3FA0; margin-bottom: 0.25rem; }
+  .subtitle { font-size: 13px; color: #7A6890; margin-bottom: 2rem; }
+
+  .cards-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; max-width: 900px; width: 100%; margin-bottom: 2rem; }
+
+  /* CARTE FORMAT A6 imprimable */
+  .qr-card {
+    background: white;
+    border-radius: 20px;
+    overflow: hidden;
+    border: 1px solid rgba(107,63,160,0.15);
+  }
+
+  .card-top {
+    background: #6B3FA0;
+    padding: 1.5rem;
+    text-align: center;
+    position: relative;
+  }
+  .card-top::after {
+    content: '';
+    position: absolute; bottom: -1px; left: 0; right: 0;
+    height: 20px;
+    background: white;
+    border-radius: 50% 50% 0 0 / 20px 20px 0 0;
+  }
+  .card-top img { height: 40px; filter: brightness(0) invert(1); opacity: 0.9; margin-bottom: 0.5rem; }
+  .card-top h2 { font-family: 'Cormorant Garamond', serif; font-size: 20px; font-weight: 400; color: white; }
+  .card-top p { font-size: 12px; color: rgba(255,255,255,0.7); margin-top: 3px; }
+
+  .card-body { padding: 1.5rem; text-align: center; }
+  .qr-wrapper {
+    display: inline-block;
+    padding: 12px; background: white;
+    border: 2px solid rgba(107,63,160,0.2);
+    border-radius: 12px; margin-bottom: 1rem;
+  }
+  #qr-canvas-1, #qr-canvas-2, #qr-canvas-3 { display: block; }
+
+  .scan-text { font-size: 15px; font-weight: 500; color: #2C1A4A; margin-bottom: 4px; }
+  .url-text { font-size: 11px; color: #7A6890; margin-bottom: 1rem; }
+
+  .gems-row { display: flex; justify-content: center; gap: 8px; margin-bottom: 1rem; }
+  .gem-item { text-align: center; }
+  .gem-emoji { font-size: 16px; }
+  .gem-name { font-size: 10px; color: #7A6890; display: block; margin-top: 2px; }
+
+  .card-footer {
+    border-top: 1px solid rgba(107,63,160,0.1);
+    padding: 0.75rem 1.5rem;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .footer-left { font-size: 11px; color: #7A6890; }
+  .footer-right { font-size: 11px; color: #6B3FA0; font-weight: 500; }
+
+  /* FORMAT TABLE STAND */
+  .stand-card .card-top { padding: 2rem; }
+  .stand-card .card-top img { height: 52px; }
+  .stand-card .card-top h2 { font-size: 26px; }
+  .stand-card .card-body { padding: 2rem; }
+  .stand-card .qr-wrapper { padding: 16px; }
+  .stand-card .scan-text { font-size: 18px; }
+
+  .print-btn {
+    background: #6B3FA0; color: white; border: none;
+    padding: 12px 28px; border-radius: 12px;
+    font-family: 'Jost', sans-serif; font-size: 14px; font-weight: 500;
+    cursor: pointer; margin: 0.5rem;
+  }
+  .print-btn:hover { background: #8B5FC0; }
+  .dl-btn {
+    background: transparent; color: #6B3FA0;
+    border: 1px solid #6B3FA0;
+    padding: 12px 28px; border-radius: 12px;
+    font-family: 'Jost', sans-serif; font-size: 14px; font-weight: 500;
+    cursor: pointer; margin: 0.5rem;
+  }
+
+  .info-box {
+    max-width: 600px; width: 100%;
+    background: #F3EEF9; border-radius: 14px;
+    padding: 1.25rem 1.5rem; margin-bottom: 2rem;
+    font-size: 13px; color: #4A3D6B; line-height: 1.7;
+  }
+  .info-box strong { color: #6B3FA0; }
+
+  @media print {
+    body { background: white; padding: 0; }
+    .no-print { display: none !important; }
+    .cards-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+    .qr-card { break-inside: avoid; border: 1px solid #ddd; }
+  }
+</style>
+</head>
+<body>
+
+<h1 class="no-print">QR Codes Fidélité</h1>
+<p class="subtitle no-print">Lylou-Vely — à imprimer pour tes marchés et ta boutique</p>
+
+<div class="info-box no-print">
+  <strong>Comment utiliser ?</strong><br>
+  Imprime ces cartes et pose-les sur ton stand. Quand une cliente scanne le QR code avec son téléphone, elle arrive directement sur sa page carte fidélité Lylou-Vely pour s'inscrire ou consulter ses points.<br><br>
+  <strong>3 formats disponibles :</strong> carte de visite (à distribuer), format stand A5 (à poser sur la table), et affichette (à accrocher).
+</div>
+
+<div class="cards-grid">
+
+  <!-- Carte de visite (petit format) -->
+  <div class="qr-card">
+    <div class="card-top">
+      <img src="images/logo.png" alt="Lylou-Vely">
+      <h2>Carte Fidélité</h2>
+      <p>Handmade with love 💜</p>
+    </div>
+    <div class="card-body">
+      <div class="qr-wrapper">
+        <canvas id="qr-canvas-1"></canvas>
+      </div>
+      <div class="scan-text">Scannez pour rejoindre</div>
+      <div class="url-text">lylou-vely.be/fidelite.html</div>
+      <div class="gems-row">
+        <div class="gem-item"><div class="gem-emoji">🤎</div><span class="gem-name">Quartz</span></div>
+        <div class="gem-item"><div class="gem-emoji">🤍</div><span class="gem-name">Perle</span></div>
+        <div class="gem-item"><div class="gem-emoji">💛</div><span class="gem-name">Citrine</span></div>
+        <div class="gem-item"><div class="gem-emoji">💎</div><span class="gem-name">Diamant</span></div>
+      </div>
+    </div>
+    <div class="card-footer">
+      <span class="footer-left">Gagnez des points à chaque achat</span>
+      <span class="footer-right">Gratuit !</span>
+    </div>
+  </div>
+
+  <!-- Format stand -->
+  <div class="qr-card stand-card">
+    <div class="card-top">
+      <img src="images/logo.png" alt="Lylou-Vely">
+      <h2>Programme Fidélité</h2>
+      <p>Rejoignez le club &amp; gagnez des récompenses</p>
+    </div>
+    <div class="card-body">
+      <div class="qr-wrapper">
+        <canvas id="qr-canvas-2"></canvas>
+      </div>
+      <div class="scan-text">Scannez avec votre téléphone</div>
+      <div class="url-text">lylou-vely.be/fidelite.html</div>
+      <div style="font-size:13px;color:#4A3D6B;line-height:1.6;margin-top:0.75rem;">
+        1 € dépensé = 1 point<br>
+        Des bons d'achat dès 150 pts 🎁
+      </div>
+    </div>
+    <div class="card-footer">
+      <span class="footer-left">lylou-vely.be</span>
+      <span class="footer-right">💜 Inscription gratuite</span>
+    </div>
+  </div>
+
+</div>
+
+<!-- Affichette grand format -->
+<div style="max-width:420px;width:100%;" class="qr-card">
+  <div class="card-top" style="padding:2.5rem;">
+    <img src="images/logo.png" alt="Lylou-Vely" style="height:60px;">
+    <h2 style="font-size:30px;margin-top:0.5rem;">Carte Fidélité</h2>
+    <p style="font-size:14px;">Handmade with love — Bijoux &amp; Créations artisanales</p>
+  </div>
+  <div class="card-body" style="padding:2.5rem;">
+    <div class="qr-wrapper" style="padding:20px;">
+      <canvas id="qr-canvas-3"></canvas>
+    </div>
+    <div class="scan-text" style="font-size:20px;margin-bottom:6px;">Scannez &amp; rejoignez le club !</div>
+    <div class="url-text" style="font-size:13px;">lylou-vely.be/fidelite.html</div>
+    <div style="margin-top:1.25rem;font-size:14px;color:#4A3D6B;line-height:1.8;">
+      ✨ Gagnez des points à chaque achat<br>
+      🎁 Échangez-les contre des bons &amp; remises<br>
+      💜 Inscription gratuite en 30 secondes
+    </div>
+    <div class="gems-row" style="margin-top:1.25rem;">
+      <div class="gem-item"><div class="gem-emoji" style="font-size:22px;">🤎</div><span class="gem-name" style="font-size:12px;">Quartz</span></div>
+      <div class="gem-item"><div class="gem-emoji" style="font-size:22px;">🤍</div><span class="gem-name" style="font-size:12px;">Perle</span></div>
+      <div class="gem-item"><div class="gem-emoji" style="font-size:22px;">💛</div><span class="gem-name" style="font-size:12px;">Citrine</span></div>
+      <div class="gem-item"><div class="gem-emoji" style="font-size:22px;">💎</div><span class="gem-name" style="font-size:12px;">Diamant</span></div>
+    </div>
+  </div>
+  <div class="card-footer">
+    <span class="footer-left">www.lylou-vely.be</span>
+    <span class="footer-right">infos@lylou-vely.be</span>
+  </div>
+</div>
+
+<div style="margin-top:2rem;" class="no-print">
+  <button class="print-btn" onclick="window.print()">🖨️ Imprimer</button>
+  <button class="dl-btn" onclick="telecharger()">⬇️ Télécharger le QR code</button>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+const URL_FIDELITE = 'https://lylou-vely.be/fidelite.html';
+
+function genQR(canvasId, size) {
+  const canvas = document.getElementById(canvasId);
+  canvas.width = size;
+  canvas.height = size;
+  new QRCode(canvas, {
+    text: URL_FIDELITE,
+    width: size,
+    height: size,
+    colorDark: '#6B3FA0',
+    colorLight: '#FFFFFF',
+    correctLevel: QRCode.CorrectLevel.H
+  });
+}
+
+window.addEventListener('load', () => {
+  setTimeout(() => {
+    genQR('qr-canvas-1', 160);
+    genQR('qr-canvas-2', 200);
+    genQR('qr-canvas-3', 240);
+  }, 300);
+});
+
+function telecharger() {
+  setTimeout(() => {
+    const canvas = document.getElementById('qr-canvas-3');
+    const link = document.createElement('a');
+    link.download = 'qrcode-lylou-vely-fidelite.png';
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+  }, 100);
+}
+</script>
+</body>
+</html>
