@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Lylou-Vely Fidélité">
+<meta name="theme-color" content="#6B3FA0">
+<title>Carte Fidélité — Lylou-Vely</title>
+<link rel="icon" href="images/logo.png">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600&family=Jost:wght@300;400;500&display=swap');
+
+  :root {
+    --violet: #6B3FA0;
+    --violet-light: #8B5FC0;
+    --violet-pale: #F3EEF9;
+    --violet-mid: #E8DDF5;
+    --or: #C9A84C;
+    --or-light: #F5EDD0;
+    --text: #2C1A4A;
+    --text-soft: #7A6890;
+    --white: #FDFBFF;
+    --border: rgba(107,63,160,0.15);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Jost', sans-serif;
+    background: var(--white);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  /* HEADER */
+  header {
+    text-align: center;
+    padding: 2rem 1rem 1.5rem;
+    border-bottom: 1px solid var(--border);
+  }
+  header img { height: 52px; margin-bottom: 0.5rem; }
+  header p { font-size: 13px; color: var(--text-soft); letter-spacing: 1.5px; text-transform: uppercase; }
+
+  .container { max-width: 480px; margin: 0 auto; padding: 0 1.25rem 4rem; }
+
+  /* INSCRIPTION */
+  #section-inscription { padding: 2rem 0; }
+  .welcome-text { text-align: center; margin-bottom: 2rem; }
+  .welcome-text h2 { font-family: 'Cormorant Garamond', serif; font-size: 28px; font-weight: 400; color: var(--violet); margin-bottom: 0.5rem; }
+  .welcome-text p { font-size: 14px; color: var(--text-soft); line-height: 1.6; }
+
+  .form-group { margin-bottom: 1.25rem; }
+  .form-group label { display: block; font-size: 12px; letter-spacing: 1px; text-transform: uppercase; color: var(--text-soft); margin-bottom: 6px; }
+  .form-group input {
+    width: 100%; padding: 12px 16px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    font-family: 'Jost', sans-serif;
+    font-size: 15px; color: var(--text);
+    background: var(--white);
+    transition: border-color 0.2s;
+    outline: none;
+  }
+  .form-group input:focus { border-color: var(--violet); }
+
+  .btn-primary {
+    width: 100%; padding: 14px;
+    background: var(--violet);
+    color: white; border: none;
+    border-radius: 12px;
+    font-family: 'Jost', sans-serif;
+    font-size: 15px; font-weight: 500;
+    cursor: pointer; letter-spacing: 0.5px;
+    transition: background 0.2s, transform 0.1s;
+    margin-top: 0.5rem;
+  }
+  .btn-primary:active { transform: scale(0.98); }
+  .btn-primary:hover { background: var(--violet-light); }
+
+  /* CARTE */
+  #section-carte { display: none; padding: 2rem 0; }
+
+  .loyalty-card {
+    background: var(--violet);
+    border-radius: 20px;
+    padding: 1.75rem;
+    color: white;
+    position: relative;
+    overflow: hidden;
+    margin-bottom: 1.5rem;
+  }
+  .loyalty-card::before {
+    content: '';
+    position: absolute; top: -50px; right: -50px;
+    width: 180px; height: 180px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.06);
+  }
+  .loyalty-card::after {
+    content: '';
+    position: absolute; bottom: -30px; left: 40px;
+    width: 120px; height: 120px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.04);
+  }
+  .card-logo { height: 32px; margin-bottom: 1.5rem; filter: brightness(0) invert(1); opacity: 0.9; }
+  .card-name { font-family: 'Cormorant Garamond', serif; font-size: 22px; font-weight: 400; margin-bottom: 2px; }
+  .card-num { font-size: 11px; opacity: 0.6; letter-spacing: 2px; margin-bottom: 1.5rem; }
+  .card-tier-badge {
+    display: inline-block;
+    background: rgba(255,255,255,0.15);
+    border: 1px solid rgba(255,255,255,0.25);
+    padding: 4px 14px; border-radius: 20px;
+    font-size: 12px; letter-spacing: 1px;
+    text-transform: uppercase; margin-bottom: 1.25rem;
+  }
+  .card-points-label { font-size: 11px; opacity: 0.7; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; }
+  .card-points-value { font-family: 'Cormorant Garamond', serif; font-size: 42px; font-weight: 300; line-height: 1; }
+  .card-points-unit { font-size: 14px; opacity: 0.7; margin-left: 4px; }
+
+  .progress-section { margin: 1.5rem 0; }
+  .progress-header { display: flex; justify-content: space-between; font-size: 12px; color: var(--text-soft); margin-bottom: 8px; }
+  .progress-track { height: 5px; background: var(--violet-mid); border-radius: 3px; overflow: hidden; }
+  .progress-fill { height: 100%; background: var(--violet); border-radius: 3px; transition: width 0.6s ease; }
+
+  /* RÉCOMPENSES */
+  .section-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 22px; font-weight: 400;
+    color: var(--violet); margin-bottom: 1rem;
+  }
+
+  .rewards-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 2rem; }
+  .reward-item {
+    background: var(--violet-pale);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 1rem;
+    text-align: center;
+  }
+  .reward-gem { font-size: 24px; margin-bottom: 6px; }
+  .reward-name { font-size: 13px; font-weight: 500; color: var(--text); margin-bottom: 3px; }
+  .reward-pts { font-size: 12px; color: var(--text-soft); margin-bottom: 10px; }
+  .reward-btn {
+    width: 100%; padding: 8px;
+    border-radius: 8px; border: 1px solid var(--violet);
+    background: transparent; color: var(--violet);
+    font-family: 'Jost', sans-serif; font-size: 12px;
+    cursor: pointer; transition: all 0.15s;
+  }
+  .reward-btn:hover, .reward-btn.active { background: var(--violet); color: white; }
+  .reward-btn:disabled { opacity: 0.4; cursor: not-allowed; border-color: var(--border); color: var(--text-soft); }
+
+  /* GOOGLE WALLET */
+  .wallet-section { text-align: center; margin: 1.5rem 0 2rem; }
+  .wallet-section p { font-size: 13px; color: var(--text-soft); margin-bottom: 1rem; }
+  .btn-google-wallet {
+    display: inline-flex; align-items: center; gap: 10px;
+    background: #1a73e8; color: white;
+    padding: 12px 24px; border-radius: 12px;
+    font-family: 'Jost', sans-serif; font-size: 14px; font-weight: 500;
+    border: none; cursor: pointer; text-decoration: none;
+    transition: background 0.2s;
+  }
+  .btn-google-wallet:hover { background: #1558b0; }
+  .btn-google-wallet svg { width: 20px; height: 20px; }
+
+  /* HISTORIQUE */
+  .history-item {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 12px 0; border-bottom: 1px solid var(--border);
+  }
+  .history-item:last-child { border-bottom: none; }
+  .history-desc { font-size: 14px; color: var(--text); }
+  .history-date { font-size: 12px; color: var(--text-soft); }
+  .history-pts { font-size: 14px; font-weight: 500; }
+  .pts-plus { color: #3a7d44; }
+  .pts-minus { color: #9b3030; }
+
+  /* PALIERS */
+  .tiers-list { margin-bottom: 2rem; }
+  .tier-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 16px;
+    background: var(--violet-pale);
+    border-radius: 10px; margin-bottom: 8px;
+  }
+  .tier-gem { font-size: 20px; }
+  .tier-name { font-weight: 500; font-size: 14px; flex: 1; }
+  .tier-pts { font-size: 12px; color: var(--text-soft); }
+  .tier-active { background: var(--violet-mid); border: 1px solid var(--violet); }
+
+  .toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px);
+    background: var(--text); color: white;
+    padding: 10px 20px; border-radius: 20px;
+    font-size: 13px; opacity: 0;
+    transition: all 0.25s; pointer-events: none; white-space: nowrap;
+    z-index: 999;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  .divider { height: 1px; background: var(--border); margin: 2rem 0; }
+</style>
+</head>
+<body>
+
+<header>
+  <img src="images/logo.png" alt="Lylou-Vely">
+  <p>Carte de fidélité</p>
+</header>
+
+<div class="container">
+
+  <!-- INSCRIPTION -->
+  <div id="section-inscription">
+    <div class="welcome-text">
+      <h2>Rejoignez le club 💜</h2>
+      <p>Gagnez des points à chaque achat et échangez-les contre des récompenses exclusives.</p>
+    </div>
+
+    <div class="form-group">
+      <label>Prénom</label>
+      <input type="text" id="input-prenom" placeholder="Votre prénom" />
+    </div>
+    <div class="form-group">
+      <label>Nom</label>
+      <input type="text" id="input-nom" placeholder="Votre nom" />
+    </div>
+    <div class="form-group">
+      <label>E-mail</label>
+      <input type="email" id="input-email" placeholder="votre@email.com" />
+    </div>
+    <button class="btn-primary" onclick="inscrire()">Créer ma carte 💎</button>
+
+    <div class="divider"></div>
+
+    <p style="text-align:center; font-size:13px; color:var(--text-soft); margin-bottom:0.75rem;">Déjà une carte ?</p>
+    <div class="form-group">
+      <label>Votre e-mail</label>
+      <input type="email" id="input-login-email" placeholder="votre@email.com" />
+    </div>
+    <button class="btn-primary" style="background:transparent; color:var(--violet); border:1px solid var(--violet);" onclick="seConnecter()">Accéder à ma carte</button>
+  </div>
+
+  <!-- CARTE -->
+  <div id="section-carte">
+
+    <!-- Carte visuelle -->
+    <div class="loyalty-card">
+      <img src="images/logo.png" alt="Lylou-Vely" class="card-logo">
+      <div class="card-name" id="card-name">Sophie Martin</div>
+      <div class="card-num" id="card-num">N° LL-0001</div>
+      <div class="card-tier-badge" id="card-tier">💎 Diamant</div>
+      <div class="card-points-label">Points accumulés</div>
+      <div>
+        <span class="card-points-value" id="card-pts">740</span>
+        <span class="card-points-unit">pts</span>
+      </div>
+    </div>
+
+    <!-- Barre de progression -->
+    <div class="progress-section">
+      <div class="progress-header">
+        <span id="prog-label">Prochain palier : Citrine</span>
+        <span id="prog-pct">74%</span>
+      </div>
+      <div class="progress-track">
+        <div class="progress-fill" id="prog-fill" style="width:74%"></div>
+      </div>
+    </div>
+
+    <!-- Google Wallet -->
+    <div class="wallet-section">
+      <p>Ajoutez votre carte à Google Wallet pour l'avoir toujours avec vous</p>
+      <button class="btn-google-wallet" onclick="addToGoogleWallet()">
+        <svg viewBox="0 0 24 24" fill="white"><path d="M21.56 10.738l-9.865-5.8a1.2 1.2 0 00-1.2 0L.63 10.738a1.2 1.2 0 000 2.08l9.865 5.8a1.2 1.2 0 001.2 0l9.865-5.8a1.2 1.2 0 000-2.08z"/></svg>
+        Ajouter à Google Wallet
+      </button>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Récompenses -->
+    <div class="section-title">Mes récompenses</div>
+    <div class="rewards-grid">
+      <div class="reward-item">
+        <div class="reward-gem">🤍</div>
+        <div class="reward-name">−5% sur votre achat</div>
+        <div class="reward-pts">200 pts</div>
+        <button class="reward-btn" id="rwd-200" onclick="utiliserRecompense(200, '−5% obtenu !')">Utiliser</button>
+      </div>
+      <div class="reward-item">
+        <div class="reward-gem">💛</div>
+        <div class="reward-name">Bon d'achat 10 €</div>
+        <div class="reward-pts">500 pts</div>
+        <button class="reward-btn" id="rwd-500" onclick="utiliserRecompense(500, 'Bon 10 € généré !')">Utiliser</button>
+      </div>
+      <div class="reward-item">
+        <div class="reward-gem">💜</div>
+        <div class="reward-name">Livraison offerte</div>
+        <div class="reward-pts">150 pts</div>
+        <button class="reward-btn" id="rwd-150" onclick="utiliserRecompense(150, 'Livraison offerte !')">Utiliser</button>
+      </div>
+      <div class="reward-item">
+        <div class="reward-gem">💎</div>
+        <div class="reward-name">Bon d'achat 25 €</div>
+        <div class="reward-pts">1 000 pts</div>
+        <button class="reward-btn" id="rwd-1000" onclick="utiliserRecompense(1000, 'Bon 25 € généré !')">Utiliser</button>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Paliers -->
+    <div class="section-title">Les paliers</div>
+    <div class="tiers-list" id="tiers-list">
+      <div class="tier-item" id="tier-quartz"><span class="tier-gem">🤎</span><span class="tier-name">Quartz</span><span class="tier-pts">0 – 299 pts</span></div>
+      <div class="tier-item" id="tier-perle"><span class="tier-gem">🤍</span><span class="tier-name">Perle</span><span class="tier-pts">300 – 799 pts</span></div>
+      <div class="tier-item" id="tier-citrine"><span class="tier-gem">💛</span><span class="tier-name">Citrine</span><span class="tier-pts">800 – 1 499 pts</span></div>
+      <div class="tier-item" id="tier-diamant"><span class="tier-gem">💎</span><span class="tier-name">Diamant</span><span class="tier-pts">1 500 pts et +</span></div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Historique -->
+    <div class="section-title">Historique</div>
+    <div id="historique">
+      <div class="history-item">
+        <div><div class="history-desc">Achat · 38 €</div><div class="history-date">05/06/2026</div></div>
+        <div class="history-pts pts-plus">+38 pts</div>
+      </div>
+      <div class="history-item">
+        <div><div class="history-desc">Visite en boutique/marché</div><div class="history-date">01/06/2026</div></div>
+        <div class="history-pts pts-plus">+10 pts</div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+    <p style="text-align:center; font-size:12px; color:var(--text-soft);">
+      Une question ? <a href="mailto:infos@lylou-vely.be" style="color:var(--violet);">infos@lylou-vely.be</a>
+    </p>
+
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ===== DONNÉES =====
+// En production, ces données viendraient d'une base (Supabase/Firebase)
+// Pour l'instant, on utilise localStorage pour la démo
+let clientData = null;
+
+function genNumero() {
+  return 'LL-' + String(Math.floor(Math.random() * 9000) + 1000);
+}
+
+function getTier(pts) {
+  if (pts >= 1500) return { nom: '💎 Diamant', id: 'diamant' };
+  if (pts >= 800)  return { nom: '💛 Citrine', id: 'citrine' };
+  if (pts >= 300)  return { nom: '🤍 Perle', id: 'perle' };
+  return { nom: '🤎 Quartz', id: 'quartz' };
+}
+
+function getProgress(pts) {
+  if (pts >= 1500) return { pct: 100, label: 'Palier Diamant atteint ! 💎' };
+  if (pts >= 800)  return { pct: Math.round(((pts-800)/700)*100), label: 'Prochain palier : Diamant' };
+  if (pts >= 300)  return { pct: Math.round(((pts-300)/500)*100), label: 'Prochain palier : Citrine' };
+  return { pct: Math.round((pts/300)*100), label: 'Prochain palier : Perle' };
+}
+
+// ===== INSCRIPTION =====
+function inscrire() {
+  const prenom = document.getElementById('input-prenom').value.trim();
+  const nom = document.getElementById('input-nom').value.trim();
+  const email = document.getElementById('input-email').value.trim();
+  if (!prenom || !nom || !email) { toast('Merci de remplir tous les champs 💜'); return; }
+  if (!email.includes('@')) { toast('E-mail invalide'); return; }
+
+  // Vérifie si déjà inscrit
+  const existing = localStorage.getItem('llv_' + email);
+  if (existing) { clientData = JSON.parse(existing); afficherCarte(); return; }
+
+  // Crée la carte
+  clientData = {
+    prenom, nom, email,
+    numero: genNumero(),
+    points: 0,
+    historique: [{ desc: 'Création de la carte', date: new Date().toLocaleDateString('fr-BE'), pts: 0 }]
+  };
+  localStorage.setItem('llv_' + email, JSON.stringify(clientData));
+  afficherCarte();
+  toast('Bienvenue ' + prenom + ' ! 💎');
+}
+
+function seConnecter() {
+  const email = document.getElementById('input-login-email').value.trim();
+  const data = localStorage.getItem('llv_' + email);
+  if (!data) { toast('Aucune carte trouvée pour cet e-mail'); return; }
+  clientData = JSON.parse(data);
+  afficherCarte();
+  toast('Bonjour ' + clientData.prenom + ' ! 💜');
+}
+
+// ===== AFFICHAGE CARTE =====
+function afficherCarte() {
+  document.getElementById('section-inscription').style.display = 'none';
+  document.getElementById('section-carte').style.display = 'block';
+  rafraichirCarte();
+}
+
+function rafraichirCarte() {
+  const pts = clientData.points;
+  const tier = getTier(pts);
+  const prog = getProgress(pts);
+
+  document.getElementById('card-name').textContent = clientData.prenom + ' ' + clientData.nom;
+  document.getElementById('card-num').textContent = 'N° ' + clientData.numero;
+  document.getElementById('card-pts').textContent = pts;
+  document.getElementById('card-tier').textContent = tier.nom;
+  document.getElementById('prog-label').textContent = prog.label;
+  document.getElementById('prog-pct').textContent = prog.pct + '%';
+  document.getElementById('prog-fill').style.width = prog.pct + '%';
+
+  // Palier actif
+  ['quartz','perle','citrine','diamant'].forEach(t => {
+    document.getElementById('tier-' + t).classList.toggle('tier-active', t === tier.id);
+  });
+
+  // Boutons récompenses
+  [150, 200, 500, 1000].forEach(cost => {
+    const btn = document.getElementById('rwd-' + cost);
+    if (btn) btn.disabled = pts < cost;
+  });
+
+  // Historique
+  const hEl = document.getElementById('historique');
+  hEl.innerHTML = '';
+  [...clientData.historique].reverse().forEach(h => {
+    const div = document.createElement('div');
+    div.className = 'history-item';
+    div.innerHTML = `<div><div class="history-desc">${h.desc}</div><div class="history-date">${h.date}</div></div><div class="history-pts ${h.pts >= 0 ? 'pts-plus' : 'pts-minus'}">${h.pts >= 0 ? '+' : ''}${h.pts} pts</div>`;
+    hEl.appendChild(div);
+  });
+}
+
+// ===== RÉCOMPENSES =====
+function utiliserRecompense(cost, msg) {
+  if (clientData.points < cost) { toast('Points insuffisants 💜'); return; }
+  clientData.points -= cost;
+  clientData.historique.push({ desc: msg, date: new Date().toLocaleDateString('fr-BE'), pts: -cost });
+  localStorage.setItem('llv_' + clientData.email, JSON.stringify(clientData));
+  rafraichirCarte();
+  toast(msg + ' 🎁');
+}
+
+// ===== GOOGLE WALLET =====
+function addToGoogleWallet() {
+  // En production : appel à l'API Google Wallet pour générer le JWT
+  // Pour l'instant, on simule avec un lien
+  toast('Intégration Google Wallet à configurer côté serveur 💜');
+  // window.open('https://pay.google.com/gp/v/save/TON_JWT_ICI', '_blank');
+}
+
+// ===== TOAST =====
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+// ===== AUTO-CONNEXION =====
+// Vérif si déjà connecté (session)
+const savedEmail = sessionStorage.getItem('llv_current');
+if (savedEmail) {
+  const saved = localStorage.getItem('llv_' + savedEmail);
+  if (saved) { clientData = JSON.parse(saved); afficherCarte(); }
+}
+</script>
+</body>
+</html>

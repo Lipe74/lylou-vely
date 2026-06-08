@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#6B3FA0">
+<title>Admin Fidélité — Lylou-Vely</title>
+<link rel="icon" href="images/logo.png">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600&family=Jost:wght@300;400;500&display=swap');
+
+  :root {
+    --violet: #6B3FA0;
+    --violet-light: #8B5FC0;
+    --violet-pale: #F3EEF9;
+    --violet-mid: #E8DDF5;
+    --text: #2C1A4A;
+    --text-soft: #7A6890;
+    --white: #FDFBFF;
+    --border: rgba(107,63,160,0.15);
+    --green: #3a7d44;
+    --red: #9b3030;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Jost', sans-serif; background: #F7F3FC; color: var(--text); min-height: 100vh; }
+
+  /* LOGIN */
+  #section-login {
+    display: flex; align-items: center; justify-content: center;
+    min-height: 100vh; padding: 2rem;
+  }
+  .login-box {
+    background: var(--white); border-radius: 20px;
+    padding: 2.5rem; width: 100%; max-width: 380px;
+    border: 1px solid var(--border);
+  }
+  .login-box h1 { font-family: 'Cormorant Garamond', serif; font-size: 28px; font-weight: 400; color: var(--violet); margin-bottom: 0.25rem; }
+  .login-box p { font-size: 13px; color: var(--text-soft); margin-bottom: 2rem; }
+
+  /* ADMIN */
+  #section-admin { display: none; }
+
+  /* TOPBAR */
+  .topbar {
+    background: var(--violet); color: white;
+    padding: 1rem 1.5rem;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .topbar-left { display: flex; align-items: center; gap: 12px; }
+  .topbar img { height: 36px; filter: brightness(0) invert(1); opacity: 0.9; }
+  .topbar h1 { font-family: 'Cormorant Garamond', serif; font-size: 20px; font-weight: 400; }
+  .topbar-right { font-size: 13px; opacity: 0.8; cursor: pointer; }
+  .topbar-right:hover { opacity: 1; }
+
+  .admin-body { max-width: 900px; margin: 0 auto; padding: 1.5rem; }
+
+  /* STATS */
+  .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 2rem; }
+  .stat-card {
+    background: var(--white); border-radius: 14px;
+    padding: 1.25rem; border: 1px solid var(--border);
+  }
+  .stat-label { font-size: 12px; color: var(--text-soft); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 6px; }
+  .stat-val { font-family: 'Cormorant Garamond', serif; font-size: 32px; font-weight: 400; color: var(--violet); line-height: 1; }
+  .stat-sub { font-size: 11px; color: var(--text-soft); margin-top: 4px; }
+
+  /* TOOLBAR */
+  .toolbar {
+    display: flex; gap: 10px; align-items: center;
+    margin-bottom: 1.25rem; flex-wrap: wrap;
+  }
+  .toolbar input {
+    flex: 1; min-width: 180px; padding: 10px 14px;
+    border: 1px solid var(--border); border-radius: 10px;
+    font-family: 'Jost', sans-serif; font-size: 14px;
+    background: var(--white); color: var(--text); outline: none;
+  }
+  .toolbar input:focus { border-color: var(--violet); }
+  .filter-btn {
+    padding: 8px 16px; border-radius: 20px;
+    border: 1px solid var(--border);
+    background: var(--white); color: var(--text-soft);
+    font-family: 'Jost', sans-serif; font-size: 13px;
+    cursor: pointer; transition: all 0.15s;
+  }
+  .filter-btn.active { background: var(--violet); color: white; border-color: var(--violet); }
+  .btn-add {
+    padding: 10px 18px; border-radius: 10px;
+    background: var(--violet); color: white; border: none;
+    font-family: 'Jost', sans-serif; font-size: 13px; font-weight: 500;
+    cursor: pointer; white-space: nowrap;
+  }
+  .btn-add:hover { background: var(--violet-light); }
+
+  /* TABLE */
+  .table-wrap { background: var(--white); border-radius: 16px; border: 1px solid var(--border); overflow: hidden; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th { text-align: left; padding: 12px 16px; color: var(--text-soft); font-weight: 500; font-size: 12px; text-transform: uppercase; letter-spacing: 0.8px; border-bottom: 1px solid var(--border); }
+  td { padding: 14px 16px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--violet-pale); }
+
+  .tier-badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 12px; }
+  .tier-quartz  { background: #F5EDE5; color: #7A4E2D; }
+  .tier-perle   { background: #F0EEF5; color: #4A3D6B; }
+  .tier-citrine { background: #FBF3E0; color: #7A5C10; }
+  .tier-diamant { background: var(--violet-pale); color: var(--violet); }
+
+  .action-btn {
+    padding: 6px 12px; border-radius: 8px;
+    border: 1px solid var(--border);
+    background: transparent; color: var(--text-soft);
+    font-family: 'Jost', sans-serif; font-size: 12px;
+    cursor: pointer; margin-right: 4px;
+    transition: all 0.15s;
+  }
+  .action-btn:hover { background: var(--violet-pale); color: var(--violet); border-color: var(--violet); }
+  .action-btn.danger:hover { background: #FDF0F0; color: var(--red); border-color: var(--red); }
+
+  /* MODAL */
+  .modal-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(44,26,74,0.4);
+    align-items: center; justify-content: center;
+    z-index: 100; padding: 1rem;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--white); border-radius: 20px;
+    padding: 2rem; width: 100%; max-width: 400px;
+    border: 1px solid var(--border);
+  }
+  .modal h3 { font-family: 'Cormorant Garamond', serif; font-size: 22px; font-weight: 400; color: var(--violet); margin-bottom: 1.25rem; }
+  .form-group { margin-bottom: 1rem; }
+  .form-group label { display: block; font-size: 12px; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text-soft); margin-bottom: 6px; }
+  .form-group input, .form-group select {
+    width: 100%; padding: 10px 14px;
+    border: 1px solid var(--border); border-radius: 10px;
+    font-family: 'Jost', sans-serif; font-size: 14px;
+    background: var(--white); color: var(--text); outline: none;
+  }
+  .form-group input:focus, .form-group select:focus { border-color: var(--violet); }
+  .pts-preview {
+    background: var(--violet-pale); border-radius: 10px;
+    padding: 10px 14px; font-size: 14px; color: var(--violet);
+    font-weight: 500; margin-bottom: 1rem;
+  }
+  .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 0.5rem; }
+  .btn-cancel { padding: 10px 18px; border-radius: 10px; border: 1px solid var(--border); background: transparent; color: var(--text-soft); font-family: 'Jost', sans-serif; font-size: 14px; cursor: pointer; }
+  .btn-confirm { padding: 10px 18px; border-radius: 10px; background: var(--violet); color: white; border: none; font-family: 'Jost', sans-serif; font-size: 14px; cursor: pointer; }
+  .btn-confirm:hover { background: var(--violet-light); }
+
+  /* INPUTS GÉNÉRAUX */
+  .inp {
+    width: 100%; padding: 10px 14px; margin-bottom: 1rem;
+    border: 1px solid var(--border); border-radius: 10px;
+    font-family: 'Jost', sans-serif; font-size: 14px;
+    background: var(--white); color: var(--text); outline: none;
+  }
+  .inp:focus { border-color: var(--violet); }
+
+  .btn-primary {
+    width: 100%; padding: 12px;
+    background: var(--violet); color: white; border: none;
+    border-radius: 12px; font-family: 'Jost', sans-serif;
+    font-size: 14px; font-weight: 500; cursor: pointer;
+  }
+  .btn-primary:hover { background: var(--violet-light); }
+
+  .toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px);
+    background: var(--text); color: white;
+    padding: 10px 20px; border-radius: 20px;
+    font-size: 13px; opacity: 0;
+    transition: all 0.25s; pointer-events: none; white-space: nowrap; z-index: 999;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  .empty-state { text-align: center; padding: 3rem; color: var(--text-soft); font-size: 14px; }
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="section-login">
+  <div class="login-box">
+    <h1>Espace Admin 💜</h1>
+    <p>Lylou-Vely — Gestion fidélité</p>
+    <label style="display:block;font-size:12px;text-transform:uppercase;letter-spacing:0.8px;color:var(--text-soft);margin-bottom:6px;">Mot de passe</label>
+    <input class="inp" type="password" id="pwd-input" placeholder="••••••••" onkeydown="if(event.key==='Enter')login()" />
+    <button class="btn-primary" onclick="login()">Accéder au dashboard</button>
+    <p style="font-size:11px;color:var(--text-soft);margin-top:1rem;text-align:center;">Mot de passe par défaut : <strong>lylou2026</strong><br>À changer dans le code pour la mise en production.</p>
+  </div>
+</div>
+
+<!-- ADMIN -->
+<div id="section-admin">
+  <div class="topbar">
+    <div class="topbar-left">
+      <img src="images/logo.png" alt="Lylou-Vely">
+      <h1>Fidélité Admin</h1>
+    </div>
+    <div class="topbar-right" onclick="logout()">⬅ Déconnexion</div>
+  </div>
+
+  <div class="admin-body">
+
+    <!-- Stats -->
+    <div class="stats-grid" id="stats-grid">
+      <div class="stat-card">
+        <div class="stat-label">Clientes</div>
+        <div class="stat-val" id="stat-total">0</div>
+        <div class="stat-sub">inscrites</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Points émis</div>
+        <div class="stat-val" id="stat-pts">0</div>
+        <div class="stat-sub">total cumulé</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">💎 Diamant</div>
+        <div class="stat-val" id="stat-diamant">0</div>
+        <div class="stat-sub">clientes</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">💛 Citrine</div>
+        <div class="stat-val" id="stat-citrine">0</div>
+        <div class="stat-sub">clientes</div>
+      </div>
+    </div>
+
+    <!-- Toolbar -->
+    <div class="toolbar">
+      <input type="text" placeholder="Rechercher une cliente…" id="search" oninput="renderTable()" />
+      <button class="filter-btn active" id="f-all" onclick="setFilter('all')">Toutes</button>
+      <button class="filter-btn" id="f-diamant" onclick="setFilter('diamant')">💎</button>
+      <button class="filter-btn" id="f-citrine" onclick="setFilter('citrine')">💛</button>
+      <button class="filter-btn" id="f-perle" onclick="setFilter('perle')">🤍</button>
+      <button class="filter-btn" id="f-quartz" onclick="setFilter('quartz')">🤎</button>
+      <button class="btn-add" onclick="openNewClient()">+ Nouvelle cliente</button>
+    </div>
+
+    <!-- Table -->
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Cliente</th>
+            <th>Palier</th>
+            <th>Points</th>
+            <th>Dernière activité</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="clients-tbody"></tbody>
+      </table>
+      <div class="empty-state" id="empty-state" style="display:none;">Aucune cliente trouvée</div>
+    </div>
+
+  </div>
+</div>
+
+<!-- MODAL Ajouter points -->
+<div class="modal-overlay" id="modal-pts">
+  <div class="modal">
+    <h3 id="modal-pts-title">Ajouter des points</h3>
+    <div class="form-group">
+      <label>Montant de l'achat (€)</label>
+      <input type="number" id="m-achat" placeholder="ex: 45" min="0" oninput="calcPreview()" />
+    </div>
+    <div class="form-group">
+      <label>Points visite / bonus (optionnel)</label>
+      <input type="number" id="m-bonus" placeholder="ex: 10" min="0" oninput="calcPreview()" />
+    </div>
+    <div class="pts-preview" id="pts-preview">+ 0 pts à ajouter</div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal('modal-pts')">Annuler</button>
+      <button class="btn-confirm" onclick="confirmerPts()">Confirmer ✓</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL Nouvelle cliente -->
+<div class="modal-overlay" id="modal-new">
+  <div class="modal">
+    <h3>Nouvelle cliente</h3>
+    <div class="form-group">
+      <label>Prénom</label>
+      <input type="text" id="nc-prenom" placeholder="Prénom" />
+    </div>
+    <div class="form-group">
+      <label>Nom</label>
+      <input type="text" id="nc-nom" placeholder="Nom" />
+    </div>
+    <div class="form-group">
+      <label>E-mail</label>
+      <input type="email" id="nc-email" placeholder="email@example.com" />
+    </div>
+    <div class="form-group">
+      <label>Points de départ</label>
+      <input type="number" id="nc-pts" placeholder="0" min="0" value="0" />
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal('modal-new')">Annuler</button>
+      <button class="btn-confirm" onclick="confirmerNew()">Créer la carte 💜</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL Historique -->
+<div class="modal-overlay" id="modal-hist">
+  <div class="modal">
+    <h3 id="modal-hist-title">Historique</h3>
+    <div id="modal-hist-body" style="max-height:320px;overflow-y:auto;"></div>
+    <div class="modal-actions">
+      <button class="btn-confirm" onclick="closeModal('modal-hist')">Fermer</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ===== AUTH =====
+const ADMIN_PWD = 'lylou2026'; // À changer !
+let filterTier = 'all';
+let activeEmail = null;
+
+function login() {
+  const pwd = document.getElementById('pwd-input').value;
+  if (pwd === ADMIN_PWD) {
+    document.getElementById('section-login').style.display = 'none';
+    document.getElementById('section-admin').style.display = 'block';
+    sessionStorage.setItem('llv_admin', '1');
+    renderAll();
+  } else {
+    toast('Mot de passe incorrect');
+  }
+}
+
+function logout() {
+  sessionStorage.removeItem('llv_admin');
+  document.getElementById('section-login').style.display = 'flex';
+  document.getElementById('section-admin').style.display = 'none';
+  document.getElementById('pwd-input').value = '';
+}
+
+// Auto-login si session active
+if (sessionStorage.getItem('llv_admin')) {
+  document.getElementById('section-login').style.display = 'none';
+  document.getElementById('section-admin').style.display = 'block';
+}
+
+// ===== DONNÉES =====
+// Lit TOUS les clients depuis localStorage (partagé avec fidelite.html)
+function getAllClients() {
+  const clients = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key && key.startsWith('llv_') && key !== 'llv_admin') {
+      try {
+        const data = JSON.parse(localStorage.getItem(key));
+        if (data && data.email) clients.push(data);
+      } catch(e) {}
+    }
+  }
+  return clients.sort((a,b) => b.points - a.points);
+}
+
+function saveClient(client) {
+  localStorage.setItem('llv_' + client.email, JSON.stringify(client));
+}
+
+function genNumero() {
+  return 'LL-' + String(Math.floor(Math.random() * 9000) + 1000);
+}
+
+function getTier(pts) {
+  if (pts >= 1500) return { nom: '💎 Diamant', id: 'diamant' };
+  if (pts >= 800)  return { nom: '💛 Citrine', id: 'citrine' };
+  if (pts >= 300)  return { nom: '🤍 Perle', id: 'perle' };
+  return { nom: '🤎 Quartz', id: 'quartz' };
+}
+
+// ===== RENDER =====
+function renderAll() {
+  renderStats();
+  renderTable();
+}
+
+function renderStats() {
+  const clients = getAllClients();
+  document.getElementById('stat-total').textContent = clients.length;
+  document.getElementById('stat-pts').textContent = clients.reduce((s,c) => s + c.points, 0).toLocaleString('fr-BE');
+  document.getElementById('stat-diamant').textContent = clients.filter(c => c.points >= 1500).length;
+  document.getElementById('stat-citrine').textContent = clients.filter(c => c.points >= 800 && c.points < 1500).length;
+}
+
+function renderTable() {
+  const q = document.getElementById('search').value.toLowerCase();
+  let clients = getAllClients().filter(c => {
+    const matchQ = (c.prenom + ' ' + c.nom + ' ' + c.email).toLowerCase().includes(q);
+    const tier = getTier(c.points);
+    const matchT = filterTier === 'all' || tier.id === filterTier;
+    return matchQ && matchT;
+  });
+
+  const tbody = document.getElementById('clients-tbody');
+  const empty = document.getElementById('empty-state');
+  tbody.innerHTML = '';
+
+  if (clients.length === 0) { empty.style.display = 'block'; return; }
+  empty.style.display = 'none';
+
+  clients.forEach(c => {
+    const tier = getTier(c.points);
+    const lastAct = c.historique && c.historique.length ? c.historique[c.historique.length-1].date : '—';
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>
+        <div style="font-weight:500">${c.prenom} ${c.nom}</div>
+        <div style="font-size:12px;color:var(--text-soft)">${c.email}</div>
+      </td>
+      <td><span class="tier-badge tier-${tier.id}">${tier.nom}</span></td>
+      <td style="font-weight:500;color:var(--violet)">${c.points} pts</td>
+      <td style="font-size:13px;color:var(--text-soft)">${lastAct}</td>
+      <td>
+        <button class="action-btn" onclick="openAddPts('${c.email}')">+ Points</button>
+        <button class="action-btn" onclick="openHist('${c.email}')">Historique</button>
+        <button class="action-btn danger" onclick="supprimerClient('${c.email}')">✕</button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function setFilter(f) {
+  filterTier = f;
+  ['all','diamant','citrine','perle','quartz'].forEach(x => {
+    const el = document.getElementById('f-' + x);
+    if (el) el.classList.toggle('active', x === f);
+  });
+  renderTable();
+}
+
+// ===== AJOUTER POINTS =====
+function openAddPts(email) {
+  activeEmail = email;
+  const c = getAllClients().find(x => x.email === email);
+  document.getElementById('modal-pts-title').textContent = '+ Points — ' + c.prenom + ' ' + c.nom;
+  document.getElementById('m-achat').value = '';
+  document.getElementById('m-bonus').value = '';
+  document.getElementById('pts-preview').textContent = '+ 0 pts à ajouter';
+  document.getElementById('modal-pts').classList.add('open');
+}
+
+function calcPreview() {
+  const achat = Math.round(parseFloat(document.getElementById('m-achat').value) || 0);
+  const bonus = parseInt(document.getElementById('m-bonus').value) || 0;
+  const total = achat + bonus;
+  document.getElementById('pts-preview').textContent = '+ ' + total + ' pts à ajouter';
+}
+
+function confirmerPts() {
+  const achat = Math.round(parseFloat(document.getElementById('m-achat').value) || 0);
+  const bonus = parseInt(document.getElementById('m-bonus').value) || 0;
+  const total = achat + bonus;
+  if (total === 0) { toast('Entrez un montant ou des points'); return; }
+
+  const clients = getAllClients();
+  const c = clients.find(x => x.email === activeEmail);
+  c.points += total;
+
+  const desc = achat > 0 && bonus > 0
+    ? `Achat ${achat} € + bonus`
+    : achat > 0 ? `Achat · ${achat} €`
+    : `Points bonus`;
+
+  c.historique.push({ desc, date: new Date().toLocaleDateString('fr-BE'), pts: total });
+  saveClient(c);
+  closeModal('modal-pts');
+  renderAll();
+  toast('+ ' + total + ' pts ajoutés à ' + c.prenom + ' 💜');
+}
+
+// ===== NOUVELLE CLIENTE =====
+function openNewClient() {
+  ['nc-prenom','nc-nom','nc-email'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('nc-pts').value = '0';
+  document.getElementById('modal-new').classList.add('open');
+}
+
+function confirmerNew() {
+  const prenom = document.getElementById('nc-prenom').value.trim();
+  const nom = document.getElementById('nc-nom').value.trim();
+  const email = document.getElementById('nc-email').value.trim();
+  const pts = parseInt(document.getElementById('nc-pts').value) || 0;
+  if (!prenom || !nom || !email) { toast('Remplissez tous les champs'); return; }
+  if (localStorage.getItem('llv_' + email)) { toast('Cette cliente existe déjà'); return; }
+
+  const newClient = {
+    prenom, nom, email,
+    numero: genNumero(),
+    points: pts,
+    historique: [{ desc: 'Création de la carte (admin)', date: new Date().toLocaleDateString('fr-BE'), pts: pts > 0 ? pts : 0 }]
+  };
+  saveClient(newClient);
+  closeModal('modal-new');
+  renderAll();
+  toast('Carte créée pour ' + prenom + ' ! 💜');
+}
+
+// ===== HISTORIQUE =====
+function openHist(email) {
+  const c = getAllClients().find(x => x.email === email);
+  document.getElementById('modal-hist-title').textContent = 'Historique — ' + c.prenom + ' ' + c.nom;
+  const body = document.getElementById('modal-hist-body');
+  body.innerHTML = '';
+  if (!c.historique || c.historique.length === 0) { body.innerHTML = '<p style="color:var(--text-soft);font-size:13px;padding:1rem">Aucun historique</p>'; }
+  else {
+    [...c.historique].reverse().forEach(h => {
+      const d = document.createElement('div');
+      d.style.cssText = 'display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);font-size:13px;';
+      d.innerHTML = `<div><div style="font-weight:500">${h.desc}</div><div style="color:var(--text-soft);font-size:12px">${h.date}</div></div><div style="font-weight:500;color:${h.pts >= 0 ? 'var(--green)' : 'var(--red)'}">${h.pts >= 0 ? '+' : ''}${h.pts} pts</div>`;
+      body.appendChild(d);
+    });
+  }
+  document.getElementById('modal-hist').classList.add('open');
+}
+
+// ===== SUPPRIMER =====
+function supprimerClient(email) {
+  const c = getAllClients().find(x => x.email === email);
+  if (!confirm('Supprimer la carte de ' + c.prenom + ' ' + c.nom + ' ?')) return;
+  localStorage.removeItem('llv_' + email);
+  renderAll();
+  toast('Carte supprimée');
+}
+
+// ===== UTILS =====
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+// Init
+if (sessionStorage.getItem('llv_admin')) renderAll();
+</script>
+</body>
+</html>
