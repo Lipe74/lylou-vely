@@ -55,15 +55,17 @@
   #section-carte { display:none; padding:2rem 0; }
 
   .loyalty-card { background:var(--violet); border-radius:20px; padding:1.75rem; color:white; position:relative; overflow:hidden; margin-bottom:1.5rem; }
-  .loyalty-card::before { content:''; position:absolute; top:-50px; right:-50px; width:180px; height:180px; border-radius:50%; background:rgba(255,255,255,0.06); }
-  .loyalty-card::after { content:''; position:absolute; bottom:-30px; left:40px; width:120px; height:120px; border-radius:50%; background:rgba(255,255,255,0.04); }
+.loyalty-card::before {
+  display:none;
+}  .loyalty-card::after { content:''; position:absolute; bottom:-30px; left:40px; width:120px; height:120px; border-radius:50%; background:rgba(255,255,255,0.04); }
 .card-logo {
   position:absolute;
-  top:55px;
-  right:20px;
-  width:150px;
+  right:10px;
+  bottom:25px;
+  width:210px;
   height:auto;
   opacity:0.95;
+  z-index:2;
 }
   .card-name { font-family:'Cormorant Garamond',serif; font-size:22px; font-weight:400; margin-bottom:2px; }
   .card-num { font-size:11px; opacity:0.6; letter-spacing:2px; margin-bottom:1.5rem; }
