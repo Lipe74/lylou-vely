@@ -19,6 +19,9 @@
   * { box-sizing:border-box; margin:0; padding:0; }
   body { font-family:'Jost',sans-serif; background:var(--white); color:var(--text); min-height:100vh; }
 
+  .topnav { background:var(--violet-pale); border-bottom:1px solid var(--border); padding:0.6rem 1.25rem; }
+  .topnav a { display:inline-flex; align-items:center; gap:6px; color:var(--violet); font-size:13px; font-weight:500; text-decoration:none; }
+  .topnav a:hover { color:var(--violet-light); }
   header { text-align:center; padding:2rem 1rem 1.5rem; border-bottom:1px solid var(--border); }
   header img { height:52px; margin-bottom:0.5rem; }
   header p { font-size:13px; color:var(--text-soft); letter-spacing:1.5px; text-transform:uppercase; }
@@ -102,6 +105,10 @@
 </style>
 </head>
 <body>
+
+<div class="topnav">
+  <a href="index.html">← Retour à l'accueil</a>
+</div>
 
 <header>
   <img src="images/logo.png" alt="Lylou-Vely">
