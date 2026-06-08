@@ -148,6 +148,7 @@
       .marche-bloc { grid-template-columns:1fr; }
       .marche-photo { min-height:220px; }
       .section { padding:60px 1.2rem; }
+      #fidelite .section-inner > div { grid-template-columns:1fr !important; }
     }
   </style>
 </head>
@@ -165,6 +166,7 @@
     <li><a href="#creations">Créations</a></li>
     <li><a href="#galerie">Galerie</a></li>
     <li><a href="#marches">Marchés</a></li>
+    <li><a href="#fidelite">💎 Fidélité</a></li>
     <li><a href="#contact" class="nav-cta">Contact</a></li>
   </ul>
   <button class="burger" onclick="toggleMenu()" aria-label="Menu">
@@ -176,6 +178,7 @@
   <a href="#creations" onclick="toggleMenu()">💎 Créations</a>
   <a href="#galerie" onclick="toggleMenu()">📸 Galerie</a>
   <a href="#marches" onclick="toggleMenu()">📍 Marchés</a>
+  <a href="#fidelite" onclick="toggleMenu()">💎 Fidélité</a>
   <a href="#contact" onclick="toggleMenu()">✉️ Contact</a>
 </div>
 
@@ -379,6 +382,56 @@
   </div>
 </div>
 
+<!-- FIDÉLITÉ -->
+<div class="section bg-white" id="fidelite">
+  <div class="section-inner">
+    <h2 class="section-title">Programme Fidélité 💎</h2>
+    <p class="section-sub">Gagnez des points, récoltez des récompenses</p>
+
+    <div style="max-width:880px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr;gap:2.5rem;align-items:center;">
+
+      <!-- Infos paliers -->
+      <div>
+        <div style="background:linear-gradient(160deg,var(--violet) 0%,var(--violet-dark) 100%);border-radius:24px;padding:2.5rem 2rem;color:#fff;">
+          <p style="font-size:0.8rem;letter-spacing:0.18em;text-transform:uppercase;opacity:0.75;margin-bottom:0.5rem;">Club Lylou-Vely</p>
+          <h3 style="font-family:'Dancing Script',cursive;font-size:2rem;line-height:1.2;margin-bottom:1.2rem;">Chaque achat vous rapproche d'une récompense 💜</h3>
+          <div style="display:flex;flex-direction:column;gap:0.7rem;margin-bottom:1.8rem;">
+            <div style="display:flex;align-items:center;gap:0.8rem;background:rgba(255,255,255,0.12);border-radius:10px;padding:0.6rem 0.9rem;font-size:0.9rem;">✨ 1 € dépensé = 1 point gagné</div>
+            <div style="display:flex;align-items:center;gap:0.8rem;background:rgba(255,255,255,0.12);border-radius:10px;padding:0.6rem 0.9rem;font-size:0.9rem;">🎁 Des bons d'achat dès 150 points</div>
+            <div style="display:flex;align-items:center;gap:0.8rem;background:rgba(255,255,255,0.12);border-radius:10px;padding:0.6rem 0.9rem;font-size:0.9rem;">💜 Inscription gratuite en 30 secondes</div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+            <div style="background:rgba(255,255,255,0.1);border-radius:10px;padding:0.6rem;text-align:center;font-size:0.82rem;">🤎 <strong>Quartz</strong><br><span style="opacity:0.7;font-size:0.75rem;">0–299 pts</span></div>
+            <div style="background:rgba(255,255,255,0.1);border-radius:10px;padding:0.6rem;text-align:center;font-size:0.82rem;">🤍 <strong>Perle</strong><br><span style="opacity:0.7;font-size:0.75rem;">300–799 pts</span></div>
+            <div style="background:rgba(255,255,255,0.1);border-radius:10px;padding:0.6rem;text-align:center;font-size:0.82rem;">💛 <strong>Citrine</strong><br><span style="opacity:0.7;font-size:0.75rem;">800–1499 pts</span></div>
+            <div style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);border-radius:10px;padding:0.6rem;text-align:center;font-size:0.82rem;">💎 <strong>Diamant</strong><br><span style="opacity:0.7;font-size:0.75rem;">1500+ pts</span></div>
+          </div>
+        </div>
+        <div style="margin-top:1.2rem;text-align:center;">
+          <p style="font-size:0.85rem;color:var(--text-light);margin-bottom:0.75rem;">Déjà membre ? Accédez directement à votre carte</p>
+          <a href="fidelite.html" style="display:inline-flex;align-items:center;gap:8px;background:var(--violet);color:white;padding:0.85rem 2rem;border-radius:50px;text-decoration:none;font-weight:700;font-size:0.9rem;letter-spacing:0.05em;text-transform:uppercase;transition:all 0.2s;">💎 Ma carte fidélité</a>
+        </div>
+      </div>
+
+      <!-- QR Code -->
+      <div style="text-align:center;">
+        <div style="background:var(--lavande-pale);border:1px solid var(--lavande);border-radius:24px;padding:2rem;">
+          <p style="font-family:'Playfair Display',serif;font-size:1.1rem;color:var(--violet);margin-bottom:0.4rem;">Scannez pour rejoindre</p>
+          <p style="font-size:0.8rem;color:var(--text-light);margin-bottom:1.25rem;">Pointez l'appareil photo de votre téléphone</p>
+          <div style="background:white;border-radius:16px;padding:16px;display:inline-block;border:2px solid var(--lavande);">
+            <div id="qr-home"></div>
+          </div>
+          <p style="font-size:0.78rem;color:var(--text-light);margin-top:1rem;letter-spacing:0.05em;">lylou-vely.be/fidelite.html</p>
+          <div style="margin-top:1.25rem;">
+            <a href="qrcode-fidelite.html" target="_blank" style="display:inline-flex;align-items:center;gap:6px;border:1.5px solid var(--violet);color:var(--violet);padding:0.6rem 1.2rem;border-radius:50px;text-decoration:none;font-size:0.82rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;transition:all 0.2s;">🖨️ Imprimer l'affichette</a>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
 <!-- CONTACT -->
 <div class="section bg-lavande" id="contact">
   <div class="section-inner">
@@ -457,6 +510,7 @@
   </div>
 </footer>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script>
 function toggleMenu() {
   document.getElementById('mobileMenu').classList.toggle('open');
@@ -466,6 +520,15 @@ function handleSubmit(e, successId) {
   fetch(e.target.action, { method:'POST', body:new FormData(e.target), headers:{'Accept':'application/json'} })
     .then(r => { if(r.ok) { e.target.reset(); document.getElementById(successId).style.display='block'; } });
 }
+window.addEventListener('load', function() {
+  new QRCode(document.getElementById('qr-home'), {
+    text: 'https://lylou-vely.be/fidelite.html',
+    width: 180, height: 180,
+    colorDark: '#6B3FA0',
+    colorLight: '#FFFFFF',
+    correctLevel: QRCode.CorrectLevel.H
+  });
+});
 </script>
 </body>
 </html>
