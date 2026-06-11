@@ -26,14 +26,20 @@
     body { font-family:'Lato',sans-serif; background:var(--creme); color:var(--text-dark); overflow-x:hidden; }
     img { max-width:100%; display:block; }
 
-    /* NAV */
-    nav { position:sticky; top:0; z-index:999; background:rgba(253,248,240,0.97); backdrop-filter:blur(8px); border-bottom:1px solid var(--lavande); padding:0 2rem; display:flex; align-items:center; justify-content:space-between; height:68px; box-shadow:0 2px 16px rgba(107,63,160,0.08); }
-    .nav-logo img { height:60px; width:auto; }
-    .nav-links { display:flex; gap:1.5rem; list-style:none; align-items:center; }
-    .nav-links a { text-decoration:none; color:var(--text-mid); font-size:0.88rem; letter-spacing:0.06em; text-transform:uppercase; font-weight:700; transition:color 0.2s; }
-    .nav-links a:hover { color:var(--violet); }
-    .nav-cta { background:var(--violet) !important; color:#fff !important; padding:0.5rem 1.2rem; border-radius:50px; }
-
+    nav {
+    position:sticky;
+    top:0;
+    z-index:999;
+    background:rgba(236,226,244,0.97);
+    backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--lavande);
+    padding:0 2rem;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    height:68px;
+    box-shadow:0 2px 16px rgba(107,63,160,0.08);
+}
     /* BURGER */
     .burger { display:none; flex-direction:column; gap:5px; cursor:pointer; padding:6px; border:none; background:none; }
     .burger span { display:block; width:24px; height:2px; background:var(--violet); border-radius:2px; transition:all 0.3s; }
