@@ -29,6 +29,33 @@
     /* NAV */
     nav { position:sticky; top:0; z-index:999; background:rgba(253,248,240,0.97); backdrop-filter:blur(8px); border-bottom:1px solid var(--lavande); padding:0 2rem; display:flex; align-items:center; justify-content:space-between; height:68px; box-shadow:0 2px 16px rgba(107,63,160,0.08); }
     .nav-logo img { height:60px; width:auto; }
+    .nav-logo{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  text-decoration:none;
+}
+
+.nav-logo span{
+  font-size:24px;
+  font-weight:900;
+  color:#333;
+}
+
+.nav-logo span em{
+  color:#b76ac4;
+  font-style:normal;
+}
+
+.site-version{
+  font-size:11px;
+  font-weight:700;
+  color:#999;
+  margin-left:10px;
+  background:#f3f4f6;
+  padding:2px 8px;
+  border-radius:20px;
+}
     .nav-links { display:flex; gap:1.5rem; list-style:none; align-items:center; }
     .nav-links a { text-decoration:none; color:var(--text-mid); font-size:0.88rem; letter-spacing:0.06em; text-transform:uppercase; font-weight:700; transition:color 0.2s; }
     .nav-links a:hover { color:var(--violet); }
@@ -179,7 +206,14 @@
 
 <!-- NAV -->
 <nav>
-  <a href="#" class="nav-logo"><img src="images/logo.png" alt="Lylou-Vely"></a>
+  <a href="#" class="nav-logo">
+  <img src="images/logo.png" alt="Lylou-Vely">
+  <span>Lylou-<em>Vely</em></span>
+</a>
+
+<div class="site-version">
+  Version 2.6
+</div>
   <ul class="nav-links">
     <li><a href="#">🏠 Accueil</a></li>
     <li><a href="#creations">Créations</a></li>
