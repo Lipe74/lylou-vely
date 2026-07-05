@@ -1625,6 +1625,7 @@ window.printZ = function(){
     <div class="t-item"><span>Entrées</span><span>${euro(sumIn())}</span></div>
     <div class="t-item"><span>Sorties</span><span>${euro(sumOut())}</span></div>
     <div class="t-tot"><span>Espèces en caisse</span><span>${euro(theoreticalCash())}</span></div>
+    ${theoreticalCash() > state.fond + 0.01 ? `<div class="t-sep"></div><div class="t-item" style="font-weight:600;color:#2e9e6b;font-size:14px"><span>💰 À retirer (versement)</span><span>${euro(theoreticalCash() - state.fond)}</span></div><div style="font-size:10px;color:#777;text-align:center;margin-top:4px">Pour conserver le fond de caisse de ${euro(state.fond)}</div>` : ''}
     <div class="t-foot">Clôture générée le ${new Date().toLocaleString('fr-BE')}</div>`;
   document.getElementById('ticket-overlay').classList.remove('hidden');
   setTimeout(()=>window.print(),300);
