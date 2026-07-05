@@ -1,0 +1,1270 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Caisse · Lylou-Vely</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
+<!-- Librairie QR (pour le ticket). Pour un fonctionnement 100% hors-ligne,
+     télécharge qrcode.min.js dans ton repo et remplace le src ci-dessous par le chemin local. -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<!-- Export PDF du ticket (facultatif). Sans réseau, le bouton PDF bascule sur l'impression navigateur. -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+:root{
+  --violet:#6B3FA0;
+  --violet-d:#512e7a;
+  --violet-l:#8b62c0;
+  --violet-wash:#f4eefb;
+  --ink:#2a2233;
+  --muted:#7a7086;
+  --line:#e7dff0;
+  --bg:#faf7fd;
+  --card:#ffffff;
+  --green:#2e9e6b;
+  --green-wash:#e7f6ee;
+  --red:#c0475e;
+  --red-wash:#fbe9ee;
+  --gold:#c9a24b;
+  --shadow:0 4px 20px rgba(81,46,122,.10);
+  --radius:16px;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0}
+body{
+  font-family:'Jost',system-ui,sans-serif;
+  background:var(--bg);color:var(--ink);
+  font-weight:400;line-height:1.4;
+  padding-bottom:78px;
+}
+h1,h2,h3{font-family:'Cormorant Garamond',serif;font-weight:600;margin:0}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+input,select{font-family:inherit;font-size:16px}
+.hidden{display:none !important}
+
+/* ---------- Écran mot de passe ---------- */
+#gate{
+  position:fixed;inset:0;z-index:200;
+  background:linear-gradient(160deg,var(--violet) 0%,var(--violet-d) 100%);
+  display:flex;align-items:center;justify-content:center;padding:24px;
+}
+#gate .box{
+  background:var(--card);border-radius:20px;padding:34px 26px;width:100%;max-width:360px;
+  text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.3)
+}
+#gate .mark{font-family:'Cormorant Garamond',serif;font-size:34px;color:var(--violet);letter-spacing:.5px}
+#gate .sub{color:var(--muted);font-size:13px;letter-spacing:3px;text-transform:uppercase;margin:2px 0 22px}
+#gate input{
+  width:100%;padding:14px;border:1.5px solid var(--line);border-radius:12px;text-align:center;
+  letter-spacing:2px;margin-bottom:12px
+}
+#gate input:focus{outline:none;border-color:var(--violet)}
+#gate button{
+  width:100%;padding:14px;background:var(--violet);color:#fff;border-radius:12px;
+  font-weight:500;letter-spacing:1px
+}
+#gate .err{color:var(--red);font-size:13px;height:16px;margin-top:8px}
+
+/* ---------- En-tête ---------- */
+header{
+  background:linear-gradient(160deg,var(--violet) 0%,var(--violet-d) 100%);
+  color:#fff;padding:16px 18px;position:sticky;top:0;z-index:50;
+  display:flex;align-items:center;justify-content:space-between;
+  box-shadow:0 3px 14px rgba(81,46,122,.25)
+}
+header .title{font-family:'Cormorant Garamond',serif;font-size:24px;line-height:1}
+header .title small{display:block;font-family:'Jost';font-size:10px;letter-spacing:3px;opacity:.8;text-transform:uppercase;margin-top:3px}
+header .cash{
+  text-align:right;background:rgba(255,255,255,.14);padding:8px 14px;border-radius:12px
+}
+header .cash span{display:block;font-size:9px;letter-spacing:1.5px;text-transform:uppercase;opacity:.85}
+header .cash b{font-size:19px;font-weight:500}
+
+/* ---------- Contenu ---------- */
+main{max-width:820px;margin:0 auto;padding:16px}
+.tab{display:none;animation:fade .25s ease}
+.tab.active{display:block}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+.section-title{font-size:22px;margin-bottom:2px}
+.section-sub{color:var(--muted);font-size:13px;margin-bottom:16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px;margin-bottom:16px}
+
+/* ---------- Vente : grille produits ---------- */
+.prod-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:10px}
+.prod-btn{
+  background:var(--card);border:1.5px solid var(--line);border-radius:14px;padding:14px 8px;
+  text-align:center;transition:.12s;min-height:74px;display:flex;flex-direction:column;justify-content:center;gap:4px
+}
+.prod-btn:active{transform:scale(.96);border-color:var(--violet);background:var(--violet-wash)}
+.prod-btn .n{font-weight:500;font-size:13px;line-height:1.15}
+.prod-btn .p{color:var(--violet);font-weight:600;font-size:14px}
+.prod-btn.free{border-style:dashed;color:var(--violet)}
+.prod-btn.free .n{color:var(--violet)}
+
+/* ---------- Panier ---------- */
+#cart-empty{color:var(--muted);text-align:center;padding:18px 0;font-size:14px}
+.cart-line{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}
+.cart-line:last-child{border-bottom:none}
+.cart-line .info{flex:1;min-width:0}
+.cart-line .info .nm{font-weight:500;font-size:15px}
+.cart-line .info .pu{color:var(--muted);font-size:12px}
+.qty{display:flex;align-items:center;gap:8px}
+.qty button{width:30px;height:30px;border-radius:9px;background:var(--violet-wash);color:var(--violet);font-size:18px;font-weight:600;line-height:1}
+.qty span{min-width:20px;text-align:center;font-weight:500}
+.cart-line .lt{font-weight:600;min-width:64px;text-align:right}
+.cart-line .del{color:var(--muted);font-size:18px;padding:4px}
+.cart-total{display:flex;justify-content:space-between;align-items:baseline;margin-top:14px;padding-top:14px;border-top:2px solid var(--violet-wash)}
+.cart-total .lbl{font-size:15px;color:var(--muted)}
+.cart-total .amt{font-family:'Cormorant Garamond',serif;font-size:34px;color:var(--violet);font-weight:600}
+
+.btn{display:block;width:100%;padding:15px;border-radius:13px;font-weight:500;font-size:16px;letter-spacing:.4px;transition:.12s}
+.btn:active{transform:scale(.98)}
+.btn-primary{background:var(--violet);color:#fff}
+.btn-primary:disabled{background:var(--line);color:var(--muted);cursor:not-allowed}
+.btn-ghost{background:var(--violet-wash);color:var(--violet)}
+.btn-outline{background:transparent;border:1.5px solid var(--line);color:var(--ink)}
+.btn-danger{background:var(--red-wash);color:var(--red)}
+.row-btns{display:flex;gap:10px}
+.row-btns .btn{margin:0}
+
+/* ---------- Comptage caisse ---------- */
+.denoms{display:grid;grid-template-columns:1fr;gap:0}
+.denom{display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid var(--line)}
+.denom:last-child{border-bottom:none}
+.denom .face{width:66px;font-weight:600;color:var(--violet)}
+.denom .x{color:var(--muted)}
+.denom input{width:66px;padding:8px;border:1.5px solid var(--line);border-radius:10px;text-align:center}
+.denom input:focus{outline:none;border-color:var(--violet)}
+.denom .st{flex:1;text-align:right;font-weight:500;color:var(--muted)}
+.denom-sep{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin:12px 0 4px}
+.count-total{display:flex;justify-content:space-between;align-items:baseline;margin-top:14px;padding-top:12px;border-top:2px solid var(--violet-wash)}
+.count-total b{font-family:'Cormorant Garamond',serif;font-size:30px;color:var(--violet)}
+
+.kpi-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.kpi{background:var(--violet-wash);border-radius:12px;padding:12px 14px}
+.kpi .k{font-size:11px;letter-spacing:.5px;text-transform:uppercase;color:var(--muted)}
+.kpi .v{font-size:20px;font-weight:600;color:var(--ink);margin-top:2px}
+.kpi.ok .v{color:var(--green)}
+.kpi.warn{background:var(--red-wash)}
+.kpi.warn .v{color:var(--red)}
+.kpi.full{grid-column:1/-1}
+
+/* ---------- Mouvements ---------- */
+.seg{display:flex;background:var(--violet-wash);border-radius:12px;padding:4px;margin-bottom:12px}
+.seg button{flex:1;padding:10px;border-radius:9px;font-weight:500;color:var(--muted)}
+.seg button.on{background:var(--card);color:var(--violet);box-shadow:0 1px 4px rgba(0,0,0,.08)}
+.field{margin-bottom:12px}
+.field label{display:block;font-size:12px;color:var(--muted);margin-bottom:5px;letter-spacing:.3px}
+.field input{width:100%;padding:13px;border:1.5px solid var(--line);border-radius:11px}
+.field input:focus{outline:none;border-color:var(--violet)}
+
+.mv-line,.jr-line{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--line)}
+.mv-line:last-child,.jr-line:last-child{border-bottom:none}
+.pill{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.pill.in{background:var(--green-wash);color:var(--green)}
+.pill.out{background:var(--red-wash);color:var(--red)}
+.pill.esp{background:var(--green-wash);color:var(--green)}
+.pill.qr{background:var(--violet-wash);color:var(--violet)}
+.pill.carte{background:#eaf1fb;color:#3a6bd0}
+.mv-line .m-info,.jr-line .j-info{flex:1;min-width:0}
+.mv-line .m-info .t,.jr-line .j-info .t{font-weight:500;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mv-line .m-info .d,.jr-line .j-info .d{font-size:12px;color:var(--muted)}
+.mv-line .amt{font-weight:600}
+.amt.plus{color:var(--green)}.amt.minus{color:var(--red)}
+.empty{color:var(--muted);text-align:center;padding:22px 0;font-size:14px}
+
+/* ---------- Journal résumé ---------- */
+.summary{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:8px}
+.summary .s{background:var(--violet-wash);border-radius:12px;padding:12px 10px;text-align:center}
+.summary .s .k{font-size:10px;letter-spacing:.5px;text-transform:uppercase;color:var(--muted)}
+.summary .s .v{font-size:17px;font-weight:600;margin-top:3px}
+.big-total{text-align:center;padding:6px 0 14px}
+.big-total .k{font-size:12px;letter-spacing:1px;text-transform:uppercase;color:var(--muted)}
+.big-total .v{font-family:'Cormorant Garamond',serif;font-size:42px;color:var(--violet);font-weight:600;line-height:1}
+
+/* ---------- Nav bas ---------- */
+nav{
+  position:fixed;bottom:0;left:0;right:0;z-index:60;background:var(--card);
+  border-top:1px solid var(--line);display:flex;box-shadow:0 -3px 14px rgba(81,46,122,.06);
+  padding-bottom:env(safe-area-inset-bottom)
+}
+nav button{flex:1;padding:9px 0 8px;display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--muted);font-size:10px;letter-spacing:.3px}
+nav button svg{width:23px;height:23px;stroke:currentColor;fill:none;stroke-width:1.7}
+nav button.on{color:var(--violet)}
+
+/* ---------- Modales ---------- */
+.overlay{position:fixed;inset:0;z-index:120;background:rgba(42,34,51,.55);display:flex;align-items:flex-end;justify-content:center;padding:0}
+.overlay.center{align-items:center;padding:18px}
+.sheet{background:var(--card);width:100%;max-width:520px;border-radius:22px 22px 0 0;padding:20px;max-height:92vh;overflow:auto;animation:up .28s cubic-bezier(.2,.8,.2,1)}
+.overlay.center .sheet{border-radius:20px;animation:pop .2s ease}
+@keyframes up{from{transform:translateY(100%)}to{transform:none}}
+@keyframes pop{from{transform:scale(.94);opacity:0}to{transform:none;opacity:1}}
+.sheet .grab{width:44px;height:5px;background:var(--line);border-radius:3px;margin:0 auto 14px}
+.sheet h2{font-size:22px;text-align:center;margin-bottom:4px}
+.sheet .pay-amt{text-align:center;font-family:'Cormorant Garamond',serif;font-size:40px;color:var(--violet);font-weight:600;margin-bottom:18px}
+
+.pay-methods{display:grid;gap:10px}
+.pay-btn{display:flex;align-items:center;gap:14px;padding:16px;border-radius:14px;border:1.5px solid var(--line);background:var(--card);text-align:left;transition:.12s}
+.pay-btn:active{transform:scale(.98)}
+.pay-btn .ic{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0}
+.pay-btn .ic.esp{background:var(--green-wash)}
+.pay-btn .ic.qr{background:var(--violet-wash)}
+.pay-btn .ic.carte{background:#eaf1fb}
+.pay-btn .tx{flex:1}
+.pay-btn .tx b{display:block;font-weight:500;font-size:16px}
+.pay-btn .tx span{font-size:12px;color:var(--muted)}
+.pay-btn .arr{color:var(--muted)}
+
+/* Espèces : encaissement */
+.cash-in .recu{font-size:15px;text-align:center;margin-bottom:10px;color:var(--muted)}
+.quick-amts{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
+.quick-amts button{padding:12px 0;border-radius:11px;background:var(--violet-wash);color:var(--violet);font-weight:500}
+.cash-in input.recu-input{width:100%;padding:14px;border:1.5px solid var(--line);border-radius:12px;text-align:center;font-size:22px;font-weight:600;margin-bottom:12px}
+.cash-in input.recu-input:focus{outline:none;border-color:var(--violet)}
+.rendu{background:var(--green-wash);border-radius:12px;padding:14px;text-align:center;margin-bottom:14px}
+.rendu .k{font-size:12px;letter-spacing:1px;text-transform:uppercase;color:var(--muted)}
+.rendu .v{font-family:'Cormorant Garamond',serif;font-size:34px;color:var(--green);font-weight:600}
+.rendu.neg .v{color:var(--red)}
+
+/* ---------- Ticket ---------- */
+#ticket-area{background:#fff;color:#000;max-width:320px;margin:0 auto;padding:18px;font-family:'Jost';font-size:13px}
+#ticket-area .t-head{text-align:center;border-bottom:1.5px dashed #999;padding-bottom:12px;margin-bottom:12px}
+#ticket-area .t-head .lg{font-family:'Cormorant Garamond',serif;font-size:26px;color:var(--violet);font-weight:600}
+#ticket-area .t-head .sl{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#777}
+#ticket-area .t-legal{font-size:10px;color:#555;line-height:1.5;margin-top:8px}
+#ticket-area .t-mention{font-size:9.5px;color:#666;text-align:center;line-height:1.4;border-top:1px dashed #ccc;margin-top:12px;padding-top:8px}
+#ticket-area .t-meta{font-size:11px;color:#555;display:flex;justify-content:space-between;margin-bottom:10px}
+#ticket-area .t-item{display:flex;justify-content:space-between;padding:3px 0}
+#ticket-area .t-item .q{color:#777}
+#ticket-area .t-tot{display:flex;justify-content:space-between;border-top:1.5px dashed #999;margin-top:10px;padding-top:10px;font-weight:600;font-size:17px}
+#ticket-area .t-pay{margin-top:8px;font-size:12px;color:#444}
+#ticket-area .paid{display:inline-block;border:2px solid var(--green);color:var(--green);border-radius:6px;padding:2px 10px;font-weight:600;letter-spacing:1px;transform:rotate(-3deg);margin-top:6px}
+.paid.cancelled{border-color:var(--red) !important;color:var(--red) !important}
+.jr-line.cancelled{opacity:.55}
+.jr-line.cancelled .j-info .t,.jr-line.cancelled .amt{text-decoration:line-through}
+.jr-badge{font-size:10px;font-weight:600;color:var(--red);background:var(--red-wash);padding:2px 7px;border-radius:6px;letter-spacing:.5px}
+#ticket-area .t-qr{display:flex;justify-content:center;margin:14px 0 6px}
+#ticket-area .t-qr img,#ticket-area .t-qr canvas{width:110px;height:110px}
+#ticket-area .t-foot{text-align:center;font-size:11px;color:#666;border-top:1.5px dashed #999;padding-top:12px;margin-top:12px}
+#ticket-area .t-foot .heart{color:var(--violet)}
+
+/* ---------- Gestion articles ---------- */
+.edit-line{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+.edit-line input.enm{flex:1;padding:11px;border:1.5px solid var(--line);border-radius:10px}
+.edit-line input.epr{width:88px;padding:11px;border:1.5px solid var(--line);border-radius:10px;text-align:right}
+.edit-line input:focus{outline:none;border-color:var(--violet)}
+.edit-line .rm{color:var(--red);font-size:20px;padding:6px}
+
+.toast{position:fixed;bottom:92px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:12px 20px;border-radius:12px;font-size:14px;z-index:300;box-shadow:0 8px 24px rgba(0,0,0,.3);animation:tin .3s ease}
+@keyframes tin{from{opacity:0;transform:translate(-50%,10px)}to{opacity:1;transform:translate(-50%,0)}}
+
+#test-banner{background:#f6a623;color:#4a2e00;text-align:center;font-size:12px;font-weight:500;letter-spacing:.3px;padding:7px 12px;position:sticky;top:64px;z-index:45}
+.mode-row{display:flex;align-items:center;justify-content:space-between}
+.mode-lbl{font-size:14px;color:var(--muted)}
+.mode-val{font-size:14px;font-weight:600;padding:5px 12px;border-radius:9px}
+.mode-val.prod{background:var(--green-wash);color:var(--green)}
+.mode-val.test{background:#fdecc8;color:#8a5a00}
+#ticket-area .t-testmark{text-align:center;font-size:11px;font-weight:600;color:#b06a00;background:#fdecc8;border:1px dashed #e0a94f;border-radius:6px;padding:5px;margin-bottom:10px;letter-spacing:.5px}
+.qr-amount-lbl{text-align:center;font-size:13px;color:var(--muted)}
+.qr-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;margin:6px 0}
+#qr-img{width:230px;height:230px;border:1px solid var(--line);border-radius:12px;padding:8px;background:#fff}
+#qr-missing{font-size:13px;color:var(--red);text-align:center;padding:20px}
+.qr-steps{text-align:center;font-size:12px;color:var(--muted);line-height:1.5;margin:12px 0 16px}
+
+@media print{
+  body *{visibility:hidden}
+  #ticket-print,#ticket-print *{visibility:visible}
+  #ticket-print{position:absolute;left:0;top:0;width:100%;background:#fff}
+  .overlay{position:static;background:none;padding:0}
+  .sheet{box-shadow:none;max-width:none;padding:0}
+  .no-print{display:none !important}
+}
+</style>
+</head>
+<body>
+
+<!-- ============ MOT DE PASSE ============ -->
+<div id="gate">
+  <div class="box">
+    <div class="mark">Lylou-Vely</div>
+    <div class="sub">Caisse</div>
+    <input type="password" id="gate-pw" placeholder="Mot de passe" autocomplete="current-password">
+    <button onclick="checkPw()">Entrer</button>
+    <div class="err" id="gate-err"></div>
+  </div>
+</div>
+
+<!-- ============ APP ============ -->
+<div id="app" class="hidden">
+
+  <header>
+    <div class="title">Lylou-Vely<small>Caisse</small></div>
+    <div class="cash">
+      <span>Espèces en caisse</span>
+      <b id="hdr-cash">0,00 €</b>
+    </div>
+  </header>
+  <div id="test-banner" style="display:none">⚠ MODE TEST — données fictives, sans valeur comptable</div>
+
+  <main>
+
+    <!-- ===== VENTE ===== -->
+    <section class="tab active" id="tab-vente">
+      <h1 class="section-title">Nouvelle vente</h1>
+      <p class="section-sub">Touche un article pour l'ajouter au panier.</p>
+
+      <div class="card">
+        <div class="prod-grid" id="prod-grid"></div>
+        <button class="btn btn-outline no-print" style="margin-top:12px" onclick="openProducts()">⚙ Gérer les articles</button>
+      </div>
+
+      <div class="card">
+        <h3 style="font-size:19px;margin-bottom:6px">Panier</h3>
+        <div id="cart-lines"></div>
+        <div id="cart-empty">Panier vide</div>
+        <div class="cart-total" id="cart-total-row" style="display:none">
+          <span class="lbl">Total</span>
+          <span class="amt" id="cart-total">0,00 €</span>
+        </div>
+        <div class="row-btns" style="margin-top:14px">
+          <button class="btn btn-danger" style="flex:0 0 42%" onclick="clearCart()">Vider</button>
+          <button class="btn btn-primary" id="btn-encaisser" onclick="openPay()" disabled>Encaisser</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== CAISSE / COMPTAGE ===== -->
+    <section class="tab" id="tab-caisse">
+      <h1 class="section-title">Comptage de la caisse</h1>
+      <p class="section-sub">Compte le fond de caisse pièce par pièce.</p>
+
+      <div class="card">
+        <div class="denom-sep">Pièces</div>
+        <div class="denoms" id="denoms-coins"></div>
+        <div class="denom-sep">Billets</div>
+        <div class="denoms" id="denoms-bills"></div>
+        <div class="count-total">
+          <span>Total compté</span>
+          <b id="count-total">0,00 €</b>
+        </div>
+        <div class="row-btns" style="margin-top:16px">
+          <button class="btn btn-outline" onclick="resetCount()">Effacer</button>
+          <button class="btn btn-ghost" onclick="setFond()">Définir comme fond de caisse</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3 style="font-size:19px;margin-bottom:12px">État de la caisse</h3>
+        <div class="kpi-grid">
+          <div class="kpi"><div class="k">Fond de caisse</div><div class="v" id="kpi-fond">0,00 €</div></div>
+          <div class="kpi"><div class="k">Ventes espèces</div><div class="v" id="kpi-vesp">0,00 €</div></div>
+          <div class="kpi"><div class="k">Entrées</div><div class="v" id="kpi-in">0,00 €</div></div>
+          <div class="kpi"><div class="k">Sorties</div><div class="v" id="kpi-out">0,00 €</div></div>
+          <div class="kpi full"><div class="k">Espèces théoriques en caisse</div><div class="v" id="kpi-theo">0,00 €</div></div>
+          <div class="kpi full" id="kpi-ecart-box" style="display:none"><div class="k">Écart (compté − théorique)</div><div class="v" id="kpi-ecart">0,00 €</div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== MOUVEMENTS ===== -->
+    <section class="tab" id="tab-mouv">
+      <h1 class="section-title">Entrées / Sorties</h1>
+      <p class="section-sub">Sorties de caisse (paiement stand, achats…) et entrées.</p>
+
+      <div class="card">
+        <div class="seg">
+          <button id="mv-in" class="on" onclick="setMvType('in')">＋ Entrée</button>
+          <button id="mv-out" onclick="setMvType('out')">－ Sortie</button>
+        </div>
+        <div class="field">
+          <label>Montant (€)</label>
+          <input type="number" inputmode="decimal" id="mv-amount" placeholder="0,00" step="0.01">
+        </div>
+        <div class="field">
+          <label>Motif</label>
+          <input type="text" id="mv-reason" placeholder="Ex. : location emplacement">
+        </div>
+        <button class="btn btn-primary" onclick="addMovement()">Enregistrer le mouvement</button>
+      </div>
+
+      <div class="card">
+        <h3 style="font-size:19px;margin-bottom:8px">Mouvements du jour</h3>
+        <div id="mv-list"></div>
+      </div>
+    </section>
+
+    <!-- ===== JOURNAL ===== -->
+    <section class="tab" id="tab-journal">
+      <h1 class="section-title">Journal du jour</h1>
+      <p class="section-sub" id="journal-date"></p>
+
+      <div class="card">
+        <div class="big-total">
+          <div class="k">Chiffre d'affaires</div>
+          <div class="v" id="jr-ca">0,00 €</div>
+        </div>
+        <div class="summary">
+          <div class="s"><div class="k">Espèces</div><div class="v" id="jr-esp">0,00 €</div></div>
+          <div class="s"><div class="k">QR Code</div><div class="v" id="jr-qr">0,00 €</div></div>
+          <div class="s"><div class="k">Carte</div><div class="v" id="jr-carte">0,00 €</div></div>
+        </div>
+        <div class="summary" style="margin-top:0">
+          <div class="s"><div class="k">Ventes</div><div class="v" id="jr-count">0</div></div>
+          <div class="s"><div class="k">Panier moyen</div><div class="v" id="jr-avg">0,00 €</div></div>
+          <div class="s"><div class="k">Caisse</div><div class="v" id="jr-cash">0,00 €</div></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3 style="font-size:19px;margin-bottom:8px">Tickets</h3>
+        <div id="jr-list"></div>
+      </div>
+
+      <div class="card">
+        <h3 style="font-size:19px;margin-bottom:10px">Mode</h3>
+        <div class="mode-row">
+          <span class="mode-lbl">Mode actuel</span>
+          <span class="mode-val prod" id="mode-current">PRODUCTION</span>
+        </div>
+        <button class="btn btn-outline" id="btn-to-test" style="margin-top:12px" onclick="switchMode('test')">Passer en mode Test</button>
+        <button class="btn btn-outline" id="btn-to-prod" style="margin-top:12px;display:none" onclick="switchMode('prod')">Revenir en mode Production</button>
+        <p style="font-size:11px;color:var(--muted);text-align:center;margin:10px 0 0">Le mode Test a sa propre caisse d'essai. Rien n'impacte ta compta réelle.</p>
+      </div>
+
+      <div class="card">
+        <div class="row-btns" style="margin-bottom:10px">
+          <button class="btn btn-outline" onclick="exportCSV()">Exporter (CSV)</button>
+          <button class="btn btn-ghost" onclick="printZ()">Clôture Z</button>
+        </div>
+        <button class="btn btn-danger" onclick="newDay()">Nouvelle journée (garde fond + n°)</button>
+        <div id="reset-zone" style="display:none;margin-top:10px">
+          <button class="btn btn-danger" onclick="resetAll()" style="background:#c0475e;color:#fff">⚠️ Remise à zéro totale</button>
+          <p style="font-size:11px;color:var(--muted);text-align:center;margin:8px 0 0">Efface tout et repart au n° 1. Disponible uniquement en mode Test.</p>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ===== NAV ===== -->
+  <nav>
+    <button class="on" id="nav-vente" onclick="go('vente')">
+      <svg viewBox="0 0 24 24"><path d="M3 6h18l-1.5 11a2 2 0 0 1-2 1.7H6.5a2 2 0 0 1-2-1.7L3 6z"/><path d="M8 6V4.5A2.5 2.5 0 0 1 10.5 2h3A2.5 2.5 0 0 1 16 4.5V6"/></svg>
+      Vente
+    </button>
+    <button id="nav-caisse" onclick="go('caisse')">
+      <svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/></svg>
+      Caisse
+    </button>
+    <button id="nav-mouv" onclick="go('mouv')">
+      <svg viewBox="0 0 24 24"><path d="M7 17V7m0 0-3 3m3-3 3 3"/><path d="M17 7v10m0 0 3-3m-3 3-3-3"/></svg>
+      Mouvements
+    </button>
+    <button id="nav-journal" onclick="go('journal')">
+      <svg viewBox="0 0 24 24"><path d="M5 3h11l3 3v15H5z"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>
+      Journal
+    </button>
+  </nav>
+</div>
+
+<!-- ===== MODALE PAIEMENT ===== -->
+<div class="overlay hidden" id="pay-overlay">
+  <div class="sheet">
+    <div class="grab"></div>
+
+    <!-- choix méthode -->
+    <div id="pay-choice">
+      <h2>Encaissement</h2>
+      <div class="pay-amt" id="pay-amt">0,00 €</div>
+      <div class="pay-methods">
+        <button class="pay-btn" onclick="startCash()">
+          <div class="ic esp">💶</div>
+          <div class="tx"><b>Espèces</b><span>Liquide, avec calcul du rendu</span></div>
+          <div class="arr">›</div>
+        </button>
+        <button class="pay-btn" onclick="startQR()">
+          <div class="ic qr">📱</div>
+          <div class="tx"><b>QR Code</b><span>Bancontact — le client scanne et paie</span></div>
+          <div class="arr">›</div>
+        </button>
+        <button class="pay-btn" onclick="payMethod('carte')">
+          <div class="ic carte">💳</div>
+          <div class="tx"><b>Carte (SumUp)</b><span>Terminal externe</span></div>
+          <div class="arr">›</div>
+        </button>
+      </div>
+      <button class="btn btn-outline" style="margin-top:14px" onclick="closePay()">Annuler</button>
+    </div>
+
+    <!-- encaissement espèces -->
+    <div id="pay-cash" class="cash-in hidden">
+      <h2>Paiement en espèces</h2>
+      <div class="pay-amt" id="cash-due">0,00 €</div>
+      <div class="recu">Montant reçu</div>
+      <input type="number" inputmode="decimal" class="recu-input" id="recu-input" placeholder="0,00" step="0.01" oninput="calcRendu()">
+      <div class="quick-amts" id="quick-amts"></div>
+      <div class="rendu" id="rendu-box">
+        <div class="k">À rendre</div>
+        <div class="v" id="rendu-val">0,00 €</div>
+      </div>
+      <button class="btn btn-primary" id="cash-confirm" onclick="confirmCash()">Valider le paiement</button>
+      <button class="btn btn-outline" style="margin-top:10px" onclick="backToChoice()">Retour</button>
+    </div>
+
+    <!-- paiement QR Bancontact -->
+    <div id="pay-qr" class="hidden">
+      <h2>Paiement QR — Bancontact</h2>
+      <div class="qr-amount-lbl">Montant à faire saisir au client</div>
+      <div class="pay-amt" id="qr-amount" style="margin-bottom:12px">0,00 €</div>
+      <div class="qr-wrap">
+        <img id="qr-img" src="qr-bancontact.png" alt="QR Bancontact Lylou-Vely"
+             onerror="this.style.display='none';document.getElementById('qr-missing').style.display='block'">
+        <div id="qr-missing" style="display:none">Place le fichier <b>qr-bancontact.png</b> à côté de la page.</div>
+      </div>
+      <p class="qr-steps">Le client scanne, saisit le montant, confirme (PIN / empreinte).<br>Vérifie la confirmation sur ton portail commerçant.</p>
+      <button class="btn btn-primary" onclick="confirmQR()">Paiement confirmé ✓</button>
+      <button class="btn btn-outline" style="margin-top:10px" onclick="backToChoice()">Retour</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MODALE TICKET ===== -->
+<div class="overlay center hidden" id="ticket-overlay">
+  <div class="sheet" id="ticket-print">
+    <div id="ticket-area"></div>
+    <div class="no-print" style="margin-top:16px">
+      <div class="row-btns">
+        <button class="btn btn-outline" onclick="closeTicket()">Fermer</button>
+        <button class="btn btn-ghost" onclick="downloadPDF()">PDF</button>
+        <button class="btn btn-primary" onclick="window.print()">Imprimer</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MODALE GESTION ARTICLES ===== -->
+<div class="overlay hidden" id="prod-overlay">
+  <div class="sheet">
+    <div class="grab"></div>
+    <h2>Gérer les articles</h2>
+    <p style="text-align:center;color:var(--muted);font-size:13px;margin-bottom:16px">Nom et prix. Laisse le prix vide pour un article à saisie libre.</p>
+    <div id="prod-editor"></div>
+    <button class="btn btn-ghost" style="margin-top:6px" onclick="addProductRow()">＋ Ajouter un article</button>
+    <div class="row-btns" style="margin-top:14px">
+      <button class="btn btn-outline" onclick="closeProducts()">Annuler</button>
+      <button class="btn btn-primary" onclick="saveProducts()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   CAISSE LYLOU-VELY — vanilla JS, données en localStorage
+   ============================================================ */
+
+/* ---- Réglages ---- */
+const PASSWORD = "Lylou2026";           // 🔑 à changer par Philippe
+
+/* ---- Modes : deux bases séparées (production réelle / tests) ---- */
+const STORE_PROD = "lylou_caisse_prod_v1";
+const STORE_TEST = "lylou_caisse_test_v1";
+const MODE_KEY   = "lylou_caisse_mode";
+let mode = localStorage.getItem(MODE_KEY) || 'prod';   // 'prod' par défaut
+function storeKey(){ return mode==='test' ? STORE_TEST : STORE_PROD; }
+
+/* ---- QR de paiement Bancontact (fichier à côté du HTML) ----
+   Remplace simplement qr-bancontact.png par le QR officiel quand tu le reçois. */
+const QR_IMAGE = "qr-bancontact.png";
+
+/* ---- Identité vendeur (affichée sur le ticket / justificatif client) ----
+   ⚠️ Complète avec TES infos légales exactes. En cas de doute sur la raison
+   sociale, le n° d'entreprise ou la mention TVA à afficher, demande à ton comptable. */
+const SELLER = {
+  brand:   "Lylou-Vely",              // nom commercial
+  tagline: "Créations artisanales",
+  legal:   "Lylou-Vely By Zen-Connect",
+  address: "Oudesmisestraat 20, 1700 Dilbeek",
+  vat:     "BE1035199737",
+  contact: "etsy.com/fr/shop/LylouVely",
+};
+/* Mention légale / message en bas de ticket. Vide = rien affiché. */
+const MENTION_LEGALE = "Merci pour votre achat, retrouvez-nous sur lylou-vely.be";
+
+/* ---- Numérotation des tickets (continue, pour justification comptable) ---- */
+const TICKET_PREFIX = "LV-";          // préfixe du numéro
+const TICKET_START  = 1;              // 1er numéro (reste à 1 : tu remets à zéro avant le 15/07)
+
+const DEFAULT_PRODUCTS = [
+  {name:"Bracelet", price:12},
+  {name:"Collier", price:18},
+  {name:"Boucles d'oreilles", price:15},
+  {name:"Bague", price:10},
+  {name:"Sac crochet", price:35},
+  {name:"Bougie", price:8},
+  {name:"Porte-clés", price:6},
+  {name:"Marque-page", price:5},
+];
+
+const COINS = [0.01,0.02,0.05,0.10,0.20,0.50,1,2];
+const BILLS = [5,10,20,50,100,200,500];
+
+/* ---- État ---- */
+let state = load();
+let cart = [];
+let countQty = {};   // comptage en cours
+let mvType = 'in';
+
+function load(){
+  try{
+    const raw = localStorage.getItem(storeKey());
+    if(raw){ return normalise(JSON.parse(raw)); }
+    // 1re fois en PROD : on récupère juste la liste d'articles de l'ancienne caisse,
+    // sans les ventes de test → caisse vierge mais articles conservés.
+    if(mode==='prod'){
+      const old = localStorage.getItem("lylou_caisse_v1");
+      if(old){ return normalise({ products: JSON.parse(old).products }); }
+    }
+  }catch(e){}
+  return normalise({});
+}
+function normalise(s){
+  return {
+    day: s.day || todayStr(),
+    fond: s.fond || 0,
+    products: (s.products && s.products.length) ? s.products : DEFAULT_PRODUCTS.slice(),
+    sales: s.sales || [],
+    movements: s.movements || [],
+    lastCount: s.lastCount || null,
+    ticketCounter: (typeof s.ticketCounter === 'number') ? s.ticketCounter : (TICKET_START - 1),
+  };
+}
+function save(){ localStorage.setItem(storeKey(), JSON.stringify(state)); }
+
+/* ---- Utilitaires ---- */
+function euro(n){ return (Math.round((n+Number.EPSILON)*100)/100).toFixed(2).replace('.',',')+' €'; }
+function todayStr(){ const d=new Date(); return d.toISOString().slice(0,10); }
+function nowTime(){ const d=new Date(); return d.toTimeString().slice(0,5); }
+function parseNum(v){ if(!v) return 0; return parseFloat(String(v).replace(',','.'))||0; }
+function curPrefix(){ return mode==='test' ? 'TEST-' : TICKET_PREFIX; }
+function makeRef(n){ return curPrefix() + String(n).padStart(4,'0'); }
+
+/* ---- Bascule Production / Test ---- */
+function switchMode(target){
+  if(target===mode) return;
+  const msg = target==='test'
+    ? "Passer en MODE TEST ?\n\nTu bascules sur une caisse d'essai séparée. Aucun impact sur ta compta de production."
+    : "Passer en MODE PRODUCTION ?\n\nTu reviens sur ta vraie caisse (données réelles).";
+  if(!confirm(msg)) return;
+  mode = target;
+  localStorage.setItem(MODE_KEY, mode);
+  state = load();
+  checkNewDay();
+  cart = []; countQty = {};
+  initDenoms();
+  renderAll();
+  updateModeUI();
+  toast(mode==='test' ? "Mode Test activé" : "Mode Production activé");
+  go('vente');
+}
+function updateModeUI(){
+  const test = mode==='test';
+  const banner = document.getElementById('test-banner');
+  if(banner) banner.style.display = test ? 'block' : 'none';
+  const mc = document.getElementById('mode-current');
+  if(mc){ mc.textContent = test ? 'TEST' : 'PRODUCTION'; mc.className = 'mode-val '+(test?'test':'prod'); }
+  const btnT = document.getElementById('btn-to-test');
+  const btnP = document.getElementById('btn-to-prod');
+  if(btnT&&btnP){ btnT.style.display = test?'none':'block'; btnP.style.display = test?'block':'none'; }
+  const rz = document.getElementById('reset-zone');
+  if(rz) rz.style.display = test ? 'block' : 'none';
+}
+function toast(msg){
+  const t=document.createElement('div'); t.className='toast'; t.textContent=msg;
+  document.body.appendChild(t); setTimeout(()=>t.remove(),2000);
+}
+
+/* ---- Mot de passe ---- */
+function checkPw(){
+  const v = document.getElementById('gate-pw').value;
+  if(v === PASSWORD){
+    sessionStorage.setItem('lylou_auth','1');
+    openApp();
+  }else{
+    document.getElementById('gate-err').textContent = "Mot de passe incorrect";
+  }
+}
+document.getElementById('gate-pw').addEventListener('keydown',e=>{ if(e.key==='Enter') checkPw(); });
+
+function openApp(){
+  document.getElementById('gate').classList.add('hidden');
+  document.getElementById('app').classList.remove('hidden');
+  checkNewDay();
+  initProducts();
+  initDenoms();
+  updateModeUI();
+  renderAll();
+}
+if(sessionStorage.getItem('lylou_auth')==='1'){ openApp(); }
+else { setTimeout(()=>document.getElementById('gate-pw').focus(),200); }
+
+/* ---- Nouvelle journée auto ---- */
+function checkNewDay(){
+  if(state.day !== todayStr()){
+    // conserve fond + articles, archive implicite (on repart propre)
+    state.day = todayStr();
+    state.sales = [];
+    state.movements = [];
+    save();
+  }
+}
+
+/* ---- Navigation ---- */
+function go(tab){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('tab-'+tab).classList.add('active');
+  document.querySelectorAll('nav button').forEach(b=>b.classList.remove('on'));
+  document.getElementById('nav-'+tab).classList.add('on');
+  window.scrollTo(0,0);
+  if(tab==='caisse') renderCaisse();
+  if(tab==='mouv') renderMovements();
+  if(tab==='journal') renderJournal();
+}
+
+/* ============ ARTICLES ============ */
+function initProducts(){ renderProdGrid(); }
+function renderProdGrid(){
+  const g = document.getElementById('prod-grid');
+  g.innerHTML = '';
+  state.products.forEach((p,i)=>{
+    const b = document.createElement('button');
+    b.className = 'prod-btn';
+    b.innerHTML = `<span class="n">${escapeHtml(p.name)}</span><span class="p">${p.price?euro(p.price):'Libre'}</span>`;
+    b.onclick = ()=> p.price ? addToCart(p.name,p.price) : addFreeItem(p.name);
+    g.appendChild(b);
+  });
+  const free = document.createElement('button');
+  free.className='prod-btn free';
+  free.innerHTML = `<span class="n">＋ Article libre</span><span class="p">Prix au choix</span>`;
+  free.onclick = ()=> addFreeItem();
+  g.appendChild(free);
+}
+function escapeHtml(s){ return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+/* éditeur d'articles */
+function openProducts(){
+  const ed = document.getElementById('prod-editor');
+  ed.innerHTML='';
+  state.products.forEach(p=>addProductRow(p.name,p.price));
+  document.getElementById('prod-overlay').classList.remove('hidden');
+}
+function addProductRow(name='',price=''){
+  const ed = document.getElementById('prod-editor');
+  const row = document.createElement('div');
+  row.className='edit-line';
+  row.innerHTML = `<input class="enm" placeholder="Nom de l'article" value="${escapeHtml(name)}">
+    <input class="epr" type="number" step="0.01" placeholder="€" value="${price!==''&&price!=null?price:''}">
+    <button class="rm" onclick="this.parentNode.remove()">✕</button>`;
+  ed.appendChild(row);
+}
+function saveProducts(){
+  const rows = document.querySelectorAll('#prod-editor .edit-line');
+  const list = [];
+  rows.forEach(r=>{
+    const nm = r.querySelector('.enm').value.trim();
+    const pr = parseNum(r.querySelector('.epr').value);
+    if(nm) list.push({name:nm, price:pr||0});
+  });
+  state.products = list;
+  save(); renderProdGrid(); closeProducts();
+  toast("Articles enregistrés");
+}
+function closeProducts(){ document.getElementById('prod-overlay').classList.add('hidden'); }
+
+/* ============ PANIER ============ */
+function addToCart(name,price){
+  const line = cart.find(l=>l.name===name && l.price===price);
+  if(line) line.qty++;
+  else cart.push({name,price,qty:1});
+  renderCart();
+}
+function addFreeItem(name){
+  const nm = name || prompt("Nom de l'article :","Article");
+  if(nm===null) return;
+  const pr = parseNum(prompt("Prix (€) :","0"));
+  if(pr<=0){ toast("Prix invalide"); return; }
+  cart.push({name:nm||"Article", price:pr, qty:1});
+  renderCart();
+}
+function changeQty(i,d){
+  cart[i].qty += d;
+  if(cart[i].qty<=0) cart.splice(i,1);
+  renderCart();
+}
+function removeLine(i){ cart.splice(i,1); renderCart(); }
+function clearCart(){ if(cart.length && !confirm("Vider le panier ?")) return; cart=[]; renderCart(); }
+function cartTotal(){ return cart.reduce((s,l)=>s+l.price*l.qty,0); }
+
+function renderCart(){
+  const box = document.getElementById('cart-lines');
+  const empty = document.getElementById('cart-empty');
+  const totRow = document.getElementById('cart-total-row');
+  box.innerHTML='';
+  if(cart.length===0){
+    empty.style.display='block'; totRow.style.display='none';
+    document.getElementById('btn-encaisser').disabled = true;
+    return;
+  }
+  empty.style.display='none'; totRow.style.display='flex';
+  document.getElementById('btn-encaisser').disabled = false;
+  cart.forEach((l,i)=>{
+    const div=document.createElement('div');
+    div.className='cart-line';
+    div.innerHTML = `
+      <div class="info"><div class="nm">${escapeHtml(l.name)}</div><div class="pu">${euro(l.price)} l'unité</div></div>
+      <div class="qty">
+        <button onclick="changeQty(${i},-1)">−</button>
+        <span>${l.qty}</span>
+        <button onclick="changeQty(${i},1)">＋</button>
+      </div>
+      <div class="lt">${euro(l.price*l.qty)}</div>
+      <button class="del" onclick="removeLine(${i})">🗑</button>`;
+    box.appendChild(div);
+  });
+  document.getElementById('cart-total').textContent = euro(cartTotal());
+}
+
+/* ============ PAIEMENT ============ */
+function openPay(){
+  if(cart.length===0) return;
+  document.getElementById('pay-amt').textContent = euro(cartTotal());
+  document.getElementById('pay-choice').classList.remove('hidden');
+  document.getElementById('pay-cash').classList.add('hidden');
+  document.getElementById('pay-qr').classList.add('hidden');
+  document.getElementById('pay-overlay').classList.remove('hidden');
+}
+function closePay(){ document.getElementById('pay-overlay').classList.add('hidden'); }
+function backToChoice(){
+  document.getElementById('pay-cash').classList.add('hidden');
+  document.getElementById('pay-qr').classList.add('hidden');
+  document.getElementById('pay-choice').classList.remove('hidden');
+}
+
+/* --- QR Bancontact --- */
+function startQR(){
+  document.getElementById('pay-choice').classList.add('hidden');
+  document.getElementById('pay-qr').classList.remove('hidden');
+  document.getElementById('qr-amount').textContent = euro(cartTotal());
+}
+function confirmQR(){ finalizeSale('qr', {}); }
+
+/* --- espèces --- */
+function startCash(){
+  const due = cartTotal();
+  document.getElementById('pay-choice').classList.add('hidden');
+  document.getElementById('pay-cash').classList.remove('hidden');
+  document.getElementById('cash-due').textContent = euro(due);
+  const inp = document.getElementById('recu-input');
+  inp.value=''; calcRendu();
+  // boutons rapides
+  const qa = document.getElementById('quick-amts'); qa.innerHTML='';
+  const suggestions = quickCashSuggestions(due);
+  suggestions.forEach(v=>{
+    const b=document.createElement('button');
+    b.textContent = v==='exact' ? 'Exact' : euro(v);
+    b.onclick = ()=>{ inp.value = (v==='exact'?due:v); calcRendu(); };
+    qa.appendChild(b);
+  });
+  setTimeout(()=>inp.focus(),150);
+}
+function quickCashSuggestions(due){
+  const out=['exact'];
+  [5,10,20,50].forEach(v=>{ if(v>due && out.indexOf(v)<0) out.push(v); });
+  // arrondi supérieur au billet suivant
+  const rounded = Math.ceil(due/10)*10;
+  if(rounded>due && out.indexOf(rounded)<0) out.push(rounded);
+  return out.slice(0,4);
+}
+function calcRendu(){
+  const due = cartTotal();
+  const recu = parseNum(document.getElementById('recu-input').value);
+  const rendu = recu - due;
+  const box = document.getElementById('rendu-box');
+  document.getElementById('rendu-val').textContent = euro(Math.max(rendu,0));
+  if(recu>0 && rendu<0){ box.classList.add('neg'); document.getElementById('rendu-val').textContent = "Manque "+euro(-rendu); }
+  else box.classList.remove('neg');
+  document.getElementById('cash-confirm').disabled = (recu < due);
+}
+function confirmCash(){
+  const due = cartTotal();
+  const recu = parseNum(document.getElementById('recu-input').value);
+  if(recu < due){ toast("Montant reçu insuffisant"); return; }
+  finalizeSale('especes', {recu, rendu: recu-due});
+}
+function payMethod(method){ finalizeSale(method, {}); }
+
+function finalizeSale(method, extra){
+  const total = cartTotal();
+  state.ticketCounter += 1;                 // numéro continu, ne repart jamais à zéro
+  const sale = {
+    id: Date.now(),
+    num: state.ticketCounter,
+    ref: makeRef(state.ticketCounter),
+    time: nowTime(),
+    date: state.day,
+    items: cart.map(l=>({name:l.name,price:l.price,qty:l.qty})),
+    total, method, extra
+  };
+  state.sales.push(sale);
+  save();
+  closePay();
+  showTicket(sale);
+  cart=[]; renderCart();
+  renderHeaderCash();
+}
+
+/* ============ TICKET ============ */
+const METHOD_LABEL = {especes:'Espèces', qr:'QR Code', carte:'Carte (SumUp)'};
+let currentTicketRef = '';
+let currentTicketSale = null;
+function showTicket(sale){
+  const area = document.getElementById('ticket-area');
+  let items = sale.items.map(it=>
+    `<div class="t-item"><span>${escapeHtml(it.name)} <span class="q">×${it.qty}</span></span><span>${euro(it.price*it.qty)}</span></div>`
+  ).join('');
+  let payExtra = '';
+  if(sale.method==='especes'){
+    payExtra = `<div class="t-pay">Reçu : ${euro(sale.extra.recu)} · Rendu : ${euro(sale.extra.rendu)}</div>`;
+  }
+  const ref = sale.ref || makeRef(sale.num);
+  currentTicketRef = ref;
+  currentTicketSale = sale;
+  // bloc identité légale (n'affiche que les champs remplis)
+  let sellerLegal = [SELLER.legal, SELLER.address, SELLER.vat?('TVA '+SELLER.vat):'']
+      .filter(Boolean).map(l=>escapeHtml(l)).join('<br>');
+  sellerLegal = sellerLegal ? `<div class="t-legal">${sellerLegal}</div>` : '';
+  const mention = MENTION_LEGALE ? `<div class="t-mention">${escapeHtml(MENTION_LEGALE)}</div>` : '';
+  const stamp = sale.cancelled
+    ? `<div style="text-align:center"><span class="paid cancelled">✕ ANNULÉ</span></div>`
+    : `<div style="text-align:center"><span class="paid">✓ PAYÉ</span></div>`;
+  const testMark = (mode==='test') ? `<div class="t-testmark">⚠ TICKET DE TEST — SANS VALEUR</div>` : '';
+  area.innerHTML = `
+    ${testMark}
+    <div class="t-head">
+      <div class="lg">${escapeHtml(SELLER.brand)}</div>
+      <div class="sl">${escapeHtml(SELLER.tagline)}</div>
+      ${sellerLegal}
+    </div>
+    <div class="t-meta"><span>Reçu n°</span><span><b>${ref}</b></span></div>
+    <div class="t-meta"><span>${sale.date.split('-').reverse().join('/')}</span><span>${sale.time}</span></div>
+    ${items}
+    <div class="t-tot"><span>Total</span><span>${euro(sale.total)}</span></div>
+    <div class="t-pay">Paiement : ${METHOD_LABEL[sale.method]}${sale.cancelled?' — remboursé':''}</div>
+    ${payExtra}
+    ${stamp}
+    <div class="t-qr" id="t-qr"></div>
+    ${mention}
+    <div class="t-foot"><span class="heart">♥</span> ${escapeHtml(SELLER.contact)}</div>`;
+  // QR
+  const qrBox = document.getElementById('t-qr');
+  qrBox.innerHTML='';
+  const payload = `Lylou-Vely|${ref}|${euro(sale.total)}|${METHOD_LABEL[sale.method]}|PAYE`;
+  try{
+    if(window.QRCode){ new QRCode(qrBox, {text:payload, width:110, height:110, colorDark:'#512e7a', colorLight:'#ffffff'}); }
+    else qrBox.innerHTML = `<div style="font-size:10px;color:#999">${ref}</div>`;
+  }catch(e){ qrBox.innerHTML = `<div style="font-size:10px;color:#999">${ref}</div>`; }
+  document.getElementById('ticket-overlay').classList.remove('hidden');
+}
+function closeTicket(){ document.getElementById('ticket-overlay').classList.add('hidden'); }
+
+/* Export PDF du ticket (html2canvas + jsPDF). Repli sur l'impression si hors-ligne. */
+function downloadPDF(){
+  const area = document.getElementById('ticket-area');
+  if(!window.html2canvas || !window.jspdf){
+    toast("PDF indisponible hors-ligne → impression");
+    window.print();
+    return;
+  }
+  toast("Génération du PDF…");
+  html2canvas(area, {scale:3, backgroundColor:'#ffffff'}).then(canvas=>{
+    const img = canvas.toDataURL('image/png');
+    const { jsPDF } = window.jspdf;
+    // format ticket : largeur 80mm, hauteur proportionnelle
+    const wmm = 80;
+    const hmm = canvas.height * wmm / canvas.width;
+    const pdf = new jsPDF({unit:'mm', format:[wmm, hmm]});
+    pdf.addImage(img, 'PNG', 0, 0, wmm, hmm);
+    pdf.save(`recu-${currentTicketRef||'ticket'}.pdf`);
+  }).catch(()=>{ toast("Erreur PDF → impression"); window.print(); });
+}
+
+/* ============ COMPTAGE CAISSE ============ */
+function initDenoms(){
+  buildDenoms('denoms-coins', COINS);
+  buildDenoms('denoms-bills', BILLS);
+}
+function buildDenoms(elId, arr){
+  const box = document.getElementById(elId);
+  box.innerHTML='';
+  arr.forEach(val=>{
+    const key = String(val);
+    const row=document.createElement('div');
+    row.className='denom';
+    row.innerHTML = `
+      <span class="face">${val<1 ? (val*100)+' c' : val+' €'}</span>
+      <span class="x">×</span>
+      <input type="number" inputmode="numeric" min="0" data-val="${val}" value="${countQty[key]||''}" placeholder="0">
+      <span class="st" data-st="${val}">0,00 €</span>`;
+    const inp = row.querySelector('input');
+    inp.addEventListener('input',()=>{ countQty[key]=parseInt(inp.value)||0; updateCountTotals(); });
+    box.appendChild(row);
+  });
+}
+function countTotal(){
+  let t=0;
+  [...COINS,...BILLS].forEach(v=>{ t += v*(countQty[String(v)]||0); });
+  return t;
+}
+function updateCountTotals(){
+  document.querySelectorAll('.denom .st').forEach(el=>{
+    const v=parseFloat(el.dataset.st); el.textContent = euro(v*(countQty[String(v)]||0));
+  });
+  document.getElementById('count-total').textContent = euro(countTotal());
+  updateEcart();
+}
+function resetCount(){ countQty={}; initDenoms(); updateCountTotals(); }
+function setFond(){
+  const t = countTotal();
+  if(!confirm(`Définir le fond de caisse à ${euro(t)} ?\n(Cela remplace le fond actuel)`)) return;
+  state.fond = t;
+  state.lastCount = t;
+  save();
+  renderCaisse(); renderHeaderCash();
+  toast("Fond de caisse défini : "+euro(t));
+}
+
+/* ============ CAISSE : totaux ============ */
+function sumCashSales(){ return state.sales.filter(s=>s.method==='especes' && !s.cancelled).reduce((a,s)=>a+s.total,0); }
+function sumIn(){ return state.movements.filter(m=>m.type==='in').reduce((a,m)=>a+m.amount,0); }
+function sumOut(){ return state.movements.filter(m=>m.type==='out').reduce((a,m)=>a+m.amount,0); }
+function theoreticalCash(){ return state.fond + sumCashSales() + sumIn() - sumOut(); }
+
+function renderCaisse(){
+  document.getElementById('kpi-fond').textContent = euro(state.fond);
+  document.getElementById('kpi-vesp').textContent = euro(sumCashSales());
+  document.getElementById('kpi-in').textContent = euro(sumIn());
+  document.getElementById('kpi-out').textContent = euro(sumOut());
+  document.getElementById('kpi-theo').textContent = euro(theoreticalCash());
+  updateEcart();
+}
+function updateEcart(){
+  const box = document.getElementById('kpi-ecart-box');
+  const counted = countTotal();
+  if(counted>0){
+    box.style.display='block';
+    const ecart = counted - theoreticalCash();
+    const el = document.getElementById('kpi-ecart');
+    el.textContent = (ecart>=0?'+':'') + euro(ecart);
+    box.className = 'kpi full ' + (Math.abs(ecart)<0.005?'ok':'warn');
+  }else{
+    box.style.display='none';
+  }
+}
+
+/* ============ MOUVEMENTS ============ */
+function setMvType(t){
+  mvType = t;
+  document.getElementById('mv-in').classList.toggle('on', t==='in');
+  document.getElementById('mv-out').classList.toggle('on', t==='out');
+}
+function addMovement(){
+  const amt = parseNum(document.getElementById('mv-amount').value);
+  const reason = document.getElementById('mv-reason').value.trim();
+  if(amt<=0){ toast("Montant invalide"); return; }
+  state.movements.push({id:Date.now(), type:mvType, amount:amt, reason:reason||(mvType==='in'?'Entrée':'Sortie'), time:nowTime()});
+  save();
+  document.getElementById('mv-amount').value='';
+  document.getElementById('mv-reason').value='';
+  renderMovements(); renderHeaderCash();
+  toast((mvType==='in'?'Entrée':'Sortie')+" enregistrée");
+}
+function delMovement(id){
+  if(!confirm("Supprimer ce mouvement ?")) return;
+  state.movements = state.movements.filter(m=>m.id!==id);
+  save(); renderMovements(); renderHeaderCash();
+}
+function renderMovements(){
+  const box = document.getElementById('mv-list');
+  if(state.movements.length===0){ box.innerHTML='<div class="empty">Aucun mouvement aujourd\'hui</div>'; return; }
+  box.innerHTML='';
+  [...state.movements].reverse().forEach(m=>{
+    const div=document.createElement('div'); div.className='mv-line';
+    div.innerHTML = `
+      <div class="pill ${m.type}">${m.type==='in'?'＋':'－'}</div>
+      <div class="m-info"><div class="t">${escapeHtml(m.reason)}</div><div class="d">${m.time}</div></div>
+      <div class="amt ${m.type==='in'?'plus':'minus'}">${m.type==='in'?'+':'−'}${euro(m.amount)}</div>
+      <button class="del" onclick="delMovement(${m.id})" style="color:var(--muted);font-size:16px">✕</button>`;
+    box.appendChild(div);
+  });
+}
+
+/* ============ JOURNAL ============ */
+function renderJournal(){
+  const all = state.sales;
+  const s = all.filter(x=>!x.cancelled);           // ventes valides
+  const ca = s.reduce((a,x)=>a+x.total,0);
+  const esp = s.filter(x=>x.method==='especes').reduce((a,x)=>a+x.total,0);
+  const qr  = s.filter(x=>x.method==='qr').reduce((a,x)=>a+x.total,0);
+  const carte = s.filter(x=>x.method==='carte').reduce((a,x)=>a+x.total,0);
+
+  document.getElementById('journal-date').textContent =
+    "Journée du " + state.day.split('-').reverse().join('/');
+  document.getElementById('jr-ca').textContent = euro(ca);
+  document.getElementById('jr-esp').textContent = euro(esp);
+  document.getElementById('jr-qr').textContent = euro(qr);
+  document.getElementById('jr-carte').textContent = euro(carte);
+  document.getElementById('jr-count').textContent = s.length;
+  document.getElementById('jr-avg').textContent = euro(s.length?ca/s.length:0);
+  document.getElementById('jr-cash').textContent = euro(theoreticalCash());
+
+  const box = document.getElementById('jr-list');
+  if(all.length===0){ box.innerHTML='<div class="empty">Aucune vente aujourd\'hui</div>'; return; }
+  box.innerHTML='';
+  [...all].reverse().forEach(sale=>{
+    const cls = sale.method==='especes'?'esp':sale.method;
+    const ic = sale.method==='especes'?'💶':(sale.method==='qr'?'📱':'💳');
+    const names = sale.items.map(i=>i.name+(i.qty>1?'×'+i.qty:'')).join(', ');
+    const ref = sale.ref || makeRef(sale.num);
+    const div=document.createElement('div'); div.className='jr-line'+(sale.cancelled?' cancelled':'');
+    const actions = sale.cancelled
+      ? `<span class="jr-badge">ANNULÉ</span>
+         <button class="del" onclick="reprint(${sale.id})" title="Voir le ticket" style="color:var(--muted);font-size:15px">⎙</button>`
+      : `<button class="del" onclick="reprint(${sale.id})" title="Ré-imprimer" style="color:var(--violet);font-size:15px">⎙</button>
+         <button class="del" onclick="cancelSale(${sale.id})" title="Annuler ce ticket" style="color:var(--red);font-size:15px">⊘</button>`;
+    div.innerHTML = `
+      <div class="pill ${cls}">${ic}</div>
+      <div class="j-info"><div class="t">${escapeHtml(ref)} · ${escapeHtml(names)}</div><div class="d">${sale.time} · ${METHOD_LABEL[sale.method]}</div></div>
+      <div class="amt">${euro(sale.total)}</div>
+      ${actions}`;
+    box.appendChild(div);
+  });
+}
+function reprint(id){ const sale=state.sales.find(s=>s.id===id); if(sale) showTicket(sale); }
+
+/* Annuler un ticket : garde le numéro (justificatif), le sort des totaux, rembourse si espèces */
+function cancelSale(id){
+  const sale = state.sales.find(s=>s.id===id);
+  if(!sale || sale.cancelled) return;
+  let msg = `Annuler le ticket ${sale.ref} (${euro(sale.total)}) ?`;
+  if(sale.method==='especes') msg += `\n\n⚠️ Rends ${euro(sale.total)} en espèces au client.`;
+  else if(sale.method==='qr') msg += `\n\n⚠️ Le remboursement QR se fait depuis ton app / ton portail.`;
+  else msg += `\n\n⚠️ Le remboursement carte se fait depuis SumUp.`;
+  if(!confirm(msg)) return;
+  sale.cancelled = true;
+  sale.cancelledAt = nowTime();
+  save();
+  renderJournal(); renderCaisse(); renderHeaderCash();
+  toast("Ticket "+sale.ref+" annulé");
+}
+
+/* export CSV */
+function exportCSV(){
+  let rows = [["Reçu n°","Date","Heure","Articles","Montant","Paiement"]];
+  state.sales.forEach(s=>{
+    const ref = s.ref || makeRef(s.num);
+    const arts = s.items.map(i=>`${i.name} x${i.qty}`).join(' + ');
+    const pay = METHOD_LABEL[s.method] + (s.cancelled ? ' (ANNULÉ)' : '');
+    rows.push([ref, s.date.split('-').reverse().join('/'), s.time, arts, s.total.toFixed(2).replace('.',','), pay]);
+  });
+  rows.push([]);
+  rows.push(["Fond de caisse", "", "", state.fond.toFixed(2).replace('.',','), ""]);
+  rows.push(["Ventes espèces", "", "", sumCashSales().toFixed(2).replace('.',','), ""]);
+  rows.push(["Entrées", "", "", sumIn().toFixed(2).replace('.',','), ""]);
+  rows.push(["Sorties", "", "", sumOut().toFixed(2).replace('.',','), ""]);
+  rows.push(["Espèces théoriques", "", "", theoreticalCash().toFixed(2).replace('.',','), ""]);
+  const csv = rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(';')).join('\n');
+  const blob = new Blob(["\ufeff"+csv],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=`caisse-lylou-${state.day}.csv`;
+  a.click();
+  toast("Export CSV généré");
+}
+
+/* clôture Z (impression du résumé) */
+function printZ(){
+  const valid = state.sales.filter(x=>!x.cancelled);
+  const cancelledN = state.sales.filter(x=>x.cancelled).length;
+  const ca=valid.reduce((a,x)=>a+x.total,0);
+  const esp=valid.filter(x=>x.method==='especes').reduce((a,x)=>a+x.total,0);
+  const qr=valid.filter(x=>x.method==='qr').reduce((a,x)=>a+x.total,0);
+  const carte=valid.filter(x=>x.method==='carte').reduce((a,x)=>a+x.total,0);
+  currentTicketRef = 'cloture-'+state.day;
+  const area=document.getElementById('ticket-area');
+  area.innerHTML = `
+    <div class="t-head"><div class="lg">${escapeHtml(SELLER.brand)}</div><div class="sl">Clôture Z</div>
+      <div class="t-legal">${escapeHtml(SELLER.legal)}${SELLER.vat?'<br>TVA '+escapeHtml(SELLER.vat):''}</div></div>
+    <div class="t-meta"><span>${state.day.split('-').reverse().join('/')}</span><span>${nowTime()}</span></div>
+    <div class="t-item"><span>Nombre de ventes</span><span>${valid.length}</span></div>
+    <div class="t-item"><span>Espèces</span><span>${euro(esp)}</span></div>
+    <div class="t-item"><span>QR Code</span><span>${euro(qr)}</span></div>
+    <div class="t-item"><span>Carte</span><span>${euro(carte)}</span></div>
+    <div class="t-tot"><span>Total CA</span><span>${euro(ca)}</span></div>
+    <div class="t-item" style="margin-top:8px"><span>Tickets annulés</span><span>${cancelledN}</span></div>
+    <div class="t-item" style="margin-top:10px"><span>Fond de caisse</span><span>${euro(state.fond)}</span></div>
+    <div class="t-item"><span>Entrées</span><span>${euro(sumIn())}</span></div>
+    <div class="t-item"><span>Sorties</span><span>${euro(sumOut())}</span></div>
+    <div class="t-tot"><span>Espèces en caisse</span><span>${euro(theoreticalCash())}</span></div>
+    <div class="t-foot">Clôture générée le ${new Date().toLocaleString('fr-BE')}</div>`;
+  document.getElementById('t-qr')?.remove();
+  document.getElementById('ticket-overlay').classList.remove('hidden');
+  setTimeout(()=>window.print(),300);
+}
+
+/* nouvelle journée */
+function newDay(){
+  if(!confirm("Réinitialiser la journée ?\n\nLes ventes et mouvements du jour seront effacés.\nLe fond de caisse et les articles sont conservés.\n\nPense à exporter/clôturer avant.")) return;
+  state.day = todayStr();
+  state.sales = [];
+  state.movements = [];
+  save();
+  renderAll();
+  toast("Nouvelle journée démarrée");
+  go('vente');
+}
+
+/* ⚠️ TESTS UNIQUEMENT : remise à zéro complète (efface tout, remet la numérotation à zéro) */
+function resetAll(){
+  if(!confirm("⚠️ REMISE À ZÉRO COMPLÈTE (tests)\n\nCeci efface TOUTES les ventes, mouvements, le fond de caisse ET remet la numérotation des tickets à zéro (prochain = "+makeRef(TICKET_START)+").\n\nLes articles sont conservés.\n\nÀ n'utiliser qu'en phase de test. Continuer ?")) return;
+  if(!confirm("Dernière confirmation : tout effacer et repartir de "+makeRef(TICKET_START)+" ?")) return;
+  state.day = todayStr();
+  state.sales = [];
+  state.movements = [];
+  state.fond = 0;
+  state.ticketCounter = TICKET_START - 1;
+  countQty = {};
+  save();
+  initDenoms();
+  renderAll();
+  toast("Remise à zéro effectuée");
+  go('vente');
+}
+
+/* ============ RENDU GLOBAL ============ */
+function renderHeaderCash(){ document.getElementById('hdr-cash').textContent = euro(theoreticalCash()); }
+function renderAll(){
+  renderProdGrid(); renderCart(); renderCaisse();
+  renderMovements(); renderJournal(); renderHeaderCash();
+  updateCountTotals();
+}
+
+/* fermeture des overlays en cliquant sur le fond */
+document.querySelectorAll('.overlay').forEach(o=>{
+  o.addEventListener('click',e=>{ if(e.target===o) o.classList.add('hidden'); });
+});
+</script>
+</body>
+</html>
