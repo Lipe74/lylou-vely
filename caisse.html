@@ -42,7 +42,7 @@ header{background:linear-gradient(160deg,var(--violet) 0%,var(--violet-d) 100%);
 .hdr-top .title{font-family:'Cormorant Garamond',serif;font-size:22px;line-height:1}
 .hdr-top .title small{display:block;font-family:'Jost';font-size:10px;letter-spacing:3px;opacity:.8;text-transform:uppercase;margin-top:2px}
 .hdr-top .refresh-btn{background:rgba(255,255,255,.18);border-radius:10px;padding:8px 10px;font-size:15px;line-height:1}
-.hdr-kpis{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:10px}
+.hdr-kpis{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px;margin-top:10px}
 .hdr-kpi{background:rgba(255,255,255,.12);border-radius:10px;padding:6px 10px;text-align:center}
 .hdr-kpi span{display:block;font-size:9px;letter-spacing:1px;text-transform:uppercase;opacity:.8}
 .hdr-kpi b{font-size:16px;font-weight:500}
@@ -264,6 +264,7 @@ nav button.on{color:var(--violet)}
       <button class="refresh-btn" onclick="doRefresh()" title="Recharger les données">🔄</button>
     </div>
     <div class="hdr-kpis">
+      <div class="hdr-kpi"><span>Fond</span><b id="hdr-fond">0,00 €</b></div>
       <div class="hdr-kpi"><span>Espèces</span><b id="hdr-cash">0,00 €</b></div>
       <div class="hdr-kpi"><span>QR Code</span><b id="hdr-qr">0,00 €</b></div>
       <div class="hdr-kpi"><span>SumUp</span><b id="hdr-sumup">0,00 €</b></div>
@@ -1648,6 +1649,7 @@ window.resetAll = function(){
 /* ============ HEADER KPIs ============ */
 function renderHeaderKPIs(){
   const d = state.day;
+  document.getElementById('hdr-fond').textContent = euro(state.fond);
   document.getElementById('hdr-cash').textContent = euro(theoreticalCash());
   document.getElementById('hdr-qr').textContent = euro(sumQRSales(d));
   document.getElementById('hdr-sumup').textContent = euro(sumCarteSales(d));
