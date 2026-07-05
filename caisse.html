@@ -257,7 +257,7 @@ nav button.on{color:var(--violet)}
 <div id="app" class="hidden">
   <header>
     <div class="hdr-top">
-      <div class="title">Lylou-Vely<small>Caisse</small></div>
+      <div class="title">Lylou-Vely<small>Caisse · Build 2.1</small></div>
       <button class="refresh-btn" onclick="doRefresh()" title="Recharger les données">🔄</button>
     </div>
     <div class="hdr-kpis">
@@ -275,7 +275,6 @@ nav button.on{color:var(--violet)}
       <p class="section-sub">Touche un article pour l'ajouter au panier.</p>
       <div class="card">
         <div class="prod-grid" id="prod-grid"></div>
-        <button class="btn btn-outline no-print" style="margin-top:12px" onclick="openProducts()">⚙ Gérer les articles</button>
       </div>
       <div class="card">
         <h3 style="font-size:19px;margin-bottom:6px">Panier</h3>
@@ -417,6 +416,10 @@ nav button.on{color:var(--violet)}
       <svg viewBox="0 0 24 24"><path d="M5 3h11l3 3v15H5z"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>
       Journal
     </button>
+    <button id="nav-settings" onclick="openSettings()">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      Réglages
+    </button>
   </nav>
 </div>
 
@@ -536,6 +539,38 @@ nav button.on{color:var(--violet)}
       <button class="btn btn-primary" onclick="saveProducts()">Enregistrer</button>
     </div>
     <div class="firebase-status" id="fb-status"></div>
+  </div>
+</div>
+
+<!-- ===== MODALE RÉGLAGES ===== -->
+<div class="overlay hidden" id="settings-overlay">
+  <div class="sheet">
+    <div class="grab"></div>
+    <h2>Réglages</h2>
+
+    <button class="pay-btn" style="margin-bottom:10px" onclick="closeSettings();openProducts()">
+      <div class="ic" style="background:var(--violet-wash);color:var(--violet)">📦</div>
+      <div class="tx"><b>Gérer les articles</b><span>Ajouter, modifier, supprimer des produits</span></div>
+      <div class="arr">›</div>
+    </button>
+
+    <button class="pay-btn" style="margin-bottom:10px" onclick="closeSettings();doRefresh()">
+      <div class="ic" style="background:var(--green-wash);color:var(--green)">🔄</div>
+      <div class="tx"><b>Rafraîchir les données</b><span>Recharger articles et état depuis Firebase</span></div>
+      <div class="arr">›</div>
+    </button>
+
+    <div class="card" style="margin-top:6px">
+      <h3 style="font-size:17px;margin-bottom:10px">Mode</h3>
+      <div class="mode-row">
+        <span class="mode-lbl">Mode actuel</span>
+        <span class="mode-val prod" id="settings-mode">PRODUCTION</span>
+      </div>
+      <button class="btn btn-outline" id="settings-to-test" style="margin-top:12px" onclick="closeSettings();switchMode('test')">Passer en mode Test</button>
+      <button class="btn btn-outline" id="settings-to-prod" style="margin-top:12px;display:none" onclick="closeSettings();switchMode('prod')">Revenir en mode Production</button>
+    </div>
+
+    <button class="btn btn-outline" style="margin-top:14px" onclick="closeSettings()">Fermer</button>
   </div>
 </div>
 
@@ -716,13 +751,30 @@ window.switchMode = function(target){
 function updateModeUI(){
   const test = mode==='test';
   document.getElementById('test-banner').style.display = test ? 'block' : 'none';
+  // Journal
   const mc = document.getElementById('mode-current');
   mc.textContent = test ? 'TEST' : 'PRODUCTION';
   mc.className = 'mode-val '+(test?'test':'prod');
   document.getElementById('btn-to-test').style.display = test?'none':'block';
   document.getElementById('btn-to-prod').style.display = test?'block':'none';
   document.getElementById('reset-zone').style.display = test ? 'block' : 'none';
+  // Réglages
+  const sm = document.getElementById('settings-mode');
+  if(sm){ sm.textContent = test ? 'TEST' : 'PRODUCTION'; sm.className = 'mode-val '+(test?'test':'prod'); }
+  const st = document.getElementById('settings-to-test');
+  const sp = document.getElementById('settings-to-prod');
+  if(st) st.style.display = test?'none':'block';
+  if(sp) sp.style.display = test?'block':'none';
 }
+
+/* ---- Réglages (modale) ---- */
+window.openSettings = function(){
+  updateModeUI();
+  document.getElementById('settings-overlay').classList.remove('hidden');
+};
+window.closeSettings = function(){
+  document.getElementById('settings-overlay').classList.add('hidden');
+};
 
 /* ============ FIREBASE ARTICLES ============ */
 const FB_DOC = "lylou_vely/articles";
