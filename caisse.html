@@ -1633,7 +1633,10 @@ window.printZ = function(){
 
 /* ============ NOUVELLE JOURNÉE / RESET ============ */
 window.newDay = function(){
-  if(!confirm("Nouvelle journée ?\n\nLe fond de caisse et la numérotation sont conservés.\nPense à exporter/clôturer avant.")) return;
+  if(!confirm("Nouvelle journée ?\n\nLes ventes et mouvements du jour seront effacés.\nLe fond de caisse et la numérotation sont conservés.\n\nPense à exporter/clôturer avant.")) return;
+  const today = state.day;
+  state.sales = state.sales.filter(s => s.date !== today);
+  state.movements = state.movements.filter(m => m.date !== today);
   state.day = todayStr();
   save(); renderAll();
   toast("Nouvelle journée démarrée"); window.go('vente');
