@@ -1650,7 +1650,7 @@ window.resetAll = function(){
 function renderHeaderKPIs(){
   const d = state.day;
   document.getElementById('hdr-fond').textContent = euro(state.fond);
-  document.getElementById('hdr-cash').textContent = euro(theoreticalCash());
+  document.getElementById('hdr-cash').textContent = euro(sumCashSales(d));
   document.getElementById('hdr-qr').textContent = euro(sumQRSales(d));
   document.getElementById('hdr-sumup').textContent = euro(sumCarteSales(d));
 }
