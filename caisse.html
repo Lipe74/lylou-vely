@@ -1682,7 +1682,13 @@ window.printZ = function(){
     <div class="t-item"><span>Entrées</span><span>${euro(sumIn())}</span></div>
     <div class="t-item"><span>Sorties</span><span>${euro(sumOut())}</span></div>
     <div class="t-tot"><span>Espèces en caisse</span><span>${euro(theoreticalCash())}</span></div>
-    ${theoreticalCash() > state.fond + 0.01 ? `<div class="t-sep"></div><div class="t-item" style="font-weight:600;color:#2e9e6b;font-size:14px"><span>💰 À retirer (versement)</span><span>${euro(theoreticalCash() - state.fond)}</span></div><div style="font-size:10px;color:#777;text-align:center;margin-top:4px">Pour conserver le fond de caisse de ${euro(state.fond)}</div>` : ''}
+    ${theoreticalCash() > state.fond + 0.01 ? `<div class="t-sep"></div>
+      <div style="font-size:11px;font-weight:600;color:#555;margin-bottom:4px">Détail du versement :</div>
+      <div class="t-sub"><span>Ventes espèces</span><span>+${euro(esp)}</span></div>
+      ${sumIn() > 0 ? `<div class="t-sub"><span>Entrées</span><span>+${euro(sumIn())}</span></div>` : ''}
+      ${sumOut() > 0 ? `<div class="t-sub"><span>Sorties</span><span>−${euro(sumOut())}</span></div>` : ''}
+      <div class="t-item" style="font-weight:600;color:#2e9e6b;font-size:14px;border-top:1px dashed #ccc;padding-top:6px;margin-top:4px"><span>💰 À retirer (versement)</span><span>${euro(theoreticalCash() - state.fond)}</span></div>
+      <div style="font-size:10px;color:#777;text-align:center;margin-top:4px">Pour conserver le fond de caisse de ${euro(state.fond)}</div>` : ''}
     <div class="t-foot">Clôture générée le ${new Date().toLocaleString('fr-BE')}</div>`;
   document.getElementById('ticket-overlay').classList.remove('hidden');
 };
