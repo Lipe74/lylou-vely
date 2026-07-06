@@ -128,6 +128,13 @@ main{max-width:820px;margin:0 auto;padding:16px}
 .mv-line .m-info .d,.jr-line .j-info .d{font-size:12px;color:var(--muted)}
 .mv-line .amt{font-weight:600}.amt.plus{color:var(--green)}.amt.minus{color:var(--red)}
 .empty{color:var(--muted);text-align:center;padding:22px 0;font-size:14px}
+.quick-mv{display:flex;flex-direction:column;gap:12px}
+.qm-row{display:flex;align-items:center;gap:10px}
+.qm-icon{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.qm-info{flex:1;display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.qm-info b{width:100%;font-size:14px;font-weight:500}
+.qm-info input{padding:9px;border:1.5px solid var(--line);border-radius:9px;font-size:14px}
+.qm-info input:focus{outline:none;border-color:var(--violet)}
 
 /* Journal */
 .summary{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:8px}
@@ -340,6 +347,30 @@ nav button.on{color:var(--violet)}
         <div class="field"><label>Montant (€)</label><input type="number" inputmode="decimal" id="mv-amount" placeholder="0,00" step="0.01"></div>
         <div class="field"><label>Motif</label><input type="text" id="mv-reason" placeholder="Ex. : location emplacement"></div>
         <button class="btn btn-primary" onclick="addMovement()">Enregistrer le mouvement</button>
+      </div>
+
+      <div class="card">
+        <h3 style="font-size:17px;margin-bottom:10px">Raccourcis</h3>
+        <div class="quick-mv">
+          <div class="qm-row">
+            <div class="qm-icon" style="background:var(--red-wash);color:var(--red)">🏪</div>
+            <div class="qm-info">
+              <b>Paiement stand</b>
+              <input type="number" inputmode="decimal" id="qm-stand-amt" placeholder="Montant €" step="0.01" style="width:90px">
+              <input type="text" id="qm-stand-note" placeholder="Ex. : Marché Beaufays" style="flex:1">
+            </div>
+            <button class="btn btn-danger" style="width:auto;padding:10px 14px;font-size:13px" onclick="quickStand()">OK</button>
+          </div>
+          <div class="qm-row">
+            <div class="qm-icon" style="background:var(--green-wash);color:var(--green)">🏦</div>
+            <div class="qm-info">
+              <b>Versement banque</b>
+              <input type="number" inputmode="decimal" id="qm-bank-amt" placeholder="Montant €" step="0.01" style="width:90px">
+              <input type="text" id="qm-bank-note" placeholder="Ex. : recette 06/07" style="flex:1">
+            </div>
+            <button class="btn btn-danger" style="width:auto;padding:10px 14px;font-size:13px" onclick="quickBank()">OK</button>
+          </div>
+        </div>
       </div>
       <div class="card">
         <div class="row-btns" style="margin-bottom:10px">
@@ -1391,7 +1422,33 @@ window.addMovement = function(){
 window.delMovement = function(id){
   if(!confirm("Supprimer ce mouvement ?")) return;
   state.movements = state.movements.filter(m=>m.id!==id);
-  save(); renderMovements(); renderHeaderKPIs();
+  save(); renderMovements(); renderHeaderKPIs(); renderCaisse();
+};
+
+/* Raccourcis mouvements */
+window.quickStand = function(){
+  const amt = parseNum(document.getElementById('qm-stand-amt').value);
+  const note = document.getElementById('qm-stand-note').value.trim();
+  if(amt<=0){ toast("Montant invalide"); return; }
+  const motif = "Paiement stand" + (note ? " — " + note : "");
+  state.movements.push({id:Date.now(), type:'out', amount:amt, reason:motif, time:nowTime(), date:state.day});
+  save();
+  document.getElementById('qm-stand-amt').value='';
+  document.getElementById('qm-stand-note').value='';
+  renderMovements(); renderHeaderKPIs(); renderCaisse();
+  toast("Paiement stand enregistré : −"+euro(amt));
+};
+window.quickBank = function(){
+  const amt = parseNum(document.getElementById('qm-bank-amt').value);
+  const note = document.getElementById('qm-bank-note').value.trim();
+  if(amt<=0){ toast("Montant invalide"); return; }
+  const motif = "Versement banque" + (note ? " — " + note : "");
+  state.movements.push({id:Date.now(), type:'out', amount:amt, reason:motif, time:nowTime(), date:state.day});
+  save();
+  document.getElementById('qm-bank-amt').value='';
+  document.getElementById('qm-bank-note').value='';
+  renderMovements(); renderHeaderKPIs(); renderCaisse();
+  toast("Versement banque enregistré : −"+euro(amt));
 };
 function renderMovements(){
   const mvs = dayMovements(state.day);
