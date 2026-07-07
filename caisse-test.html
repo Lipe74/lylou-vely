@@ -1500,7 +1500,8 @@ function sumQRSales(d){ return daySales(d||state.day).reduce((a,s)=>a+methodAmou
 function sumCarteSales(d){ return daySales(d||state.day).reduce((a,s)=>a+methodAmount(s,'carte'),0); }
 function sumIn(d){ return dayMovements(d||state.day).filter(m=>m.type==='in').reduce((a,m)=>a+m.amount,0); }
 function sumOut(d){ return dayMovements(d||state.day).filter(m=>m.type==='out').reduce((a,m)=>a+m.amount,0); }
-function theoreticalCash(){ return state.fond + sumCashSales() + sumIn() - sumOut(); }
+function sumCashOut(d){ return dayMovements(d||state.day).filter(m=>m.type==='out' && m.payMode!=='card').reduce((a,m)=>a+m.amount,0); }
+function theoreticalCash(){ return state.fond + sumCashSales() + sumIn() - sumCashOut(); }
 
 // helpers paiements mixtes
 function hasCash(s){ return s.payments ? s.payments.some(p=>p.method==='especes') : s.method==='especes'; }
@@ -1847,7 +1848,7 @@ window.printZ = function(){
       <div style="font-size:11px;font-weight:600;color:#555;margin-bottom:4px">Détail du versement :</div>
       <div class="t-sub"><span>Ventes espèces</span><span>+${euro(esp)}</span></div>
       ${sumIn() > 0 ? `<div class="t-sub"><span>Entrées</span><span>+${euro(sumIn())}</span></div>` : ''}
-      ${sumOut() > 0 ? `<div class="t-sub"><span>Sorties</span><span>−${euro(sumOut())}</span></div>` : ''}
+      ${sumCashOut() > 0 ? `<div class="t-sub"><span>Sorties liquide</span><span>−${euro(sumCashOut())}</span></div>` : ''}
       <div class="t-item" style="font-weight:600;color:#2e9e6b;font-size:14px;border-top:1px dashed #ccc;padding-top:6px;margin-top:4px"><span>💰 À retirer (versement)</span><span>${euro(theoreticalCash() - state.fond)}</span></div>
       <div style="font-size:10px;color:#777;text-align:center;margin-top:4px">Pour conserver le fond de caisse de ${euro(state.fond)}</div>` : ''}
     <div class="t-foot">Clôture générée le ${new Date().toLocaleString('fr-BE')}</div>`;

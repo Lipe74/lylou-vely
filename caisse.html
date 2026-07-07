@@ -262,13 +262,14 @@ nav button.on{color:var(--violet)}
 </head>
 <body>
 
-<!-- ============ MOT DE PASSE ============ -->
+<!-- ============ LOGIN FIREBASE ============ -->
 <div id="gate">
   <div class="box">
     <div class="mark">Lylou-Vely</div>
-    <div class="sub">Caisse</div>
+    <div class="sub">Caisse · Build 2.1</div>
+    <input type="email" id="gate-email" placeholder="Email" autocomplete="email" value="infos@lylou-vely.be" style="letter-spacing:0">
     <input type="password" id="gate-pw" placeholder="Mot de passe" autocomplete="current-password">
-    <button onclick="checkPw()">Entrer</button>
+    <button onclick="doLogin()">Connexion</button>
     <div class="err" id="gate-err"></div>
   </div>
 </div>
@@ -356,6 +357,13 @@ nav button.on{color:var(--violet)}
         </div>
         <div class="field"><label>Montant (€)</label><input type="number" inputmode="decimal" id="mv-amount" placeholder="0,00" step="0.01"></div>
         <div class="field"><label>Motif</label><input type="text" id="mv-reason" placeholder="Ex. : location emplacement"></div>
+        <div id="mv-payment-mode" style="display:none;margin-bottom:12px">
+          <label style="font-size:13px;color:var(--muted);display:block;margin-bottom:6px">Mode de paiement de la sortie</label>
+          <div class="seg" style="max-width:280px">
+            <button id="mvp-cash" class="on" onclick="setMvPayMode('cash')">💶 Liquide</button>
+            <button id="mvp-card" onclick="setMvPayMode('card')">💳 Carte</button>
+          </div>
+        </div>
         <button class="btn btn-primary" onclick="addMovement()">Enregistrer le mouvement</button>
       </div>
 
@@ -368,6 +376,10 @@ nav button.on{color:var(--violet)}
               <b>Paiement stand</b>
               <input type="number" inputmode="decimal" id="qm-stand-amt" placeholder="Montant €" step="0.01" style="width:90px">
               <input type="text" id="qm-stand-note" placeholder="Ex. : Marché Beaufays" style="flex:1">
+              <div class="seg" style="width:100%;margin-top:4px">
+                <button id="qs-cash" class="on" onclick="setQsMode('cash')">💶 Liquide</button>
+                <button id="qs-card" onclick="setQsMode('card')">💳 Carte</button>
+              </div>
             </div>
             <button class="btn btn-danger" style="width:auto;padding:10px 14px;font-size:13px" onclick="quickStand()">OK</button>
           </div>
@@ -623,6 +635,20 @@ nav button.on{color:var(--violet)}
   </div>
 </div>
 
+<!-- ===== MODALE FOND DE CAISSE (ouverture journée) ===== -->
+<div class="overlay center hidden" id="fond-overlay">
+  <div class="sheet" style="max-width:380px">
+    <h2>☀️ Nouvelle journée</h2>
+    <p style="text-align:center;color:var(--muted);font-size:14px;margin:8px 0 16px">Confirme ou modifie ton fond de caisse pour démarrer.</p>
+    <div style="text-align:center;font-family:'Cormorant Garamond',serif;font-size:36px;color:var(--violet);font-weight:600;margin-bottom:6px" id="fond-current"></div>
+    <div class="field" style="margin-top:12px"><label>Nouveau montant (ou laisse tel quel)</label><input type="number" inputmode="decimal" id="fond-input" placeholder="Montant €" step="0.01"></div>
+    <div class="row-btns" style="margin-top:14px">
+      <button class="btn btn-outline" onclick="confirmFond(false)">Garder ce fond</button>
+      <button class="btn btn-primary" onclick="confirmFond(true)">Modifier</button>
+    </div>
+  </div>
+</div>
+
 <!-- ===== MODALE REMISE / PROMO ===== -->
 <div class="overlay hidden" id="discount-overlay">
   <div class="sheet">
@@ -678,7 +704,8 @@ nav button.on{color:var(--violet)}
 
 /* ---- Firebase ---- */
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
-import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
+import { getFirestore, doc, getDoc, setDoc, collection, getDocs, deleteDoc } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
+import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDagghvP8ujE0fdUcYsOfmLaXps2ZSUexo",
@@ -690,9 +717,9 @@ const firebaseConfig = {
 };
 const fbApp = initializeApp(firebaseConfig);
 const db = getFirestore(fbApp);
+const auth = getAuth(fbApp);
 
 /* ---- Réglages ---- */
-const PASSWORD = "Lylou2026";
 const TVA_RATE = 0.21;
 
 /* Modes */
@@ -740,6 +767,7 @@ let currentTicketRef = '';
 let journalFilter = 'day';
 let journalDate = todayStr();
 
+/* ---- LocalStorage (cache offline) ---- */
 function load(){
   try{
     const raw = localStorage.getItem(storeKey());
@@ -760,6 +788,68 @@ function normalise(s){
 }
 function save(){ localStorage.setItem(storeKey(), JSON.stringify(state)); }
 
+/* ---- Firestore paths ---- */
+function basePath(){ return mode==='test' ? 'lylou_vely/caisse_test' : 'lylou_vely/caisse_prod'; }
+
+/* ---- Firestore : config (fond, ticketCounter, day) ---- */
+async function loadConfig(){
+  try{
+    const snap = await getDoc(doc(db, basePath()));
+    if(snap.exists()){
+      const d = snap.data();
+      if(typeof d.fond === 'number') state.fond = d.fond;
+      if(typeof d.ticketCounter === 'number') state.ticketCounter = d.ticketCounter;
+      if(d.day) state.day = d.day;
+    }
+  }catch(e){ console.warn('loadConfig:', e.message); }
+}
+async function saveConfig(){
+  try{
+    await setDoc(doc(db, basePath()), {
+      fond: state.fond, ticketCounter: state.ticketCounter, day: state.day,
+      updatedAt: new Date().toISOString()
+    }, {merge:true});
+  }catch(e){ console.warn('saveConfig:', e.message); }
+}
+
+/* ---- Firestore : ventes ---- */
+async function loadSales(){
+  try{
+    const snap = await getDocs(collection(db, basePath(), 'sales'));
+    const arr = [];
+    snap.forEach(d=>arr.push({...d.data()}));
+    arr.sort((a,b)=>a.id-b.id);
+    state.sales = arr;
+  }catch(e){ console.warn('loadSales:', e.message); }
+}
+async function saveSale(sale){
+  try{ await setDoc(doc(db, basePath(), 'sales', String(sale.id)), sale); }
+  catch(e){ console.warn('saveSale:', e.message); }
+}
+async function deleteSaleFB(id){
+  try{ await deleteDoc(doc(db, basePath(), 'sales', String(id))); }
+  catch(e){ console.warn('deleteSale:', e.message); }
+}
+
+/* ---- Firestore : mouvements ---- */
+async function loadMovements(){
+  try{
+    const snap = await getDocs(collection(db, basePath(), 'movements'));
+    const arr = [];
+    snap.forEach(d=>arr.push({...d.data()}));
+    arr.sort((a,b)=>a.id-b.id);
+    state.movements = arr;
+  }catch(e){ console.warn('loadMovements:', e.message); }
+}
+async function saveMovement(mv){
+  try{ await setDoc(doc(db, basePath(), 'movements', String(mv.id)), mv); }
+  catch(e){ console.warn('saveMovement:', e.message); }
+}
+async function deleteMovementFB(id){
+  try{ await deleteDoc(doc(db, basePath(), 'movements', String(id))); }
+  catch(e){ console.warn('deleteMovement:', e.message); }
+}
+
 /* ---- Utilitaires ---- */
 function euro(n){ return (Math.round((n+Number.EPSILON)*100)/100).toFixed(2).replace('.',',')+' €'; }
 function todayStr(){ const d=new Date(); return d.toISOString().slice(0,10); }
@@ -775,35 +865,72 @@ function toast(msg){
   document.body.appendChild(t);setTimeout(()=>t.remove(),2500);
 }
 
-/* ---- Mot de passe ---- */
-window.checkPw = function(){
-  if(document.getElementById('gate-pw').value === PASSWORD){
-    sessionStorage.setItem('lylou_auth','1'); openApp();
-  } else {
-    document.getElementById('gate-err').textContent = "Mot de passe incorrect";
+/* ---- Firebase Auth ---- */
+window.doLogin = async function(){
+  const email = document.getElementById('gate-email').value.trim();
+  const pw = document.getElementById('gate-pw').value;
+  const err = document.getElementById('gate-err');
+  err.textContent = '';
+  if(!email||!pw){ err.textContent="Email et mot de passe requis"; return; }
+  try{
+    await signInWithEmailAndPassword(auth, email, pw);
+  }catch(e){
+    const msgs = {
+      'auth/wrong-password':'Mot de passe incorrect',
+      'auth/user-not-found':'Utilisateur introuvable',
+      'auth/invalid-credential':'Email ou mot de passe incorrect',
+      'auth/too-many-requests':'Trop de tentatives, réessaie plus tard',
+    };
+    err.textContent = msgs[e.code] || ('Erreur : '+e.message);
   }
 };
-document.getElementById('gate-pw').addEventListener('keydown',e=>{ if(e.key==='Enter') window.checkPw(); });
+document.getElementById('gate-pw').addEventListener('keydown',e=>{ if(e.key==='Enter') window.doLogin(); });
 
-function openApp(){
-  document.getElementById('gate').classList.add('hidden');
-  document.getElementById('app').classList.remove('hidden');
-  checkNewDay();
+onAuthStateChanged(auth, user=>{
+  if(user){
+    document.getElementById('gate').classList.add('hidden');
+    document.getElementById('app').classList.remove('hidden');
+    openApp();
+  } else {
+    document.getElementById('gate').classList.remove('hidden');
+    document.getElementById('app').classList.add('hidden');
+  }
+});
+
+async function openApp(){
+  // Charger depuis Firestore
+  await loadConfig();
+  await loadSales();
+  await loadMovements();
+  save(); // sync cache local
   initProducts();
   initDenoms();
   updateModeUI();
   renderAll();
   loadArticlesFromFirebase();
-}
-if(sessionStorage.getItem('lylou_auth')==='1') openApp();
-else setTimeout(()=>document.getElementById('gate-pw').focus(),200);
-
-function checkNewDay(){
+  // Nouveau jour → confirmation fond
   if(state.day !== todayStr()){
-    state.day = todayStr();
-    save();
+    showFondConfirmation();
   }
 }
+
+function showFondConfirmation(){
+  document.getElementById('fond-current').textContent = euro(state.fond);
+  document.getElementById('fond-input').value = '';
+  document.getElementById('fond-overlay').classList.remove('hidden');
+}
+window.confirmFond = async function(modify){
+  if(modify){
+    const v = parseNum(document.getElementById('fond-input').value);
+    if(v > 0) state.fond = v;
+  }
+  state.day = todayStr();
+  save();
+  await saveConfig();
+  document.getElementById('fond-overlay').classList.add('hidden');
+  renderAll();
+  toast("Journée démarrée — fond : "+euro(state.fond));
+};
 
 /* ---- Navigation ---- */
 window.go = function(tab){
@@ -1191,11 +1318,10 @@ window.confirmExternal = function(method){
   finalizeSale();
 };
 
-function finalizeSale(){
+async function finalizeSale(){
   const total = cartTotal();
   state.ticketCounter += 1;
   const ref = makeRef(state.ticketCounter);
-  // determine payment method label
   const methods = [...new Set(payParts.map(p=>p.method))];
   const saleMethod = methods.length > 1 ? 'mix' : methods[0];
   const sale = {
@@ -1210,6 +1336,8 @@ function finalizeSale(){
   };
   state.sales.push(sale);
   save();
+  saveSale(sale);      // Firestore async (non bloquant)
+  saveConfig();        // met à jour ticketCounter
   closePay();
   showTicket(sale);
   cart=[]; payParts=[]; cartDiscount=null;
@@ -1355,11 +1483,12 @@ function updateCountTotals(){
   updateEcart();
 }
 window.resetCount = function(){ countQty={}; initDenoms(); updateCountTotals(); };
-window.setFond = function(){
+window.setFond = async function(){
   const t = countTotal();
   if(!confirm(`Définir le fond de caisse à ${euro(t)} ?`)) return;
   state.fond = t; state.lastCount = t;
-  save(); renderCaisse(); renderHeaderKPIs();
+  save(); saveConfig();
+  renderCaisse(); renderHeaderKPIs();
   toast("Fond de caisse défini : "+euro(t));
 };
 
@@ -1371,7 +1500,8 @@ function sumQRSales(d){ return daySales(d||state.day).reduce((a,s)=>a+methodAmou
 function sumCarteSales(d){ return daySales(d||state.day).reduce((a,s)=>a+methodAmount(s,'carte'),0); }
 function sumIn(d){ return dayMovements(d||state.day).filter(m=>m.type==='in').reduce((a,m)=>a+m.amount,0); }
 function sumOut(d){ return dayMovements(d||state.day).filter(m=>m.type==='out').reduce((a,m)=>a+m.amount,0); }
-function theoreticalCash(){ return state.fond + sumCashSales() + sumIn() - sumOut(); }
+function sumCashOut(d){ return dayMovements(d||state.day).filter(m=>m.type==='out' && m.payMode!=='card').reduce((a,m)=>a+m.amount,0); }
+function theoreticalCash(){ return state.fond + sumCashSales() + sumIn() - sumCashOut(); }
 
 // helpers paiements mixtes
 function hasCash(s){ return s.payments ? s.payments.some(p=>p.method==='especes') : s.method==='especes'; }
@@ -1413,52 +1543,70 @@ function updateEcart(){
 
 
 /* ============ MOUVEMENTS ============ */
+let mvPayMode = 'cash';
+let qsPayMode = 'cash';
+
 window.setMvType = function(t){
   mvType = t;
   document.getElementById('mv-in').classList.toggle('on', t==='in');
   document.getElementById('mv-out').classList.toggle('on', t==='out');
+  document.getElementById('mv-payment-mode').style.display = (t==='out') ? 'block' : 'none';
 };
-window.addMovement = function(){
+window.setMvPayMode = function(m){
+  mvPayMode = m;
+  document.getElementById('mvp-cash').classList.toggle('on', m==='cash');
+  document.getElementById('mvp-card').classList.toggle('on', m==='card');
+};
+window.setQsMode = function(m){
+  qsPayMode = m;
+  document.getElementById('qs-cash').classList.toggle('on', m==='cash');
+  document.getElementById('qs-card').classList.toggle('on', m==='card');
+};
+window.addMovement = async function(){
   const amt = parseNum(document.getElementById('mv-amount').value);
   const reason = document.getElementById('mv-reason').value.trim();
   if(amt<=0){ toast("Montant invalide"); return; }
-  state.movements.push({id:Date.now(), type:mvType, amount:amt, reason:reason||(mvType==='in'?'Entrée':'Sortie'), time:nowTime(), date:state.day});
-  save();
+  const payMode = mvType==='out' ? mvPayMode : null;
+  const mv = {id:Date.now(), type:mvType, amount:amt,
+    reason:reason||(mvType==='in'?'Entrée':'Sortie'),
+    payMode, time:nowTime(), date:state.day};
+  state.movements.push(mv); save(); saveMovement(mv);
   document.getElementById('mv-amount').value='';
   document.getElementById('mv-reason').value='';
-  renderMovements(); renderHeaderKPIs();
-  toast((mvType==='in'?'Entrée':'Sortie')+" enregistrée");
+  renderMovements(); renderHeaderKPIs(); renderCaisse();
+  toast((mvType==='in'?'Entrée':'Sortie')+' enregistrée');
 };
-window.delMovement = function(id){
+window.delMovement = async function(id){
   if(!confirm("Supprimer ce mouvement ?")) return;
   state.movements = state.movements.filter(m=>m.id!==id);
-  save(); renderMovements(); renderHeaderKPIs(); renderCaisse();
+  save(); deleteMovementFB(id);
+  renderMovements(); renderHeaderKPIs(); renderCaisse();
 };
 
 /* Raccourcis mouvements */
-window.quickStand = function(){
+window.quickStand = async function(){
   const amt = parseNum(document.getElementById('qm-stand-amt').value);
   const note = document.getElementById('qm-stand-note').value.trim();
   if(amt<=0){ toast("Montant invalide"); return; }
   const motif = "Paiement stand" + (note ? " — " + note : "");
-  state.movements.push({id:Date.now(), type:'out', amount:amt, reason:motif, time:nowTime(), date:state.day});
-  save();
+  const mv = {id:Date.now(), type:'out', amount:amt, reason:motif, payMode:qsPayMode, time:nowTime(), date:state.day};
+  state.movements.push(mv); save(); saveMovement(mv);
   document.getElementById('qm-stand-amt').value='';
   document.getElementById('qm-stand-note').value='';
   renderMovements(); renderHeaderKPIs(); renderCaisse();
-  toast("Paiement stand enregistré : −"+euro(amt));
+  toast("Paiement stand : −"+euro(amt)+" ("+(qsPayMode==='cash'?'Liquide':'Carte')+")");
 };
-window.quickBank = function(){
+window.quickBank = async function(){
   const amt = parseNum(document.getElementById('qm-bank-amt').value);
   const note = document.getElementById('qm-bank-note').value.trim();
   if(amt<=0){ toast("Montant invalide"); return; }
   const motif = "Versement banque" + (note ? " — " + note : "");
-  state.movements.push({id:Date.now(), type:'out', amount:amt, reason:motif, time:nowTime(), date:state.day});
-  save();
+  const mv = {id:Date.now(), type:'out', amount:amt, reason:motif, payMode:'cash', time:nowTime(), date:state.day};
+  state.movements.push(mv); save(); saveMovement(mv);
   document.getElementById('qm-bank-amt').value='';
   document.getElementById('qm-bank-note').value='';
   renderMovements(); renderHeaderKPIs(); renderCaisse();
-  toast("Versement banque enregistré : −"+euro(amt));
+  toast("Versement banque : −"+euro(amt));
 };
 function renderMovements(){
   const mvs = dayMovements(state.day);
@@ -1466,10 +1614,12 @@ function renderMovements(){
   if(mvs.length===0){ box.innerHTML='<div class="empty">Aucun mouvement aujourd\'hui</div>'; return; }
   box.innerHTML='';
   [...mvs].reverse().forEach(m=>{
+    const payBadge = (m.type==='out' && m.payMode) ?
+      `<span style="font-size:10px;background:${m.payMode==='cash'?'var(--violet-wash)':'var(--blue-wash)'};color:${m.payMode==='cash'?'var(--violet)':'var(--blue)'};padding:2px 6px;border-radius:6px;margin-left:4px">${m.payMode==='cash'?'💶 Liquide':'💳 Carte'}</span>` : '';
     const div=document.createElement('div'); div.className='mv-line';
     div.innerHTML = `
       <div class="pill ${m.type}">${m.type==='in'?'＋':'－'}</div>
-      <div class="m-info"><div class="t">${esc(m.reason)}</div><div class="d">${m.time}</div></div>
+      <div class="m-info"><div class="t">${esc(m.reason)}${payBadge}</div><div class="d">${m.time}</div></div>
       <div class="amt ${m.type==='in'?'plus':'minus'}">${m.type==='in'?'+':'−'}${euro(m.amount)}</div>
       <button class="del" onclick="delMovement(${m.id})" style="color:var(--muted);font-size:16px">✕</button>`;
     box.appendChild(div);
@@ -1602,7 +1752,7 @@ function renderJournal(){
 window.reprint = function(id){ const s=state.sales.find(x=>x.id===id); if(s) showTicket(s); };
 
 /* Annuler un ticket */
-window.cancelSale = function(id){
+window.cancelSale = async function(id){
   const sale = state.sales.find(s=>s.id===id);
   if(!sale || sale.cancelled) return;
   let msg = `Annuler le ticket ${sale.ref} (${euro(sale.total)}) ?`;
@@ -1612,7 +1762,8 @@ window.cancelSale = function(id){
   if(methodAmount(sale,'carte')>0) msg += `\n\n⚠️ Remboursement carte depuis SumUp.`;
   if(!confirm(msg)) return;
   sale.cancelled = true; sale.cancelledAt = nowTime();
-  save(); renderJournal(); renderCaisse(); renderHeaderKPIs();
+  save(); saveSale(sale);
+  renderJournal(); renderCaisse(); renderHeaderKPIs();
   toast("Ticket "+sale.ref+" annulé");
 };
 
@@ -1690,13 +1841,14 @@ window.printZ = function(){
     <div class="t-sep"></div>
     <div class="t-item"><span>Fond de caisse</span><span>${euro(state.fond)}</span></div>
     <div class="t-item"><span>Entrées</span><span>${euro(sumIn())}</span></div>
-    <div class="t-item"><span>Sorties</span><span>${euro(sumOut())}</span></div>
+    <div class="t-item"><span>Sorties totales</span><span>${euro(sumOut())}</span></div>
+    ${(()=>{ const dMvs=dayMovements(state.day).filter(m=>m.type==='out'); const cashOut=dMvs.filter(m=>m.payMode==='cash').reduce((a,m)=>a+m.amount,0); const cardOut=dMvs.filter(m=>m.payMode==='card').reduce((a,m)=>a+m.amount,0); return (cashOut>0||cardOut>0)?`<div class="t-sub"><span>dont 💶 Liquide</span><span>-${euro(cashOut)}</span></div><div class="t-sub"><span>dont 💳 Carte</span><span>-${euro(cardOut)}</span></div>`:''; })()}
     <div class="t-tot"><span>Espèces en caisse</span><span>${euro(theoreticalCash())}</span></div>
     ${theoreticalCash() > state.fond + 0.01 ? `<div class="t-sep"></div>
       <div style="font-size:11px;font-weight:600;color:#555;margin-bottom:4px">Détail du versement :</div>
       <div class="t-sub"><span>Ventes espèces</span><span>+${euro(esp)}</span></div>
       ${sumIn() > 0 ? `<div class="t-sub"><span>Entrées</span><span>+${euro(sumIn())}</span></div>` : ''}
-      ${sumOut() > 0 ? `<div class="t-sub"><span>Sorties</span><span>−${euro(sumOut())}</span></div>` : ''}
+      ${sumCashOut() > 0 ? `<div class="t-sub"><span>Sorties liquide</span><span>−${euro(sumCashOut())}</span></div>` : ''}
       <div class="t-item" style="font-weight:600;color:#2e9e6b;font-size:14px;border-top:1px dashed #ccc;padding-top:6px;margin-top:4px"><span>💰 À retirer (versement)</span><span>${euro(theoreticalCash() - state.fond)}</span></div>
       <div style="font-size:10px;color:#777;text-align:center;margin-top:4px">Pour conserver le fond de caisse de ${euro(state.fond)}</div>` : ''}
     <div class="t-foot">Clôture générée le ${new Date().toLocaleString('fr-BE')}</div>`;
@@ -1704,21 +1856,26 @@ window.printZ = function(){
 };
 
 /* ============ NOUVELLE JOURNÉE / RESET ============ */
-window.newDay = function(){
+window.newDay = async function(){
   if(!confirm("Nouvelle journée ?\n\nLes ventes et mouvements du jour seront effacés.\nLe fond de caisse et la numérotation sont conservés.\n\nPense à exporter/clôturer avant.")) return;
   const today = state.day;
+  // Supprimer dans Firestore
+  for(const s of state.sales.filter(x=>x.date===today)) await deleteSaleFB(s.id).catch(()=>{});
+  for(const m of state.movements.filter(x=>x.date===today)) await deleteMovementFB(m.id).catch(()=>{});
   state.sales = state.sales.filter(s => s.date !== today);
   state.movements = state.movements.filter(m => m.date !== today);
   state.day = todayStr();
-  save(); renderAll();
+  save(); await saveConfig(); renderAll();
   toast("Nouvelle journée démarrée"); window.go('vente');
 };
-window.resetAll = function(){
+window.resetAll = async function(){
   if(!confirm("⚠️ REMISE À ZÉRO COMPLÈTE (tests)\n\nTout est effacé, numérotation repartie à "+makeRef(TICKET_START)+".\nArticles conservés.")) return;
   if(!confirm("Dernière confirmation : tout effacer ?")) return;
+  for(const s of state.sales) await deleteSaleFB(s.id).catch(()=>{});
+  for(const m of state.movements) await deleteMovementFB(m.id).catch(()=>{});
   state.day = todayStr(); state.sales = []; state.movements = [];
   state.fond = 0; state.ticketCounter = TICKET_START - 1;
-  countQty = {}; save(); initDenoms(); renderAll();
+  countQty = {}; save(); await saveConfig(); initDenoms(); renderAll();
   toast("Remise à zéro effectuée"); window.go('vente');
 };
 
