@@ -1857,13 +1857,7 @@ window.printZ = function(){
 
 /* ============ NOUVELLE JOURNÉE / RESET ============ */
 window.newDay = async function(){
-  if(!confirm("Nouvelle journée ?\n\nLes ventes et mouvements du jour seront effacés.\nLe fond de caisse et la numérotation sont conservés.\n\nPense à exporter/clôturer avant.")) return;
-  const today = state.day;
-  // Supprimer dans Firestore
-  for(const s of state.sales.filter(x=>x.date===today)) await deleteSaleFB(s.id).catch(()=>{});
-  for(const m of state.movements.filter(x=>x.date===today)) await deleteMovementFB(m.id).catch(()=>{});
-  state.sales = state.sales.filter(s => s.date !== today);
-  state.movements = state.movements.filter(m => m.date !== today);
+  if(!confirm("Nouvelle journée ?\n\nL'historique est conservé.\nLe fond de caisse et la numérotation sont conservés.\n\nPense à faire ta clôture Z avant.")) return;
   state.day = todayStr();
   save(); await saveConfig(); renderAll();
   toast("Nouvelle journée démarrée"); window.go('vente');
