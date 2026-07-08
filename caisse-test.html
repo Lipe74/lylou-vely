@@ -1769,7 +1769,8 @@ function renderJournal(){
       div.innerHTML = `
         <div class="pill ${m.type}">${m.type==='in'?'＋':'－'}</div>
         <div class="m-info"><div class="t">${esc(m.reason)}${payBadge}</div><div class="d">${m.date.split('-').reverse().join('/')} ${m.time}</div></div>
-        <div class="amt ${m.type==='in'?'plus':'minus'}">${m.type==='in'?'+':'−'}${euro(m.amount)}</div>`;
+        <div class="amt ${m.type==='in'?'plus':'minus'}">${m.type==='in'?'+':'−'}${euro(m.amount)}</div>
+        <button class="del" onclick="printSingleMv(${m.id})" style="color:var(--violet);font-size:15px" title="Imprimer">⎙</button>`;
       mvBox.appendChild(div);
     });
   } else {
@@ -1792,6 +1793,36 @@ window.cancelSale = async function(id){
   save(); saveSale(sale);
   renderJournal(); renderCaisse(); renderHeaderKPIs();
   toast("Ticket "+sale.ref+" annulé");
+};
+
+window.printSingleMv = function(id){
+  const m = state.movements.find(x=>x.id===id);
+  if(!m) return;
+  const sign = m.type==='in'?'+':'−';
+  const pm = m.payMode==='card'?'💳 Carte':m.payMode==='cash'?'💶 Liquide':'—';
+  const typeLabel = m.type==='in'?'Entrée':'Sortie';
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+    <title>${esc(SELLER.brand)} — Justificatif</title>
+    <style>body{font-family:Arial,sans-serif;font-size:13px;color:#000;padding:20px;background:#fff;max-width:400px;margin:0 auto}
+    h1{color:#6B3FA0;font-size:20px;text-align:center;margin:0 0 4px}
+    .sub{text-align:center;font-size:11px;color:#777;margin-bottom:16px}
+    .sep{border-top:1px dashed #ccc;margin:12px 0}
+    .row{display:flex;justify-content:space-between;padding:5px 0;font-size:13px}
+    .amt{font-size:22px;font-weight:600;text-align:center;margin:12px 0;color:${m.type==='in'?'green':'red'}}
+    .foot{text-align:center;font-size:10px;color:#999;margin-top:16px;border-top:1px dashed #ccc;padding-top:10px}</style></head><body>
+    <h1>${esc(SELLER.brand)}</h1>
+    <div class="sub">${esc(SELLER.legal)} · TVA ${esc(SELLER.vat)}</div>
+    <div class="sep"></div>
+    <div class="row"><span><b>Type</b></span><span>${typeLabel}</span></div>
+    <div class="row"><span><b>Motif</b></span><span>${esc(m.reason)}</span></div>
+    <div class="row"><span><b>Date</b></span><span>${m.date.split('-').reverse().join('/')} ${m.time}</span></div>
+    <div class="row"><span><b>Mode</b></span><span>${pm}</span></div>
+    <div class="sep"></div>
+    <div class="amt">${sign}${euro(m.amount)}</div>
+    <div class="foot">Justificatif généré le ${new Date().toLocaleString('fr-BE')}<br>${esc(SELLER.brand)}</div>
+    </body></html>`;
+  const w = openPrintWindow(html);
+  if(w) setTimeout(()=>w.print(), 400);
 };
 
 window.printJournalMv = function(){
