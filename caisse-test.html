@@ -1446,7 +1446,11 @@ async function btConnect(){
     if(btDevice && btDevice.gatt.connected) return btChar;
     toast("Connexion à l'imprimante…");
     btDevice = await navigator.bluetooth.requestDevice({
-      acceptAllDevices: true,
+      filters:[
+        {namePrefix:'B23'},
+        {namePrefix:'b23'},
+        {services:[BT_SERVICE]}
+      ],
       optionalServices:[BT_SERVICE]
     });
     const server  = await btDevice.gatt.connect();
