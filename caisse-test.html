@@ -1466,10 +1466,10 @@ async function btConnect(){
 async function btSend(data){
   const char = await btConnect();
   if(!char) return;
-  const CHUNK=512;
+  const CHUNK=128;
   for(let i=0;i<data.length;i+=CHUNK){
     await char.writeValueWithoutResponse(data.slice(i,i+CHUNK));
-    await new Promise(r=>setTimeout(r,20));
+    await new Promise(r=>setTimeout(r,50));
   }
 }
 function escCmd(...bytes){ return new Uint8Array(bytes); }
