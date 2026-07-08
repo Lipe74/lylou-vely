@@ -414,7 +414,14 @@ nav button.on{color:var(--violet)}
           <button onclick="setJournalFilter('week')">Semaine</button>
           <button onclick="setJournalFilter('month')">Mois</button>
           <button onclick="setJournalFilter('all')">Tout</button>
+          <button onclick="setJournalFilter('range')">Période</button>
           <input type="date" id="jr-date-pick" onchange="setJournalDate(this.value)">
+        </div>
+        <div id="jr-range-picker" style="display:none;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center" class="date-filter">
+          <span style="font-size:13px;color:var(--muted)">Du</span>
+          <input type="date" id="jr-range-start" onchange="setJournalRange()">
+          <span style="font-size:13px;color:var(--muted)">au</span>
+          <input type="date" id="jr-range-end" onchange="setJournalRange()">
         </div>
         <div class="big-total"><div class="k">Chiffre d'affaires</div><div class="v" id="jr-ca">0,00 €</div></div>
         <div class="summary">
@@ -1675,13 +1682,32 @@ function buildMvPrintHTML(){
 }
 
 /* ============ JOURNAL ============ */
+let journalRangeStart = '';
+let journalRangeEnd = '';
+
 window.setJournalFilter = function(f){
   journalFilter = f;
   document.querySelectorAll('.date-filter button').forEach(b=>b.classList.remove('on'));
   event.target.classList.add('on');
+  // Afficher/masquer picker période
+  const rp = document.getElementById('jr-range-picker');
+  const dp = document.getElementById('jr-date-pick');
+  if(f==='range'){
+    rp.style.display='flex'; dp.style.display='none';
+    // Init dates si vides
+    if(!journalRangeStart){ journalRangeStart=todayStr(); document.getElementById('jr-range-start').value=journalRangeStart; }
+    if(!journalRangeEnd){ journalRangeEnd=todayStr(); document.getElementById('jr-range-end').value=journalRangeEnd; }
+  } else {
+    rp.style.display='none'; dp.style.display='block';
+  }
   renderJournal();
 };
 window.setJournalDate = function(d){ journalDate = d; renderJournal(); };
+window.setJournalRange = function(){
+  journalRangeStart = document.getElementById('jr-range-start').value;
+  journalRangeEnd = document.getElementById('jr-range-end').value;
+  renderJournal();
+};
 
 function getFilteredSales(){
   const today = journalDate || todayStr();
@@ -1699,6 +1725,11 @@ function getFilteredSales(){
     const mo = today.slice(0,7);
     return all.filter(s=>s.date.startsWith(mo) && !s.cancelled);
   }
+  if(journalFilter==='range' && journalRangeStart && journalRangeEnd){
+    const s = journalRangeStart <= journalRangeEnd ? journalRangeStart : journalRangeEnd;
+    const e = journalRangeStart <= journalRangeEnd ? journalRangeEnd : journalRangeStart;
+    return all.filter(x=>x.date>=s && x.date<=e && !x.cancelled);
+  }
   return all.filter(s=>!s.cancelled);
 }
 
@@ -1710,8 +1741,10 @@ function renderJournal(){
   const qr = s.reduce((a,x)=>a+methodAmount(x,'qr'),0);
   const carte = s.reduce((a,x)=>a+methodAmount(x,'carte'),0);
 
-  const labels = {day:'Journée du', week:'Semaine du', month:'Mois de', all:'Tout l\'historique'};
-  const dateLabel = journalFilter==='all' ? '' : (journalDate||todayStr()).split('-').reverse().join('/');
+  const labels = {day:'Journée du', week:'Semaine du', month:'Mois de', all:'Tout l\'historique', range:'Période'};
+  const dateLabel = journalFilter==='all' ? '' 
+    : journalFilter==='range' ? (journalRangeStart ? journalRangeStart.split('-').reverse().join('/')+' → '+(journalRangeEnd||'...').split('-').reverse().join('/') : '')
+    : (journalDate||todayStr()).split('-').reverse().join('/');
   document.getElementById('journal-date').textContent = labels[journalFilter]+' '+dateLabel;
   document.getElementById('jr-date-pick').value = journalDate || todayStr();
 
@@ -1726,7 +1759,13 @@ function renderJournal(){
   // tickets list (all including cancelled for the filter)
   const filtered = journalFilter==='day'
     ? state.sales.filter(x=>x.date===(journalDate||todayStr()))
-    : (journalFilter==='all' ? state.sales : state.sales.filter(x=>{
+    : journalFilter==='all' ? state.sales
+    : journalFilter==='range' && journalRangeStart && journalRangeEnd ? (()=>{
+        const s=journalRangeStart<=journalRangeEnd?journalRangeStart:journalRangeEnd;
+        const e=journalRangeStart<=journalRangeEnd?journalRangeEnd:journalRangeStart;
+        return state.sales.filter(x=>x.date>=s && x.date<=e);
+      })()
+    : state.sales.filter(x=>{
         const today = journalDate||todayStr();
         if(journalFilter==='week'){
           const d=new Date(today);d.setDate(d.getDate()-d.getDay()+1);
@@ -1734,7 +1773,7 @@ function renderJournal(){
           return x.date>=start && x.date<=d.toISOString().slice(0,10);
         }
         return x.date.startsWith(today.slice(0,7));
-      }));
+      });
   const box = document.getElementById('jr-list');
   if(filtered.length===0){ box.innerHTML='<div class="empty">Aucune vente</div>'; return; }
   box.innerHTML='';
@@ -1931,6 +1970,11 @@ function getFilteredMovements(){
   if(journalFilter==='day') return all.filter(m=>m.date===today);
   if(journalFilter==='week'){ const d=new Date(today);d.setDate(d.getDate()-d.getDay()+1);const start=d.toISOString().slice(0,10);d.setDate(d.getDate()+6);return all.filter(m=>m.date>=start&&m.date<=d.toISOString().slice(0,10)); }
   if(journalFilter==='month') return all.filter(m=>m.date.startsWith(today.slice(0,7)));
+  if(journalFilter==='range' && journalRangeStart && journalRangeEnd){
+    const s = journalRangeStart<=journalRangeEnd?journalRangeStart:journalRangeEnd;
+    const e = journalRangeStart<=journalRangeEnd?journalRangeEnd:journalRangeStart;
+    return all.filter(m=>m.date>=s && m.date<=e);
+  }
   return all;
 }
 function openPrintWindow(htmlContent){
