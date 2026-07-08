@@ -1537,15 +1537,8 @@ function buildTicketESCPOS(sale){
 
 window.btTest = async function(){
   if(!navigator.bluetooth){ toast("Web Bluetooth non supporté"); return; }
-  // Envoyer juste un init + texte simple + feed + cut
-  const ESC=0x1B, GS=0x1D;
-  const data = concatU8(
-    new Uint8Array([ESC,0x40]),           // init
-    new TextEncoder().encode('TEST B23\n'),
-    new TextEncoder().encode('Lylou-Vely\n'),
-    new Uint8Array([ESC,0x64,4]),         // feed
-    new Uint8Array([GS,0x56,0x42,0x00])  // cut
-  );
+  // Test 1 : texte brut uniquement
+  const data = new TextEncoder().encode('TEST LYLOU-VELY\n\n\n\n');
   await btSend(data);
   if(btChar) toast("🖨 Test envoyé !");
 };
