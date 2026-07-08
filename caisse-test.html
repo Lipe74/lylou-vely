@@ -266,7 +266,7 @@ nav button.on{color:var(--violet)}
 <div id="gate">
   <div class="box">
     <div class="mark">Lylou-Vely</div>
-    <div class="sub">Caisse · Build 2.1</div>
+    <div class="sub">Caisse · Build 2.2</div>
     <input type="email" id="gate-email" placeholder="Email" autocomplete="email" value="infos@lylou-vely.be" style="letter-spacing:0">
     <input type="password" id="gate-pw" placeholder="Mot de passe" autocomplete="current-password">
     <button onclick="doLogin()">Connexion</button>
@@ -278,7 +278,7 @@ nav button.on{color:var(--violet)}
 <div id="app" class="hidden">
   <header>
     <div class="hdr-top">
-      <div class="title">Lylou-Vely<small>Caisse · Build 2.1</small></div>
+      <div class="title">Lylou-Vely<small>Caisse · Build 2.2</small></div>
       <button class="refresh-btn" onclick="doRefresh()" title="Recharger les données">🔄</button>
     </div>
     <div class="hdr-kpis">
@@ -1631,7 +1631,6 @@ window.printMovements = function(){
   const area = document.getElementById('mvprint-area');
   area.innerHTML = buildMvPrintHTML();
   document.getElementById('mvprint-overlay').classList.remove('hidden');
-  setTimeout(()=>window.print(),300);
 };
 window.exportMovementsPDF = function(){
   const area = document.getElementById('mvprint-area');
@@ -1639,14 +1638,15 @@ window.exportMovementsPDF = function(){
   document.getElementById('mvprint-overlay').classList.remove('hidden');
   if(!window.html2canvas || !window.jspdf){ toast("PDF indisponible → impression"); window.print(); return; }
   toast("Génération du PDF…");
-  html2canvas(area, {scale:2, backgroundColor:'#ffffff'}).then(canvas=>{
+  const printEl = document.getElementById('mvprint-print');
+  html2canvas(printEl, {scale:2, backgroundColor:'#ffffff', ignoreElements: el=>el.classList.contains('no-print')}).then(canvas=>{
     const { jsPDF } = window.jspdf;
     const pdf = new jsPDF({unit:'mm', format:'a4'});
     const w=190, h=canvas.height*w/canvas.width;
     pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 10, 10, w, h);
-    pdf.save(`mouvements-${state.day}.pdf`);
+    pdf.save(`journal-${state.day}.pdf`);
     closeMvPrint();
-  }).catch(()=>{ toast("Erreur PDF"); });
+  }).catch(e=>{ toast("Erreur PDF : "+e.message); });
 };
 window.closeMvPrint = function(){ document.getElementById('mvprint-overlay').classList.add('hidden'); };
 function buildMvPrintHTML(){
@@ -1772,21 +1772,25 @@ window.printJournal = function(){
   const area = document.getElementById('mvprint-area');
   const s = getFilteredSales();
   const ca = s.reduce((a,x)=>a+x.total,0);
-  let html = `<div style="font-family:Jost;padding:10px;font-size:12px;color:#000">
-    <div style="text-align:center;font-size:22px;font-weight:600;color:#6B3FA0;font-family:Cormorant Garamond">${esc(SELLER.brand)}</div>
+  const esp = s.reduce((a,x)=>a+methodAmount(x,'especes'),0);
+  const qr = s.reduce((a,x)=>a+methodAmount(x,'qr'),0);
+  const carte = s.reduce((a,x)=>a+methodAmount(x,'carte'),0);
+  let html = `<div style="font-family:Arial,sans-serif;padding:20px;font-size:12px;color:#000;background:#fff;min-height:100px">
+    <div style="text-align:center;font-size:22px;font-weight:600;color:#6B3FA0;margin-bottom:4px">${esc(SELLER.brand)}</div>
     <div style="text-align:center;font-size:11px;color:#777;margin-bottom:12px">${esc(SELLER.legal)} · TVA ${esc(SELLER.vat)}</div>
-    <div style="font-weight:600;margin-bottom:8px">${document.getElementById('journal-date').textContent}</div>
-    <div style="font-weight:600;font-size:16px;margin-bottom:10px">CA : ${euro(ca)} — ${s.length} vente(s)</div>`;
+    <div style="font-weight:600;margin-bottom:4px">${document.getElementById('journal-date').textContent}</div>
+    <div style="font-size:15px;font-weight:600;margin-bottom:4px">CA : ${euro(ca)} — ${s.length} vente(s)</div>
+    <div style="font-size:11px;color:#555;margin-bottom:12px">Espèces : ${euro(esp)} · QR : ${euro(qr)} · Carte : ${euro(carte)}</div>
+    <table style="width:100%;border-collapse:collapse;font-size:11px">
+      <tr style="border-bottom:2px solid #333;font-weight:600"><td>Réf.</td><td>Articles</td><td>Mode</td><td style="text-align:right">Total</td></tr>`;
   s.forEach(sale=>{
     const ref = sale.ref||makeRef(sale.num);
-    const names = sale.items.map(i=>i.name+(i.qty>1?'×'+i.qty:'')).join(', ');
-    html += `<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #eee">
-      <span>${ref} ${names}</span><span>${euro(sale.total)} (${METHOD_LABEL[sale.method]})</span></div>`;
+    const names = sale.items.map(i=>i.name+(i.qty>1?' ×'+i.qty:'')).join(', ');
+    html += `<tr style="border-bottom:1px solid #eee"><td style="padding:4px 0">${esc(ref)}</td><td>${esc(names)}</td><td>${METHOD_LABEL[sale.method]}</td><td style="text-align:right">${euro(sale.total)}</td></tr>`;
   });
-  html += `<div style="font-size:10px;color:#999;margin-top:12px;text-align:center">Généré le ${new Date().toLocaleString('fr-BE')}</div></div>`;
+  html += `</table><div style="font-size:10px;color:#999;margin-top:16px;text-align:center">Généré le ${new Date().toLocaleString('fr-BE')}</div></div>`;
   area.innerHTML = html;
   document.getElementById('mvprint-overlay').classList.remove('hidden');
-  setTimeout(()=>window.print(),300);
 };
 
 
@@ -1853,6 +1857,20 @@ window.printZ = function(){
       <div style="font-size:10px;color:#777;text-align:center;margin-top:4px">Pour conserver le fond de caisse de ${euro(state.fond)}</div>` : ''}
     <div class="t-foot">Clôture générée le ${new Date().toLocaleString('fr-BE')}</div>`;
   document.getElementById('ticket-overlay').classList.remove('hidden');
+  // Proposer versement banque si surplus
+  const surplus = theoreticalCash() - state.fond;
+  if(surplus > 0.01){
+    setTimeout(()=>{
+      if(confirm(`💰 Versement banque\n\nVous avez ${euro(surplus)} à retirer.\n\nConfirmer le versement de ${euro(surplus)} vers la banque ?`)){
+        const mv = {id:Date.now(), type:'out', amount:surplus,
+          reason:'Versement banque — clôture Z '+state.day.split('-').reverse().join('/'),
+          payMode:'cash', time:nowTime(), date:state.day};
+        state.movements.push(mv); save(); saveMovement(mv);
+        renderMovements(); renderHeaderKPIs(); renderCaisse();
+        toast("Versement de "+euro(surplus)+" enregistré");
+      }
+    }, 400);
+  }
 };
 
 /* ============ NOUVELLE JOURNÉE / RESET ============ */
