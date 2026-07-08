@@ -437,7 +437,11 @@ nav button.on{color:var(--violet)}
         <div id="jr-list"></div>
       </div>
       <div class="card" id="jr-mv-card" style="display:none">
-        <h3 style="font-size:19px;margin-bottom:10px">Mouvements</h3>
+        <div class="row-btns" style="margin-bottom:10px">
+          <h3 style="font-size:19px;flex:1">Mouvements</h3>
+          <button class="btn btn-outline" style="width:auto;padding:8px 14px;font-size:13px" onclick="downloadJournalMvPDF()">PDF</button>
+          <button class="btn btn-outline" style="width:auto;padding:8px 14px;font-size:13px" onclick="printJournalMv()">Imprimer</button>
+        </div>
         <div id="jr-mv-list"></div>
       </div>
       <div class="card">
@@ -1789,6 +1793,48 @@ window.cancelSale = async function(id){
   renderJournal(); renderCaisse(); renderHeaderKPIs();
   toast("Ticket "+sale.ref+" annulé");
 };
+
+window.printJournalMv = function(){
+  const w = openPrintWindow(buildJournalMvHTML());
+  if(w) setTimeout(()=>w.print(), 400);
+};
+window.downloadJournalMvPDF = function(){
+  const w = openPrintWindow(buildJournalMvHTML());
+  if(w) setTimeout(()=>w.print(), 400);
+};
+function buildJournalMvHTML(){
+  const mvs = getFilteredMovements();
+  const dateLabel = document.getElementById('journal-date').textContent;
+  const totalIn = mvs.filter(m=>m.type==='in').reduce((a,m)=>a+m.amount,0);
+  const totalOut = mvs.filter(m=>m.type==='out').reduce((a,m)=>a+m.amount,0);
+  let html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+    <title>${esc(SELLER.brand)} — Mouvements</title>
+    <style>body{font-family:Arial,sans-serif;font-size:12px;color:#000;padding:20px;background:#fff}
+    h1{color:#6B3FA0;font-size:20px;text-align:center;margin:0 0 4px}
+    .sub{text-align:center;font-size:11px;color:#777;margin-bottom:16px}
+    table{width:100%;border-collapse:collapse}
+    th{border-bottom:2px solid #333;padding:6px 4px;text-align:left;font-size:11px}
+    td{border-bottom:1px solid #eee;padding:5px 4px;font-size:11px}
+    .r{text-align:right}.plus{color:green}.minus{color:red}
+    .tot{font-weight:600;margin-top:12px;font-size:12px}
+    .foot{text-align:center;font-size:10px;color:#999;margin-top:16px}</style></head><body>
+    <h1>${esc(SELLER.brand)}</h1>
+    <div class="sub">${esc(SELLER.legal)} · TVA ${esc(SELLER.vat)}</div>
+    <div style="font-weight:600;margin-bottom:12px">${esc(dateLabel)}</div>
+    <table><thead><tr><th>Type</th><th>Motif</th><th>Date</th><th>Mode</th><th class="r">Montant</th></tr></thead><tbody>`;
+  if(mvs.length===0) html+='<tr><td colspan="5" style="color:#999">Aucun mouvement</td></tr>';
+  [...mvs].forEach(m=>{
+    const sign = m.type==='in'?'+':'−';
+    const pm = m.payMode==='card'?'💳 Carte':m.payMode==='cash'?'💶 Liquide':'—';
+    const cls = m.type==='in'?'plus':'minus';
+    html+=`<tr><td>${sign}</td><td>${esc(m.reason)}</td><td>${m.date.split('-').reverse().join('/')} ${m.time}</td><td>${pm}</td><td class="r ${cls}">${sign}${euro(m.amount)}</td></tr>`;
+  });
+  html+=`</tbody></table>
+    <div class="tot">Total entrées : <span class="plus">+${euro(totalIn)}</span> &nbsp;|&nbsp; Total sorties : <span class="minus">−${euro(totalOut)}</span></div>
+    <div class="foot">Généré le ${new Date().toLocaleString('fr-BE')} — ${esc(SELLER.brand)}</div>
+    </body></html>`;
+  return html;
+}
 
 /* Impression journal */
 function buildJournalHTML(){
