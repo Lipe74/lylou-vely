@@ -266,7 +266,7 @@ nav button.on{color:var(--violet)}
 <div id="gate">
   <div class="box">
     <div class="mark">Lylou-Vely</div>
-    <div class="sub">Caisse · Build 2.1</div>
+    <div class="sub">Caisse · Build 2.2</div>
     <input type="email" id="gate-email" placeholder="Email" autocomplete="email" value="infos@lylou-vely.be" style="letter-spacing:0">
     <input type="password" id="gate-pw" placeholder="Mot de passe" autocomplete="current-password">
     <button onclick="doLogin()">Connexion</button>
@@ -278,7 +278,7 @@ nav button.on{color:var(--violet)}
 <div id="app" class="hidden">
   <header>
     <div class="hdr-top">
-      <div class="title">Lylou-Vely<small>Caisse · Build 2.1</small></div>
+      <div class="title">Lylou-Vely<small>Caisse · Build 2.2</small></div>
       <button class="refresh-btn" onclick="doRefresh()" title="Recharger les données">🔄</button>
     </div>
     <div class="hdr-kpis">
@@ -431,19 +431,14 @@ nav button.on{color:var(--violet)}
       <div class="card">
         <div class="row-btns" style="margin-bottom:10px">
           <h3 style="font-size:19px;flex:1">Tickets</h3>
+          <button class="btn btn-outline" style="width:auto;padding:8px 14px;font-size:13px" onclick="downloadJournalPDF()">PDF</button>
           <button class="btn btn-outline" style="width:auto;padding:8px 14px;font-size:13px" onclick="printJournal()">Imprimer</button>
         </div>
         <div id="jr-list"></div>
       </div>
-      <div class="card">
-        <h3 style="font-size:19px;margin-bottom:10px">Mode</h3>
-        <div class="mode-row">
-          <span class="mode-lbl">Mode actuel</span>
-          <span class="mode-val prod" id="mode-current">PRODUCTION</span>
-        </div>
-        <button class="btn btn-outline" id="btn-to-test" style="margin-top:12px" onclick="switchMode('test')">Passer en mode Test</button>
-        <button class="btn btn-outline" id="btn-to-prod" style="margin-top:12px;display:none" onclick="switchMode('prod')">Revenir en mode Production</button>
-        <p style="font-size:11px;color:var(--muted);text-align:center;margin:10px 0 0">Le mode Test a sa propre caisse d'essai. Rien n'impacte ta compta réelle.</p>
+      <div class="card" id="jr-mv-card" style="display:none">
+        <h3 style="font-size:19px;margin-bottom:10px">Mouvements</h3>
+        <div id="jr-mv-list"></div>
       </div>
       <div class="card">
         <div class="row-btns" style="margin-bottom:10px">
@@ -580,8 +575,7 @@ nav button.on{color:var(--violet)}
     <div class="no-print" style="margin-top:16px">
       <div class="row-btns">
         <button class="btn btn-outline" onclick="closeMvPrint()">Fermer</button>
-        <button class="btn btn-ghost" onclick="downloadMvPDF()">PDF</button>
-        <button class="btn btn-primary" onclick="window.print()">Imprimer</button>
+        <button class="btn btn-ghost" onclick="exportMovementsPDF()">PDF / Imprimer</button>
       </div>
     </div>
   </div>
@@ -976,12 +970,6 @@ window.switchMode = function(target){
 function updateModeUI(){
   const test = mode==='test';
   document.getElementById('test-banner').style.display = test ? 'block' : 'none';
-  // Journal
-  const mc = document.getElementById('mode-current');
-  mc.textContent = test ? 'TEST' : 'PRODUCTION';
-  mc.className = 'mode-val '+(test?'test':'prod');
-  document.getElementById('btn-to-test').style.display = test?'none':'block';
-  document.getElementById('btn-to-prod').style.display = test?'block':'none';
   document.getElementById('reset-zone').style.display = test ? 'block' : 'none';
   // Réglages
   const sm = document.getElementById('settings-mode');
@@ -1631,23 +1619,37 @@ window.printMovements = function(){
   const area = document.getElementById('mvprint-area');
   area.innerHTML = buildMvPrintHTML();
   document.getElementById('mvprint-overlay').classList.remove('hidden');
-  setTimeout(()=>window.print(),300);
 };
 window.exportMovementsPDF = function(){
-  const area = document.getElementById('mvprint-area');
-  area.innerHTML = buildMvPrintHTML();
-  document.getElementById('mvprint-overlay').classList.remove('hidden');
-  if(!window.html2canvas || !window.jspdf){ toast("PDF indisponible → impression"); window.print(); return; }
-  toast("Génération du PDF…");
-  html2canvas(area, {scale:2, backgroundColor:'#ffffff'}).then(canvas=>{
-    const { jsPDF } = window.jspdf;
-    const pdf = new jsPDF({unit:'mm', format:'a4'});
-    const w=190, h=canvas.height*w/canvas.width;
-    pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 10, 10, w, h);
-    pdf.save(`mouvements-${state.day}.pdf`);
-    closeMvPrint();
-  }).catch(()=>{ toast("Erreur PDF"); });
+  const w = openPrintWindow(buildMvPrintWindowHTML());
+  if(w) setTimeout(()=>w.print(), 400);
 };
+function buildMvPrintWindowHTML(){
+  const mvs = dayMovements(state.day);
+  const totalIn = mvs.filter(m=>m.type==='in').reduce((a,m)=>a+m.amount,0);
+  const totalOut = mvs.filter(m=>m.type==='out').reduce((a,m)=>a+m.amount,0);
+  let html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+    <title>${esc(SELLER.brand)} — Mouvements</title>
+    <style>body{font-family:Arial,sans-serif;font-size:12px;color:#000;padding:20px}
+    h1{color:#6B3FA0;font-size:20px;text-align:center;margin:0 0 4px}
+    table{width:100%;border-collapse:collapse}th{border-bottom:2px solid #333;padding:4px;text-align:left}
+    td{border-bottom:1px solid #eee;padding:4px}.r{text-align:right}
+    .foot{text-align:center;font-size:10px;color:#999;margin-top:16px}</style></head><body>
+    <h1>${esc(SELLER.brand)}</h1>
+    <div style="text-align:center;font-size:11px;color:#777;margin-bottom:12px">${esc(SELLER.legal)} · TVA ${esc(SELLER.vat)}</div>
+    <div style="font-weight:600;margin-bottom:12px">Mouvements du ${state.day.split('-').reverse().join('/')}</div>
+    <table><thead><tr><th>Type</th><th>Motif</th><th>Mode</th><th class="r">Montant</th></tr></thead><tbody>`;
+  if(mvs.length===0) html+='<tr><td colspan="4" style="color:#999">Aucun mouvement</td></tr>';
+  mvs.forEach(m=>{
+    const sign=m.type==='in'?'+':'−';
+    const pm=m.payMode==='card'?'Carte':m.payMode==='cash'?'Liquide':'-';
+    html+=`<tr><td>${sign}</td><td>${esc(m.reason)}</td><td>${pm}</td><td class="r">${sign}${euro(m.amount)}</td></tr>`;
+  });
+  html+=`</tbody></table>
+    <div style="margin-top:12px;font-size:11px"><b>Entrées : +${euro(totalIn)}</b> &nbsp;|&nbsp; <b>Sorties : −${euro(totalOut)}</b></div>
+    <div class="foot">Généré le ${new Date().toLocaleString('fr-BE')}</div></body></html>`;
+  return html;
+}
 window.closeMvPrint = function(){ document.getElementById('mvprint-overlay').classList.add('hidden'); };
 function buildMvPrintHTML(){
   const mvs = dayMovements(state.day);
@@ -1748,6 +1750,27 @@ function renderJournal(){
       <div class="amt">${euro(sale.total)}</div>${actions}`;
     box.appendChild(div);
   });
+
+  // Mouvements filtrés
+  const mvs = getFilteredMovements();
+  const mvCard = document.getElementById('jr-mv-card');
+  const mvBox = document.getElementById('jr-mv-list');
+  if(mvs.length > 0){
+    mvCard.style.display = 'block';
+    mvBox.innerHTML = '';
+    [...mvs].reverse().forEach(m=>{
+      const payBadge = (m.type==='out' && m.payMode) ?
+        `<span style="font-size:10px;background:${m.payMode==='cash'?'var(--violet-wash)':'var(--blue-wash)'};color:${m.payMode==='cash'?'var(--violet)':'var(--blue)'};padding:2px 6px;border-radius:6px;margin-left:4px">${m.payMode==='cash'?'💶':'💳'}</span>` : '';
+      const div = document.createElement('div'); div.className = 'mv-line';
+      div.innerHTML = `
+        <div class="pill ${m.type}">${m.type==='in'?'＋':'－'}</div>
+        <div class="m-info"><div class="t">${esc(m.reason)}${payBadge}</div><div class="d">${m.date.split('-').reverse().join('/')} ${m.time}</div></div>
+        <div class="amt ${m.type==='in'?'plus':'minus'}">${m.type==='in'?'+':'−'}${euro(m.amount)}</div>`;
+      mvBox.appendChild(div);
+    });
+  } else {
+    mvCard.style.display = 'none';
+  }
 }
 window.reprint = function(id){ const s=state.sales.find(x=>x.id===id); if(s) showTicket(s); };
 
@@ -1768,25 +1791,85 @@ window.cancelSale = async function(id){
 };
 
 /* Impression journal */
-window.printJournal = function(){
-  const area = document.getElementById('mvprint-area');
+function buildJournalHTML(){
   const s = getFilteredSales();
+  const mvs = getFilteredMovements();
   const ca = s.reduce((a,x)=>a+x.total,0);
-  let html = `<div style="font-family:Jost;padding:10px;font-size:12px;color:#000">
-    <div style="text-align:center;font-size:22px;font-weight:600;color:#6B3FA0;font-family:Cormorant Garamond">${esc(SELLER.brand)}</div>
-    <div style="text-align:center;font-size:11px;color:#777;margin-bottom:12px">${esc(SELLER.legal)} · TVA ${esc(SELLER.vat)}</div>
-    <div style="font-weight:600;margin-bottom:8px">${document.getElementById('journal-date').textContent}</div>
-    <div style="font-weight:600;font-size:16px;margin-bottom:10px">CA : ${euro(ca)} — ${s.length} vente(s)</div>`;
+  const esp = s.reduce((a,x)=>a+methodAmount(x,'especes'),0);
+  const qr = s.reduce((a,x)=>a+methodAmount(x,'qr'),0);
+  const carte = s.reduce((a,x)=>a+methodAmount(x,'carte'),0);
+  const totalIn = mvs.filter(m=>m.type==='in').reduce((a,m)=>a+m.amount,0);
+  const totalOut = mvs.filter(m=>m.type==='out').reduce((a,m)=>a+m.amount,0);
+  const dateLabel = document.getElementById('journal-date').textContent;
+  let html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+    <title>${esc(SELLER.brand)} — Journal</title>
+    <style>body{font-family:Arial,sans-serif;font-size:12px;color:#000;padding:20px;background:#fff}
+    h1{color:#6B3FA0;font-size:20px;text-align:center;margin:0 0 4px}
+    .sub{text-align:center;font-size:11px;color:#777;margin-bottom:16px}
+    .kpis{display:flex;gap:16px;margin-bottom:12px;font-size:11px}
+    .kpi{flex:1;background:#f5f0fa;padding:8px;border-radius:6px;text-align:center}
+    .kpi b{display:block;font-size:14px;color:#6B3FA0}
+    table{width:100%;border-collapse:collapse;margin-bottom:20px}
+    th{border-bottom:2px solid #333;padding:4px;text-align:left;font-size:11px}
+    td{border-bottom:1px solid #eee;padding:4px;font-size:11px}
+    td.r{text-align:right} .sect{font-weight:600;margin:12px 0 6px;font-size:13px}
+    .foot{text-align:center;font-size:10px;color:#999;margin-top:16px}</style></head><body>
+    <h1>${esc(SELLER.brand)}</h1>
+    <div class="sub">${esc(SELLER.legal)} · TVA ${esc(SELLER.vat)}</div>
+    <div style="font-weight:600;margin-bottom:8px">${esc(dateLabel)}</div>
+    <div class="kpis">
+      <div class="kpi"><b>${euro(ca)}</b>CA Total</div>
+      <div class="kpi"><b>${s.length}</b>Ventes</div>
+      <div class="kpi"><b>${euro(esp)}</b>Espèces</div>
+      <div class="kpi"><b>${euro(qr)}</b>QR Code</div>
+      <div class="kpi"><b>${euro(carte)}</b>Carte</div>
+    </div>
+    <div class="sect">Ventes</div>
+    <table><thead><tr><th>Réf.</th><th>Articles</th><th>Mode</th><th style="text-align:right">Total</th></tr></thead><tbody>`;
+  if(s.length===0) html+='<tr><td colspan="4" style="color:#999">Aucune vente</td></tr>';
   s.forEach(sale=>{
-    const ref = sale.ref||makeRef(sale.num);
-    const names = sale.items.map(i=>i.name+(i.qty>1?'×'+i.qty:'')).join(', ');
-    html += `<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #eee">
-      <span>${ref} ${names}</span><span>${euro(sale.total)} (${METHOD_LABEL[sale.method]})</span></div>`;
+    const ref=sale.ref||makeRef(sale.num);
+    const names=sale.items.map(i=>i.name+(i.qty>1?' ×'+i.qty:'')).join(', ');
+    html+=`<tr><td>${esc(ref)}</td><td>${esc(names)}</td><td>${METHOD_LABEL[sale.method]}</td><td class="r">${euro(sale.total)}</td></tr>`;
   });
-  html += `<div style="font-size:10px;color:#999;margin-top:12px;text-align:center">Généré le ${new Date().toLocaleString('fr-BE')}</div></div>`;
-  area.innerHTML = html;
-  document.getElementById('mvprint-overlay').classList.remove('hidden');
-  setTimeout(()=>window.print(),300);
+  html+='</tbody></table>';
+  if(mvs.length>0){
+    html+=`<div class="sect">Mouvements</div>
+    <table><thead><tr><th>Type</th><th>Motif</th><th>Mode</th><th style="text-align:right">Montant</th></tr></thead><tbody>`;
+    mvs.forEach(m=>{
+      const sign=m.type==='in'?'+':'−';
+      const pm=m.payMode==='card'?'💳 Carte':m.payMode==='cash'?'💶 Liquide':'-';
+      html+=`<tr><td>${sign}</td><td>${esc(m.reason)}</td><td>${pm}</td><td class="r" style="color:${m.type==='in'?'green':'red'}">${sign}${euro(m.amount)}</td></tr>`;
+    });
+    html+=`</tbody></table>
+    <div style="font-size:11px"><b>Total entrées : +${euro(totalIn)}</b> &nbsp;|&nbsp; <b>Total sorties : −${euro(totalOut)}</b></div>`;
+  }
+  html+=`<div class="foot">Généré le ${new Date().toLocaleString('fr-BE')} — ${esc(SELLER.brand)}</div></body></html>`;
+  return html;
+}
+function getFilteredMovements(){
+  const today = journalDate||todayStr();
+  const all = state.movements;
+  if(journalFilter==='all') return all;
+  if(journalFilter==='day') return all.filter(m=>m.date===today);
+  if(journalFilter==='week'){ const d=new Date(today);d.setDate(d.getDate()-d.getDay()+1);const start=d.toISOString().slice(0,10);d.setDate(d.getDate()+6);return all.filter(m=>m.date>=start&&m.date<=d.toISOString().slice(0,10)); }
+  if(journalFilter==='month') return all.filter(m=>m.date.startsWith(today.slice(0,7)));
+  return all;
+}
+function openPrintWindow(htmlContent){
+  const w = window.open('','_blank','width=800,height=600');
+  if(!w){ toast("Popup bloqué — autorise les popups pour imprimer"); return null; }
+  w.document.write(htmlContent);
+  w.document.close();
+  return w;
+}
+window.printJournal = function(){
+  const w = openPrintWindow(buildJournalHTML());
+  if(w) setTimeout(()=>{ w.print(); }, 400);
+};
+window.downloadJournalPDF = function(){
+  const w = openPrintWindow(buildJournalHTML());
+  if(w){ toast("Utilise 'Enregistrer en PDF' dans la fenêtre d'impression"); setTimeout(()=>w.print(),400); }
 };
 
 
@@ -1853,6 +1936,20 @@ window.printZ = function(){
       <div style="font-size:10px;color:#777;text-align:center;margin-top:4px">Pour conserver le fond de caisse de ${euro(state.fond)}</div>` : ''}
     <div class="t-foot">Clôture générée le ${new Date().toLocaleString('fr-BE')}</div>`;
   document.getElementById('ticket-overlay').classList.remove('hidden');
+  // Proposer versement banque si surplus
+  const surplus = theoreticalCash() - state.fond;
+  if(surplus > 0.01){
+    setTimeout(()=>{
+      if(confirm(`💰 Versement banque\n\nVous avez ${euro(surplus)} à retirer.\n\nConfirmer le versement de ${euro(surplus)} vers la banque ?`)){
+        const mv = {id:Date.now(), type:'out', amount:surplus,
+          reason:'Versement banque — clôture Z '+state.day.split('-').reverse().join('/'),
+          payMode:'cash', time:nowTime(), date:state.day};
+        state.movements.push(mv); save(); saveMovement(mv);
+        renderMovements(); renderHeaderKPIs(); renderCaisse();
+        toast("Versement de "+euro(surplus)+" enregistré");
+      }
+    }, 400);
+  }
 };
 
 /* ============ NOUVELLE JOURNÉE / RESET ============ */
