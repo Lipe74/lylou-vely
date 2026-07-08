@@ -441,16 +441,6 @@ nav button.on{color:var(--violet)}
         <div id="jr-mv-list"></div>
       </div>
       <div class="card">
-        <h3 style="font-size:19px;margin-bottom:10px">Mode</h3>
-        <div class="mode-row">
-          <span class="mode-lbl">Mode actuel</span>
-          <span class="mode-val prod" id="mode-current">PRODUCTION</span>
-        </div>
-        <button class="btn btn-outline" id="btn-to-test" style="margin-top:12px" onclick="switchMode('test')">Passer en mode Test</button>
-        <button class="btn btn-outline" id="btn-to-prod" style="margin-top:12px;display:none" onclick="switchMode('prod')">Revenir en mode Production</button>
-
-      </div>
-      <div class="card">
         <div class="row-btns" style="margin-bottom:10px">
           <button class="btn btn-outline" onclick="exportCSV()">Exporter (CSV)</button>
           <button class="btn btn-ghost" onclick="printZ()">Clôture Z</button>
@@ -980,12 +970,6 @@ window.switchMode = function(target){
 function updateModeUI(){
   const test = mode==='test';
   document.getElementById('test-banner').style.display = test ? 'block' : 'none';
-  // Journal
-  const mc = document.getElementById('mode-current');
-  mc.textContent = test ? 'TEST' : 'PRODUCTION';
-  mc.className = 'mode-val '+(test?'test':'prod');
-  document.getElementById('btn-to-test').style.display = test?'none':'block';
-  document.getElementById('btn-to-prod').style.display = test?'block':'none';
   document.getElementById('reset-zone').style.display = test ? 'block' : 'none';
   // Réglages
   const sm = document.getElementById('settings-mode');
