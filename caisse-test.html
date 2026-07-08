@@ -436,6 +436,10 @@ nav button.on{color:var(--violet)}
         </div>
         <div id="jr-list"></div>
       </div>
+      <div class="card" id="jr-mv-card" style="display:none">
+        <h3 style="font-size:19px;margin-bottom:10px">Mouvements</h3>
+        <div id="jr-mv-list"></div>
+      </div>
       <div class="card">
         <h3 style="font-size:19px;margin-bottom:10px">Mode</h3>
         <div class="mode-row">
@@ -444,7 +448,7 @@ nav button.on{color:var(--violet)}
         </div>
         <button class="btn btn-outline" id="btn-to-test" style="margin-top:12px" onclick="switchMode('test')">Passer en mode Test</button>
         <button class="btn btn-outline" id="btn-to-prod" style="margin-top:12px;display:none" onclick="switchMode('prod')">Revenir en mode Production</button>
-        <p style="font-size:11px;color:var(--muted);text-align:center;margin:10px 0 0">Le mode Test a sa propre caisse d'essai. Rien n'impacte ta compta réelle.</p>
+
       </div>
       <div class="card">
         <div class="row-btns" style="margin-bottom:10px">
@@ -1641,6 +1645,7 @@ function buildMvPrintWindowHTML(){
   const totalIn = mvs.filter(m=>m.type==='in').reduce((a,m)=>a+m.amount,0);
   const totalOut = mvs.filter(m=>m.type==='out').reduce((a,m)=>a+m.amount,0);
   let html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+    <title>${esc(SELLER.brand)} — Mouvements</title>
     <style>body{font-family:Arial,sans-serif;font-size:12px;color:#000;padding:20px}
     h1{color:#6B3FA0;font-size:20px;text-align:center;margin:0 0 4px}
     table{width:100%;border-collapse:collapse}th{border-bottom:2px solid #333;padding:4px;text-align:left}
@@ -1761,6 +1766,27 @@ function renderJournal(){
       <div class="amt">${euro(sale.total)}</div>${actions}`;
     box.appendChild(div);
   });
+
+  // Mouvements filtrés
+  const mvs = getFilteredMovements();
+  const mvCard = document.getElementById('jr-mv-card');
+  const mvBox = document.getElementById('jr-mv-list');
+  if(mvs.length > 0){
+    mvCard.style.display = 'block';
+    mvBox.innerHTML = '';
+    [...mvs].reverse().forEach(m=>{
+      const payBadge = (m.type==='out' && m.payMode) ?
+        `<span style="font-size:10px;background:${m.payMode==='cash'?'var(--violet-wash)':'var(--blue-wash)'};color:${m.payMode==='cash'?'var(--violet)':'var(--blue)'};padding:2px 6px;border-radius:6px;margin-left:4px">${m.payMode==='cash'?'💶':'💳'}</span>` : '';
+      const div = document.createElement('div'); div.className = 'mv-line';
+      div.innerHTML = `
+        <div class="pill ${m.type}">${m.type==='in'?'＋':'－'}</div>
+        <div class="m-info"><div class="t">${esc(m.reason)}${payBadge}</div><div class="d">${m.date.split('-').reverse().join('/')} ${m.time}</div></div>
+        <div class="amt ${m.type==='in'?'plus':'minus'}">${m.type==='in'?'+':'−'}${euro(m.amount)}</div>`;
+      mvBox.appendChild(div);
+    });
+  } else {
+    mvCard.style.display = 'none';
+  }
 }
 window.reprint = function(id){ const s=state.sales.find(x=>x.id===id); if(s) showTicket(s); };
 
@@ -1792,6 +1818,7 @@ function buildJournalHTML(){
   const totalOut = mvs.filter(m=>m.type==='out').reduce((a,m)=>a+m.amount,0);
   const dateLabel = document.getElementById('journal-date').textContent;
   let html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+    <title>${esc(SELLER.brand)} — Journal</title>
     <style>body{font-family:Arial,sans-serif;font-size:12px;color:#000;padding:20px;background:#fff}
     h1{color:#6B3FA0;font-size:20px;text-align:center;margin:0 0 4px}
     .sub{text-align:center;font-size:11px;color:#777;margin-bottom:16px}
