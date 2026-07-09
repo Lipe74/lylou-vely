@@ -44,7 +44,7 @@ input,select{font-family:inherit;font-size:16px}
 
 /* Header */
 header{background:linear-gradient(160deg,var(--violet) 0%,var(--violet-d) 100%);color:#fff;padding:12px 14px;position:sticky;top:0;z-index:50;box-shadow:0 3px 14px rgba(81,46,122,.25);transition:background .3s}
-header.test-mode{background:linear-gradient(160deg,#b8860b 0%,#8b6508 100%);box-shadow:0 3px 14px rgba(184,134,11,.35)}
+header.test-mode{background:linear-gradient(160deg,#e65c00 0%,#c44b00 100%);box-shadow:0 3px 14px rgba(230,92,0,.4)}
 .hdr-top{display:flex;align-items:center;justify-content:space-between}
 .hdr-top .title{font-family:'Cormorant Garamond',serif;font-size:22px;line-height:1}
 .hdr-top .title small{display:block;font-family:'Jost';font-size:10px;letter-spacing:3px;opacity:.8;text-transform:uppercase;margin-top:2px}
@@ -280,7 +280,10 @@ nav button.on{color:var(--violet)}
   <header>
     <div class="hdr-top">
       <div class="title">Lylou-Vely<small>Caisse · Build 2.2</small></div>
-      <button class="refresh-btn" onclick="doRefresh()" title="Recharger les données">🔄</button>
+      <div style="display:flex;gap:6px;align-items:center">
+        <button id="hdr-mode-btn" class="refresh-btn" onclick="toggleMode()" title="Basculer Prod/Test" style="font-size:12px;padding:6px 10px;font-weight:600;letter-spacing:.5px">PROD</button>
+        <button class="refresh-btn" onclick="doRefresh()" title="Recharger les données">🔄</button>
+      </div>
     </div>
     <div class="hdr-kpis">
       <div class="hdr-kpi"><span>Fond</span><b id="hdr-fond">0,00 €</b></div>
@@ -401,7 +404,6 @@ nav button.on{color:var(--violet)}
           <h3 style="font-size:19px;flex:1">Mouvements du jour</h3>
           <button class="btn btn-outline" style="width:auto;padding:8px 14px;font-size:13px" onclick="exportMovementsPDF()">PDF</button>
           <button class="btn btn-outline" style="width:auto;padding:8px 14px;font-size:13px" onclick="printMovements()">Imprimer</button>
-          <button class="btn btn-primary" style="width:auto;padding:8px 14px;font-size:13px" onclick="openVirement()">💰 Versement</button>
         </div>
         <div id="mv-list"></div>
       </div>
@@ -1006,11 +1008,23 @@ window.switchMode = function(target){
   toast(mode==='test' ? "Mode Test activé" : "Mode Production activé");
   window.go('vente');
 };
+window.toggleMode = function(){
+  const target = mode==='prod' ? 'test' : 'prod';
+  const msg = target==='test'
+    ? "Passer en MODE TEST ?\nCaisse d'essai séparée."
+    : "Revenir en MODE PRODUCTION ?\nRetour à la vraie caisse.";
+  if(!confirm(msg)) return;
+  window.switchMode(target);
+};
+
 function updateModeUI(){
   const test = mode==='test';
   document.getElementById('test-banner').style.display = test ? 'block' : 'none';
   document.getElementById('reset-zone').style.display = test ? 'block' : 'none';
   document.querySelector('header').classList.toggle('test-mode', test);
+  // Bouton bascule header
+  const btn = document.getElementById('hdr-mode-btn');
+  if(btn){ btn.textContent = test ? 'TEST' : 'PROD'; btn.style.background = test ? 'rgba(255,255,255,0.35)' : 'rgba(255,255,255,0.18)'; }
   // Réglages
   const sm = document.getElementById('settings-mode');
   if(sm){ sm.textContent = test ? 'TEST' : 'PRODUCTION'; sm.className = 'mode-val '+(test?'test':'prod'); }
