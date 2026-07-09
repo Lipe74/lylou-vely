@@ -267,7 +267,7 @@ nav button.on{color:var(--violet)}
 <div id="gate">
   <div class="box">
     <div class="mark">Lylou-Vely</div>
-    <div class="sub">Caisse · Build 2.2</div>
+    <div class="sub">Caisse · Build 3.0</div>
     <input type="email" id="gate-email" placeholder="Email" autocomplete="email" value="infos@lylou-vely.be" style="letter-spacing:0">
     <input type="password" id="gate-pw" placeholder="Mot de passe" autocomplete="current-password">
     <button onclick="doLogin()">Connexion</button>
@@ -279,7 +279,7 @@ nav button.on{color:var(--violet)}
 <div id="app" class="hidden">
   <header>
     <div class="hdr-top">
-      <div class="title">Lylou-Vely<small>Caisse · Build 2.2</small></div>
+      <div class="title">Lylou-Vely<small>Caisse · Build 3.0</small></div>
       <div style="display:flex;gap:6px;align-items:center">
         <button id="hdr-mode-btn" class="refresh-btn" onclick="toggleMode()" title="Basculer Prod/Test" style="font-size:12px;padding:6px 10px;font-weight:600;letter-spacing:.5px">PROD</button>
         <button class="refresh-btn" onclick="doRefresh()" title="Recharger les données">🔄</button>
@@ -352,56 +352,6 @@ nav button.on{color:var(--violet)}
     </section>
 
     <!-- ===== MOUVEMENTS ===== -->
-    <section class="tab" id="tab-mouv">
-      <h1 class="section-title">Entrées / Sorties</h1>
-      <p class="section-sub">Sorties de caisse (paiement stand, achats…) et entrées.</p>
-      <div class="card">
-        <div class="seg">
-          <button id="mv-in" class="on" onclick="setMvType('in')">＋ Entrée</button>
-          <button id="mv-out" onclick="setMvType('out')">－ Sortie</button>
-        </div>
-        <div class="field"><label>Montant (€)</label><input type="number" inputmode="decimal" id="mv-amount" placeholder="0,00" step="0.01"></div>
-        <div class="field"><label>Motif</label><input type="text" id="mv-reason" placeholder="Ex. : location emplacement"></div>
-        <div id="mv-payment-mode" style="display:none;margin-bottom:12px">
-          <label style="font-size:13px;color:var(--muted);display:block;margin-bottom:6px">Mode de paiement de la sortie</label>
-          <div class="seg" style="max-width:280px">
-            <button id="mvp-cash" class="on" onclick="setMvPayMode('cash')">💶 Liquide</button>
-            <button id="mvp-card" onclick="setMvPayMode('card')">💳 Carte</button>
-          </div>
-        </div>
-        <button class="btn btn-primary" onclick="addMovement()">Enregistrer le mouvement</button>
-      </div>
-
-      <div class="card">
-        <h3 style="font-size:17px;margin-bottom:10px">Raccourcis</h3>
-        <div class="quick-mv">
-          <div class="qm-row">
-            <div class="qm-icon" style="background:var(--red-wash);color:var(--red)">🏪</div>
-            <div class="qm-info">
-              <b>Paiement stand</b>
-              <input type="number" inputmode="decimal" id="qm-stand-amt" placeholder="Montant €" step="0.01" style="width:90px">
-              <input type="text" id="qm-stand-note" placeholder="Ex. : Marché Beaufays" style="flex:1">
-              <div class="seg" style="width:100%;margin-top:4px">
-                <button id="qs-cash" class="on" onclick="setQsMode('cash')">💶 Liquide</button>
-                <button id="qs-card" onclick="setQsMode('card')">💳 Carte</button>
-              </div>
-            </div>
-            <button class="btn btn-danger" style="width:auto;padding:10px 14px;font-size:13px" onclick="quickStand()">OK</button>
-          </div>
-
-        </div>
-      </div>
-      <div class="card">
-        <div class="row-btns" style="margin-bottom:10px">
-          <h3 style="font-size:19px;flex:1">Mouvements du jour</h3>
-          <button class="btn btn-outline" style="width:auto;padding:8px 14px;font-size:13px" onclick="exportMovementsPDF()">PDF</button>
-          <button class="btn btn-outline" style="width:auto;padding:8px 14px;font-size:13px" onclick="printMovements()">Imprimer</button>
-          <button class="btn btn-primary" style="width:auto;padding:8px 14px;font-size:13px" onclick="openVirement()">💰 Versement</button>
-        </div>
-        <div id="mv-list"></div>
-      </div>
-    </section>
-
     <!-- ===== JOURNAL ===== -->
     <section class="tab" id="tab-journal">
       <h1 class="section-title">Journal</h1>
@@ -449,6 +399,48 @@ nav button.on{color:var(--violet)}
         </div>
         <div id="jr-mv-list"></div>
       </div>
+      <!-- Formulaire entrée/sortie intégré -->
+      <div class="card">
+        <h3 style="font-size:19px;margin-bottom:12px">Entrées / Sorties</h3>
+        <div style="display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap">
+          <div class="seg" style="flex:0 0 auto">
+            <button id="mv-in" class="on" onclick="setMvType('in')">＋ Entrée</button>
+            <button id="mv-out" onclick="setMvType('out')">－ Sortie</button>
+          </div>
+          <input type="number" inputmode="decimal" id="mv-amount" placeholder="Montant €" step="0.01" style="flex:0 0 110px;padding:10px;border:1.5px solid var(--line);border-radius:10px;font-size:14px">
+          <input type="text" id="mv-reason" placeholder="Motif (ex. : stand, achat…)" style="flex:1;min-width:120px;padding:10px;border:1.5px solid var(--line);border-radius:10px;font-size:14px">
+          <button class="btn btn-primary" style="flex:0 0 auto;padding:10px 16px" onclick="addMovement()">OK</button>
+        </div>
+        <div id="mv-payment-mode" style="display:none;margin-top:10px">
+          <div class="seg" style="max-width:280px">
+            <button id="mvp-cash" class="on" onclick="setMvPayMode('cash')">💶 Liquide</button>
+            <button id="mvp-card" onclick="setMvPayMode('card')">💳 Carte</button>
+          </div>
+        </div>
+        <!-- Raccourci paiement stand -->
+        <div style="margin-top:12px;padding-top:12px;border-top:1px dashed var(--line)">
+          <div style="display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap">
+            <span style="font-size:13px;color:var(--muted);padding-top:11px;white-space:nowrap">🏪 Stand</span>
+            <input type="number" inputmode="decimal" id="qm-stand-amt" placeholder="Montant €" step="0.01" style="flex:0 0 110px;padding:10px;border:1.5px solid var(--line);border-radius:10px;font-size:14px">
+            <input type="text" id="qm-stand-note" placeholder="Ex. : Marché Beaufays" style="flex:1;min-width:120px;padding:10px;border:1.5px solid var(--line);border-radius:10px;font-size:14px">
+            <button class="btn btn-danger" style="flex:0 0 auto;padding:10px 16px;font-size:13px" onclick="quickStand()">OK</button>
+          </div>
+          <div class="seg" style="max-width:280px;margin-top:8px">
+            <button id="qs-cash" class="on" onclick="setQsMode('cash')">💶 Liquide</button>
+            <button id="qs-card" onclick="setQsMode('card')">💳 Carte</button>
+          </div>
+        </div>
+      </div>
+      <!-- Liste mouvements du jour -->
+      <div class="card">
+        <div class="row-btns" style="margin-bottom:10px">
+          <h3 style="font-size:19px;flex:1">Mouvements du jour</h3>
+          <button class="btn btn-outline" style="width:auto;padding:8px 14px;font-size:13px" onclick="exportMovementsPDF()">PDF</button>
+          <button class="btn btn-outline" style="width:auto;padding:8px 14px;font-size:13px" onclick="printMovements()">Imprimer</button>
+          <button class="btn btn-primary" style="width:auto;padding:8px 14px;font-size:13px" onclick="openVirement()">💰 Versement</button>
+        </div>
+        <div id="mv-list"></div>
+      </div>
       <div class="card">
         <div class="row-btns" style="margin-bottom:10px">
           <button class="btn btn-outline" onclick="exportCSV()">Exporter (CSV)</button>
@@ -472,10 +464,6 @@ nav button.on{color:var(--violet)}
     <button id="nav-caisse" onclick="go('caisse')">
       <svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/></svg>
       Caisse
-    </button>
-    <button id="nav-mouv" onclick="go('mouv')">
-      <svg viewBox="0 0 24 24"><path d="M7 17V7m0 0-3 3m3-3 3 3"/><path d="M17 7v10m0 0 3-3m-3 3-3-3"/></svg>
-      Mouvements
     </button>
     <button id="nav-journal" onclick="go('journal')">
       <svg viewBox="0 0 24 24"><path d="M5 3h11l3 3v15H5z"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>
@@ -978,8 +966,7 @@ window.go = function(tab){
   document.getElementById('nav-'+tab).classList.add('on');
   window.scrollTo(0,0);
   if(tab==='caisse') renderCaisse();
-  if(tab==='mouv') renderMovements();
-  if(tab==='journal') renderJournal();
+  if(tab==='journal'){ renderJournal(); renderMovements(); }
 };
 
 /* ---- Refresh ---- */
@@ -1665,10 +1652,11 @@ function renderMovements(){
   [...mvs].reverse().forEach(m=>{
     const payBadge = (m.type==='out' && m.payMode) ?
       `<span style="font-size:10px;background:${m.payMode==='cash'?'var(--violet-wash)':'var(--blue-wash)'};color:${m.payMode==='cash'?'var(--violet)':'var(--blue)'};padding:2px 6px;border-radius:6px;margin-left:4px">${m.payMode==='cash'?'💶 Liquide':'💳 Carte'}</span>` : '';
+    const bancedBadge = m.banked ? `<span style="font-size:10px;background:#e6f4ea;color:#2e9e6b;padding:2px 6px;border-radius:6px;margin-left:4px">✓ Bancé</span>` : '';
     const div=document.createElement('div'); div.className='mv-line';
     div.innerHTML = `
       <div class="pill ${m.type}">${m.type==='in'?'＋':'－'}</div>
-      <div class="m-info"><div class="t">${esc(m.reason)}${payBadge}</div><div class="d">${m.time}</div></div>
+      <div class="m-info"><div class="t">${esc(m.reason)}${payBadge}${bancedBadge}</div><div class="d">${m.time}</div></div>
       <div class="amt ${m.type==='in'?'plus':'minus'}">${m.type==='in'?'+':'−'}${euro(m.amount)}</div>
       <button class="del" onclick="delMovement(${m.id})" style="color:var(--muted);font-size:16px">✕</button>`;
     box.appendChild(div);
