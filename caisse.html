@@ -574,7 +574,6 @@ nav button.on{color:var(--violet)}
       <div class="row-btns">
         <button class="btn btn-outline" onclick="closeTicket()">Fermer</button>
         <button class="btn btn-ghost" onclick="downloadPDF()">PDF</button>
-        <button class="btn btn-ghost" onclick="btPrintTicket()" id="bt-print-btn">🖨 BT</button>
         <button class="btn btn-primary" onclick="window.print()">Imprimer</button>
       </div>
     </div>
@@ -638,7 +637,6 @@ nav button.on{color:var(--violet)}
       <button class="btn btn-outline" id="settings-to-prod" style="margin-top:12px;display:none" onclick="closeSettings();switchMode('prod')">Revenir en mode Production</button>
     </div>
 
-    <button class="btn btn-outline" style="margin-top:12px" onclick="btTest()">🖨 Test imprimante BT</button>
     <button class="btn btn-outline" style="margin-top:8px" onclick="closeSettings()">Fermer</button>
   </div>
 </div>
@@ -1439,121 +1437,6 @@ function showTicket(sale){
 window.closeTicket = function(){ document.getElementById('ticket-overlay').classList.add('hidden'); };
 
 /* Export PDF du ticket */
-/* ============ WEB BLUETOOTH — Aiyin B23 ESC/POS ============ */
-const BT_SERVICE = 0xFF00;
-const BT_WRITE   = 0xFF02;
-let btDevice = null;
-let btChar   = null;
-
-async function btConnect(){
-  try{
-    if(btDevice && btDevice.gatt.connected) return btChar;
-    toast("Connexion à l'imprimante…");
-    btDevice = await navigator.bluetooth.requestDevice({
-      filters:[
-        {namePrefix:'B23'},
-        {namePrefix:'b23'},
-        {services:[BT_SERVICE]}
-      ],
-      optionalServices:[BT_SERVICE]
-    });
-    const server  = await btDevice.gatt.connect();
-    const service = await server.getPrimaryService(BT_SERVICE);
-    btChar = await service.getCharacteristic(BT_WRITE);
-    toast("✅ Imprimante connectée !");
-    return btChar;
-  }catch(e){
-    toast("❌ BT : "+e.message);
-    return null;
-  }
-}
-async function btSend(data){
-  const char = await btConnect();
-  if(!char) return;
-  const CHUNK=128;
-  for(let i=0;i<data.length;i+=CHUNK){
-    try{
-      await char.writeValue(data.slice(i,i+CHUNK));
-    }catch(e){
-      await char.writeValueWithoutResponse(data.slice(i,i+CHUNK));
-    }
-    await new Promise(r=>setTimeout(r,80));
-  }
-}
-function escCmd(...bytes){ return new Uint8Array(bytes); }
-function escText(str){ return new TextEncoder().encode(str+'\n'); }
-function escCols(l,r,w=32){ const sp=Math.max(1,w-l.length-r.length); return new TextEncoder().encode(l+' '.repeat(sp)+r+'\n'); }
-function escLine(){ return new TextEncoder().encode('--------------------------------\n'); }
-function concatU8(...arrs){ let t=0;arrs.forEach(a=>t+=a.length);const o=new Uint8Array(t);let i=0;arrs.forEach(a=>{o.set(a,i);i+=a.length;});return o; }
-
-function buildTicketESCPOS(sale){
-  const ESC=0x1B,GS=0x1D;
-  const ref=sale.ref||makeRef(sale.num);
-  const parts=[
-    escCmd(ESC,0x40),                          // init
-    escCmd(ESC,0x61,0x01),                     // center
-    escCmd(GS,0x21,0x11),escCmd(ESC,0x45,1),  // double + bold
-    escText(SELLER.brand),
-    escCmd(GS,0x21,0x00),escCmd(ESC,0x45,0),  // normal
-    escText(SELLER.tagline),
-    escText(SELLER.legal),
-    escText('TVA '+SELLER.vat),
-    escLine(),
-    escCmd(ESC,0x61,0x00),                     // left
-    escCols('Recu n\xb0',ref),
-    escCols(sale.date.split('-').reverse().join('/'),sale.time),
-    escLine(),
-  ];
-  sale.items.forEach(it=>parts.push(escCols(it.name+' x'+it.qty,euro(it.price*it.qty))));
-  if(sale.discount&&sale.discount.amount>0){
-    const dl=sale.discount.type==='euro'?'Remise -'+euro(sale.discount.value):sale.discount.type==='percent'?'Remise -'+sale.discount.value+'%':sale.discount.motif||'Promo';
-    parts.push(escCols('Sous-total',euro(sale.subtotal||sale.total+sale.discount.amount)));
-    parts.push(escCols(dl,'-'+euro(sale.discount.amount)));
-  }
-  parts.push(
-    escLine(),
-    escCols('HTVA',euro(htva(sale.total))),
-    escCols('TVA 21%',euro(tvaAmount(sale.total))),
-    escLine(),
-    escCmd(ESC,0x45,1),escCmd(GS,0x21,0x11),
-    escCols('TOTAL TVAC',euro(sale.total)),
-    escCmd(GS,0x21,0x00),escCmd(ESC,0x45,0),
-    escLine(),
-  );
-  if(sale.payments&&sale.payments.length>1){
-    sale.payments.forEach(pp=>parts.push(escCols(METHOD_LABEL[pp.method],euro(pp.amount))));
-  } else { parts.push(escText('Paiement : '+METHOD_LABEL[sale.method])); }
-  const cp=sale.payments?sale.payments.find(x=>x.method==='especes'):null;
-  if(cp&&cp.extra&&cp.extra.rendu>0){
-    parts.push(escCols('Recu',euro(cp.extra.recu)),escCols('Rendu',euro(cp.extra.rendu)));
-  }
-  parts.push(
-    escLine(),
-    escCmd(ESC,0x61,0x01),
-    escText(sale.cancelled?'*** ANNULE ***':'*** PAYE ***'),
-    escLine(),
-  );
-  TICKET_FOOTER.forEach(l=>parts.push(escText(l)));
-  parts.push(escCmd(ESC,0x64,4),escCmd(GS,0x56,0x42,0x00)); // feed + cut
-  return concatU8(...parts);
-}
-
-window.btTest = async function(){
-  if(!navigator.bluetooth){ toast("Web Bluetooth non supporté"); return; }
-  // Test 1 : texte brut uniquement
-  const data = new TextEncoder().encode('TEST LYLOU-VELY\n\n\n\n');
-  await btSend(data);
-  if(btChar) toast("🖨 Test envoyé !");
-};
-
-window.btPrintTicket = async function(){
-  if(!navigator.bluetooth){ toast("Web Bluetooth non supporté"); return; }
-  const sale = state.sales.find(s=>(s.ref||makeRef(s.num))===currentTicketRef);
-  if(!sale){ toast("Ticket introuvable"); return; }
-  await btSend(buildTicketESCPOS(sale));
-  if(btChar) toast("🖨 Ticket envoyé !");
-};
-
 window.downloadPDF = function(){
   const area = document.getElementById('ticket-area');
   if(!window.html2canvas || !window.jspdf){
