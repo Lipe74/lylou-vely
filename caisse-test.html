@@ -388,15 +388,7 @@ nav button.on{color:var(--violet)}
             </div>
             <button class="btn btn-danger" style="width:auto;padding:10px 14px;font-size:13px" onclick="quickStand()">OK</button>
           </div>
-          <div class="qm-row">
-            <div class="qm-icon" style="background:var(--green-wash);color:var(--green)">🏦</div>
-            <div class="qm-info">
-              <b>Versement banque</b>
-              <input type="number" inputmode="decimal" id="qm-bank-amt" placeholder="Montant €" step="0.01" style="width:90px">
-              <input type="text" id="qm-bank-note" placeholder="Ex. : recette 06/07" style="flex:1">
-            </div>
-            <button class="btn btn-danger" style="width:auto;padding:10px 14px;font-size:13px" onclick="quickBank()">OK</button>
-          </div>
+
         </div>
       </div>
       <div class="card">
@@ -404,6 +396,7 @@ nav button.on{color:var(--violet)}
           <h3 style="font-size:19px;flex:1">Mouvements du jour</h3>
           <button class="btn btn-outline" style="width:auto;padding:8px 14px;font-size:13px" onclick="exportMovementsPDF()">PDF</button>
           <button class="btn btn-outline" style="width:auto;padding:8px 14px;font-size:13px" onclick="printMovements()">Imprimer</button>
+          <button class="btn btn-primary" style="width:auto;padding:8px 14px;font-size:13px" onclick="openVirement()">💰 Versement</button>
         </div>
         <div id="mv-list"></div>
       </div>
