@@ -2078,11 +2078,9 @@ window.printZ = function(){
 };
 
 /* ============ NOUVELLE JOURNÉE / RESET ============ */
-window.newDay = async function(){
+window.newDay = function(){
   if(!confirm("Nouvelle journée ?\n\nL'historique est conservé.\nLe fond de caisse et la numérotation sont conservés.\n\nPense à faire ta clôture Z avant.")) return;
-  state.day = todayStr();
-  save(); await saveConfig(); renderAll();
-  toast("Nouvelle journée démarrée"); window.go('vente');
+  showFondConfirmation();
 };
 window.resetAll = async function(){
   if(!confirm("⚠️ REMISE À ZÉRO COMPLÈTE (tests)\n\nTout est effacé, numérotation repartie à "+makeRef(TICKET_START)+".\nArticles conservés.")) return;
