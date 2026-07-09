@@ -262,21 +262,22 @@ const firebaseConfig = {
 };
 const fbApp = initializeApp(firebaseConfig);
 const db = getFirestore(fbApp);
-const CLIENTS_PATH = 'lylou_vely/fidelite/clients';
+const CLIENTS_COL = collection(db, 'lylou_vely', 'fidelite', 'clients');
+const clientDoc = (email) => doc(db, 'lylou_vely', 'fidelite', 'clients', email);
 
 // ===== API FIREBASE =====
 async function sbSelect(email) {
-  const snap = await getDoc(doc(db, CLIENTS_PATH, email));
+  const snap = await getDoc(clientDoc(email));
   return snap.exists() ? [snap.data()] : [];
 }
 
 async function sbInsert(data) {
-  await setDoc(doc(db, CLIENTS_PATH, data.email), data);
+  await setDoc(clientDoc(data.email), data);
   return [data];
 }
 
 async function sbUpdate(email, data) {
-  await setDoc(doc(db, CLIENTS_PATH, email), data, {merge: true});
+  await setDoc(clientDoc(email), data, {merge: true});
   return [data];
 }
 

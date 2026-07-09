@@ -243,7 +243,8 @@ const firebaseConfig = {
 const fbApp = initializeApp(firebaseConfig);
 const db = getFirestore(fbApp);
 const auth = getAuth(fbApp);
-const CLIENTS_PATH = 'lylou_vely/fidelite/clients';
+const clientDoc = (email) => doc(db, 'lylou_vely', 'fidelite', 'clients', email);
+const clientsCol = () => collection(db, 'lylou_vely', 'fidelite', 'clients');
 
 let allClients = [];
 let filterTier = 'all';
@@ -270,24 +271,24 @@ const closeModal = (...a) => window._closeModal?.(...a);
 
 // ===== API FIREBASE =====
 async function sbGetAll() {
-  const snap = await getDocs(collection(db, CLIENTS_PATH));
+  const snap = await getDocs(clientsCol());
   const arr = [];
   snap.forEach(d => arr.push(d.data()));
   return arr.sort((a,b) => (b.points||0) - (a.points||0));
 }
 
 async function sbInsert(data) {
-  await setDoc(doc(db, CLIENTS_PATH, data.email), data);
+  await setDoc(clientDoc(data.email), data);
   return [data];
 }
 
 async function sbUpdate(email, data) {
-  await setDoc(doc(db, CLIENTS_PATH, email), data, {merge: true});
+  await setDoc(clientDoc(email), data, {merge: true});
   return true;
 }
 
 async function sbDelete(email) {
-  await deleteDoc(doc(db, CLIENTS_PATH, email));
+  await deleteDoc(clientDoc(email));
   return true;
 }
 
