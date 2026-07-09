@@ -330,7 +330,7 @@ window._inscrire = async function() {
   if (existing && existing.length > 0) {
     clientData = existing[0];
     sessionStorage.setItem('llv_email', email);
-    window._window._afficherCarte();
+    window._afficherCarte();
     toastF('Bienvenue de retour ' + clientData.prenom + ' ! 💜');
     btn.disabled = false; btn.textContent = 'Créer ma carte 💎';
     return;
@@ -349,7 +349,7 @@ window._inscrire = async function() {
   if (result && result[0]) {
     clientData = result[0];
     sessionStorage.setItem('llv_email', email);
-    window._window._afficherCarte();
+    window._afficherCarte();
     toastF('Bienvenue ' + prenom + ' ! 💎');
   } else {
     showError_(errEl, 'Erreur lors de la création. Réessayez.');
@@ -371,7 +371,7 @@ window._seConnecter = async function() {
   if (result && result.length > 0) {
     clientData = result[0];
     sessionStorage.setItem('llv_email', email);
-    window._window._afficherCarte();
+    window._afficherCarte();
     toastF('Bonjour ' + clientData.prenom + ' ! 💜');
   } else {
     showError_(errEl, 'Aucune carte trouvée pour cet e-mail');
@@ -459,7 +459,7 @@ if (savedEmail) {
   sbSelect(savedEmail).then(result => {
     if (result && result.length > 0) {
       clientData = result[0];
-      window._window._afficherCarte();
+      window._afficherCarte();
     }
   });
 }
