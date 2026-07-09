@@ -710,14 +710,26 @@ nav button.on{color:var(--violet)}
   <div class="sheet">
     <div class="grab"></div>
     <h2>💰 Versement banque</h2>
-    <p style="font-size:13px;color:var(--muted);text-align:center;margin-bottom:14px">Sélectionne les tickets espèces à inclure dans le versement.</p>
-    <div class="field">
-      <label>Date du versement</label>
-      <input type="date" id="virement-date">
+    <div class="seg" style="margin-bottom:14px">
+      <button id="virt-auto-btn" class="on" onclick="setVirementMode('auto')">Tickets du jour</button>
+      <button id="virt-manual-btn" onclick="setVirementMode('manual')">Saisie manuelle</button>
     </div>
-    <div id="virement-tickets" style="margin:10px 0;max-height:300px;overflow-y:auto"></div>
-    <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-top:1px dashed var(--line);margin-top:6px">
-      <span style="font-size:14px;color:var(--muted)">Total sélectionné</span>
+
+    <div id="virt-auto">
+      <p style="font-size:13px;color:var(--muted);text-align:center;margin-bottom:10px">Sélectionne les tickets espèces à inclure.</p>
+      <div class="field"><label>Date du versement</label><input type="date" id="virement-date"></div>
+      <div id="virement-tickets" style="margin:10px 0;max-height:280px;overflow-y:auto"></div>
+    </div>
+
+    <div id="virt-manual" style="display:none">
+      <p style="font-size:13px;color:var(--muted);text-align:center;margin-bottom:10px">Saisis les lignes manuellement (anciens versements).</p>
+      <div class="field"><label>Date du versement</label><input type="date" id="virement-date-manual"></div>
+      <div id="virt-manual-lines"></div>
+      <button class="btn btn-outline" style="margin-top:8px;font-size:13px" onclick="addManualLine()">＋ Ajouter une ligne</button>
+    </div>
+
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-top:1px dashed var(--line);margin-top:10px">
+      <span style="font-size:14px;color:var(--muted)">Total</span>
       <span style="font-family:'Cormorant Garamond',serif;font-size:28px;color:var(--violet);font-weight:600" id="virement-total">0,00 €</span>
     </div>
     <button class="btn btn-primary" onclick="printVirement()">Générer le document</button>
@@ -753,7 +765,8 @@ const TVA_RATE = 0.21;
 /* Modes */
 const STORE_PROD = "lylou_caisse_prod_v2";
 const STORE_TEST = "lylou_caisse_test_v2";
-const MODE_KEY = "lylou_caisse_mode";
+const _filename = location.pathname.split('/').pop().replace('.html','') || 'caisse';
+const MODE_KEY = "lylou_mode_" + _filename;
 let mode = localStorage.getItem(MODE_KEY) || 'prod';
 function storeKey(){ return mode==='test' ? STORE_TEST : STORE_PROD; }
 
@@ -2202,11 +2215,39 @@ window.printZ = function(){
 };
 
 /* ============ VERSEMENT BANQUE ============ */
+let virementMode = 'auto';
+
+window.setVirementMode = function(m){
+  virementMode = m;
+  document.getElementById('virt-auto-btn').classList.toggle('on', m==='auto');
+  document.getElementById('virt-manual-btn').classList.toggle('on', m==='manual');
+  document.getElementById('virt-auto').style.display = m==='auto'?'block':'none';
+  document.getElementById('virt-manual').style.display = m==='manual'?'block':'none';
+  updateVirementTotal();
+};
+
+window.addManualLine = function(){
+  const box = document.getElementById('virt-manual-lines');
+  const idx = box.children.length;
+  const div = document.createElement('div');
+  div.className = 'mv-line';
+  div.style.cssText = 'gap:8px;flex-wrap:wrap;padding:6px 0';
+  div.innerHTML = `
+    <input type="date" class="ml-date" style="flex:0 0 140px;padding:8px;border:1.5px solid var(--line);border-radius:9px;font-size:13px" value="${todayStr()}">
+    <input type="text" class="ml-desc" placeholder="Description" style="flex:1;min-width:120px;padding:8px;border:1.5px solid var(--line);border-radius:9px;font-size:13px">
+    <input type="number" class="ml-amt" placeholder="Montant €" step="0.01" inputmode="decimal" style="flex:0 0 100px;padding:8px;border:1.5px solid var(--line);border-radius:9px;font-size:13px" oninput="updateVirementTotal()">
+    <button onclick="this.parentNode.remove();updateVirementTotal()" style="color:var(--muted);font-size:16px;background:none;border:none;cursor:pointer">✕</button>`;
+  box.appendChild(div);
+};
+
 window.openVirement = function(){
-  // Tickets espèces du jour non annulés
+  virementMode = 'auto';
+  setVirementMode('auto');
   const tickets = state.sales.filter(s=>s.date===state.day && !s.cancelled && cashOfSale(s)>0);
   const box = document.getElementById('virement-tickets');
   document.getElementById('virement-date').value = todayStr();
+  document.getElementById('virement-date-manual').value = todayStr();
+  document.getElementById('virt-manual-lines').innerHTML = '';
   if(tickets.length===0){
     box.innerHTML='<div class="empty">Aucun ticket espèces aujourd\'hui</div>';
   } else {
@@ -2228,30 +2269,54 @@ window.openVirement = function(){
   document.getElementById('virement-overlay').classList.remove('hidden');
 };
 window.closeVirement = function(){ document.getElementById('virement-overlay').classList.add('hidden'); };
+
 window.updateVirementTotal = function(){
   let total=0;
-  document.querySelectorAll('#virement-tickets input[type=checkbox]:checked').forEach(cb=>{
-    total+=parseFloat(cb.dataset.amt)||0;
-  });
+  if(virementMode==='auto'){
+    document.querySelectorAll('#virement-tickets input[type=checkbox]:checked').forEach(cb=>{
+      total+=parseFloat(cb.dataset.amt)||0;
+    });
+  } else {
+    document.querySelectorAll('#virt-manual-lines .ml-amt').forEach(inp=>{
+      total+=parseFloat(inp.value)||0;
+    });
+  }
   document.getElementById('virement-total').textContent=euro(total);
 };
+
 window.printVirement = function(){
-  const dateV = document.getElementById('virement-date').value;
+  let dateV, rows='', total=0;
+  if(virementMode==='auto'){
+    dateV = document.getElementById('virement-date').value;
+    const selected=[];
+    document.querySelectorAll('#virement-tickets input[type=checkbox]:checked').forEach(cb=>{
+      const id=parseInt(cb.id.replace('vt-',''));
+      const s=state.sales.find(x=>x.id===id);
+      if(s) selected.push(s);
+    });
+    if(selected.length===0){ toast("Aucun ticket sélectionné"); return; }
+    total=selected.reduce((a,s)=>a+cashOfSale(s),0);
+    selected.forEach(s=>{
+      const ref=s.ref||makeRef(s.num);
+      const names=s.items.map(i=>i.name+(i.qty>1?' ×'+i.qty:'')).join(', ');
+      rows+=`<tr><td>${esc(ref)}</td><td>${s.date.split('-').reverse().join('/')} ${s.time}</td><td>${s.marche?esc(s.marche):'-'}</td><td>${esc(names)}</td><td class="r"><b>${euro(cashOfSale(s))}</b></td></tr>`;
+    });
+  } else {
+    dateV = document.getElementById('virement-date-manual').value;
+    const lines = document.querySelectorAll('#virt-manual-lines .mv-line');
+    if(lines.length===0){ toast("Aucune ligne saisie"); return; }
+    lines.forEach(line=>{
+      const date=line.querySelector('.ml-date').value;
+      const desc=line.querySelector('.ml-desc').value.trim()||'Vente espèces';
+      const amt=parseNum(line.querySelector('.ml-amt').value);
+      if(amt>0){
+        total+=amt;
+        rows+=`<tr><td>—</td><td>${date?date.split('-').reverse().join('/'):'—'}</td><td>—</td><td>${esc(desc)}</td><td class="r"><b>${euro(amt)}</b></td></tr>`;
+      }
+    });
+    if(total===0){ toast("Aucun montant saisi"); return; }
+  }
   const dateLabel = dateV ? dateV.split('-').reverse().join('/') : todayStr().split('-').reverse().join('/');
-  const selected=[];
-  document.querySelectorAll('#virement-tickets input[type=checkbox]:checked').forEach(cb=>{
-    const id=parseInt(cb.id.replace('vt-',''));
-    const s=state.sales.find(x=>x.id===id);
-    if(s) selected.push(s);
-  });
-  if(selected.length===0){ toast("Aucun ticket sélectionné"); return; }
-  const total=selected.reduce((a,s)=>a+cashOfSale(s),0);
-  let rows='';
-  selected.forEach(s=>{
-    const ref=s.ref||makeRef(s.num);
-    const names=s.items.map(i=>i.name+(i.qty>1?' ×'+i.qty:'')).join(', ');
-    rows+=`<tr><td>${esc(ref)}</td><td>${s.date.split('-').reverse().join('/')} ${s.time}</td><td>${s.marche?esc(s.marche):'-'}</td><td>${esc(names)}</td><td class="r"><b>${euro(cashOfSale(s))}</b></td></tr>`;
-  });
   const html=`<!DOCTYPE html><html><head><meta charset="UTF-8">
     <title>${esc(SELLER.brand)} — Versement banque</title>
     <style>
@@ -2274,12 +2339,10 @@ window.printVirement = function(){
     <div class="sub">${esc(SELLER.legal)} · TVA ${esc(SELLER.vat)}<br>${esc(SELLER.address)}</div>
     <div class="titre">Document de versement en banque</div>
     <div style="font-size:12px;margin-bottom:12px">
-      <b>Date du versement :</b> ${dateLabel} &nbsp;|&nbsp;
-      <b>Nb tickets :</b> ${selected.length} &nbsp;|&nbsp;
-      <b>Marché :</b> ${state.marche||'-'}
+      <b>Date du versement :</b> ${dateLabel}${state.marche?' &nbsp;|&nbsp; <b>Marché :</b> '+esc(state.marche):''}
     </div>
     <table>
-      <thead><tr><th>Réf.</th><th>Date/Heure</th><th>Marché</th><th>Articles</th><th class="r">Espèces</th></tr></thead>
+      <thead><tr><th>Réf.</th><th>Date/Heure</th><th>Marché</th><th>Description</th><th class="r">Montant</th></tr></thead>
       <tbody>${rows}</tbody>
     </table>
     <div class="total-box">
