@@ -241,6 +241,12 @@
 
 <div class="toast" id="toast"></div>
 
+<script>
+function inscrire() { window._inscrire && window._inscrire(); }
+function seConnecter() { window._seConnecter && window._seConnecter(); }
+function seDeconnecter() { window._seDeconnecter && window._seDeconnecter(); }
+function utiliserRecompense(c,m) { window._utiliserRecompense && window._utiliserRecompense(c,m); }
+</script>
 <script type="module">
 // ===== CONFIG FIREBASE =====
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
@@ -276,10 +282,10 @@ async function sbUpdate(email, data) {
 
 
 // Aliases locaux
-const inscrire = (...a) => window.inscrire?.(...a);
-const seConnecter = (...a) => window.seConnecter?.(...a);
-const utiliserRecompense = (...a) => window.utiliserRecompense?.(...a);
-const seDeconnecter = (...a) => window.seDeconnecter?.(...a);
+const inscrire = (...a) => window._inscrire?.(...a);
+const seConnecter = (...a) => window._seConnecter?.(...a);
+const utiliserRecompense = (...a) => window._utiliserRecompense?.(...a);
+const seDeconnecter = (...a) => window._seDeconnecter?.(...a);
 
 // ===== DONNÉES CLIENT =====
 let clientData = null;
@@ -301,7 +307,7 @@ function getProgress(pts) {
 }
 
 // ===== INSCRIPTION =====
-window.inscrire = async function() {
+window._inscrire = async function() {
   const prenom = document.getElementById('input-prenom').value.trim();
   const nom = document.getElementById('input-nom').value.trim();
   const email = document.getElementById('input-email').value.trim().toLowerCase();
@@ -319,7 +325,7 @@ window.inscrire = async function() {
   if (existing && existing.length > 0) {
     clientData = existing[0];
     sessionStorage.setItem('llv_email', email);
-    window.afficherCarte();
+    window._window._afficherCarte();
     toastF('Bienvenue de retour ' + clientData.prenom + ' ! 💜');
     btn.disabled = false; btn.textContent = 'Créer ma carte 💎';
     return;
@@ -338,7 +344,7 @@ window.inscrire = async function() {
   if (result && result[0]) {
     clientData = result[0];
     sessionStorage.setItem('llv_email', email);
-    window.afficherCarte();
+    window._window._afficherCarte();
     toastF('Bienvenue ' + prenom + ' ! 💎');
   } else {
     showError_(errEl, 'Erreur lors de la création. Réessayez.');
@@ -347,7 +353,7 @@ window.inscrire = async function() {
 }
 
 // ===== CONNEXION =====
-window.seConnecter = async function() {
+window._seConnecter = async function() {
   const email = document.getElementById('input-login-email').value.trim().toLowerCase();
   const errEl = document.getElementById('error-login');
   errEl.style.display = 'none';
@@ -360,7 +366,7 @@ window.seConnecter = async function() {
   if (result && result.length > 0) {
     clientData = result[0];
     sessionStorage.setItem('llv_email', email);
-    window.afficherCarte();
+    window._window._afficherCarte();
     toastF('Bonjour ' + clientData.prenom + ' ! 💜');
   } else {
     showError_(errEl, 'Aucune carte trouvée pour cet e-mail');
@@ -369,13 +375,13 @@ window.seConnecter = async function() {
 }
 
 // ===== AFFICHAGE =====
-window.afficherCarte = function() {
+window._afficherCarte = function() {
   document.getElementById('section-inscription').style.display = 'none';
   document.getElementById('section-carte').style.display = 'block';
-  rafraichirCarte();
+  window._rafraichirCarte();
 }
 
-window.rafraichirCarte = function() {
+window._rafraichirCarte = function() {
   const pts = clientData.points || 0;
   const tier = getTier(pts);
   const prog = getProgress(pts);
@@ -411,7 +417,7 @@ window.rafraichirCarte = function() {
 }
 
 // ===== RÉCOMPENSES =====
-window.utiliserRecompense = async function(cost, msg) {
+window._utiliserRecompense = async function(cost, msg) {
   if (clientData.points < cost) { toastF('Points insuffisants 💜'); return; }
   clientData.points -= cost;
   const hist = clientData.historique || [];
@@ -419,12 +425,12 @@ window.utiliserRecompense = async function(cost, msg) {
   clientData.historique = hist;
   clientData.tier = getTier(clientData.points).id;
   await sbUpdate(clientData.email, { points: clientData.points, historique: hist, tier: clientData.tier });
-  rafraichirCarte();
+  window._rafraichirCarte();
   toastF(msg + ' 🎁');
 }
 
 // ===== DÉCONNEXION =====
-window.seDeconnecter = function() {
+window._seDeconnecter = function() {
   sessionStorage.removeItem('llv_email');
   clientData = null;
   document.getElementById('section-carte').style.display = 'none';
@@ -448,7 +454,7 @@ if (savedEmail) {
   sbSelect(`email=eq.${encodeURIComponent(savedEmail)}`).then(result => {
     if (result && result.length > 0) {
       clientData = result[0];
-      window.afficherCarte();
+      window._window._afficherCarte();
     }
   });
 }

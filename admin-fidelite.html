@@ -211,6 +211,21 @@
 
 <div class="toast" id="toast"></div>
 
+<script>
+// Wrappers accessibles depuis HTML
+function login() { window._login && window._login(); }
+function logout() { window._logout && window._logout(); }
+function filterTable() { window._filterTable && window._filterTable(); }
+function setFilter(f) { window._setFilter && window._setFilter(f); }
+function openNewClient() { window._openNewClient && window._openNewClient(); }
+function calcPreview() { window._calcPreview && window._calcPreview(); }
+function closeModal(id) { window._closeModal && window._closeModal(id); }
+function openAddPts(e) { window._openAddPts && window._openAddPts(e); }
+function openHist(e) { window._openHist && window._openHist(e); }
+function supprimerClient(e) { window._supprimerClient && window._supprimerClient(e); }
+function confirmerPts() { window._confirmerPts && window._confirmerPts(); }
+function confirmerNew() { window._confirmerNew && window._confirmerNew(); }
+</script>
 <script type="module">
 // ===== CONFIG FIREBASE =====
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
@@ -235,22 +250,22 @@ let filterTier = 'all';
 let activeEmail = null;
 
 // Aliases locaux
-const login = (...a) => window.login?.(...a);
-const logout = (...a) => window.logout?.(...a);
-const loadAll = (...a) => window.loadAll?.(...a);
-const updateStats = (...a) => window.updateStats?.(...a);
-const renderTable = (...a) => window.renderTable?.(...a);
-const setFilter = (...a) => window.setFilter?.(...a);
-const filterTable = (...a) => window.filterTable?.(...a);
-const openAddPts = (...a) => window.openAddPts?.(...a);
-const calcPreview = (...a) => window.calcPreview?.(...a);
-const confirmerPts = (...a) => window.confirmerPts?.(...a);
-const openNewClient = (...a) => window.openNewClient?.(...a);
-const confirmerNew = (...a) => window.confirmerNew?.(...a);
-const openHist = (...a) => window.openHist?.(...a);
-const supprimerClient = (...a) => window.supprimerClient?.(...a);
-const closeModal = (...a) => window.closeModal?.(...a);
-const toast = (...a) => window.toast?.(...a);
+const toast = (m) => window._toast(m);
+const login = (...a) => window._login?.(...a);
+const logout = (...a) => window._logout?.(...a);
+const loadAll = (...a) => window._loadAll?.(...a);
+const updateStats = (...a) => window._updateStats?.(...a);
+const renderTable = (...a) => window._renderTable?.(...a);
+const setFilter = (...a) => window._setFilter?.(...a);
+const filterTable = (...a) => window._filterTable?.(...a);
+const openAddPts = (...a) => window._openAddPts?.(...a);
+const calcPreview = (...a) => window._calcPreview?.(...a);
+const confirmerPts = (...a) => window._confirmerPts?.(...a);
+const openNewClient = (...a) => window._openNewClient?.(...a);
+const confirmerNew = (...a) => window._confirmerNew?.(...a);
+const openHist = (...a) => window._openHist?.(...a);
+const supprimerClient = (...a) => window._supprimerClient?.(...a);
+const closeModal = (...a) => window._closeModal?.(...a);
 
 
 // ===== API FIREBASE =====
@@ -277,7 +292,7 @@ async function sbDelete(email) {
 }
 
 // ===== AUTH =====
-window.login = async function() {
+window._login = async function() {
   const email = document.getElementById('pwd-input').value.trim();
   const pw = document.getElementById('pwd-pw').value;
   const errEl = document.getElementById('login-err');
@@ -290,7 +305,7 @@ window.login = async function() {
   }
 }
 
-window.logout = async function() {
+window._logout = async function() {
   await auth.signOut();
 }
 
@@ -306,7 +321,7 @@ onAuthStateChanged(auth, user => {
 });
 
 // ===== CHARGEMENT =====
-window.loadAll = async function() {
+window._loadAll = async function() {
   document.getElementById('table-loading').style.display = 'block';
   document.getElementById('clients-table').style.display = 'none';
   document.getElementById('empty-state').style.display = 'none';
@@ -320,7 +335,7 @@ window.loadAll = async function() {
   document.getElementById('table-loading').style.display = 'none';
 }
 
-window.updateStats = function() {
+window._updateStats = function() {
   document.getElementById('stat-total').textContent = allClients.length;
   document.getElementById('stat-pts').textContent = allClients.reduce((s,c) => s+(c.points||0), 0).toLocaleString('fr-BE');
   document.getElementById('stat-diamant').textContent = allClients.filter(c => (c.points||0) >= 1500).length;
@@ -334,7 +349,7 @@ function getTierInfo(pts) {
   return { nom:'🤎 Quartz', id:'quartz' };
 }
 
-window.renderTable = function() {
+window._renderTable = function() {
   const q = document.getElementById('search').value.toLowerCase();
   const filtered = allClients.filter(c => {
     const matchQ = (c.prenom+' '+c.nom+' '+c.email).toLowerCase().includes(q);
@@ -370,7 +385,7 @@ window.renderTable = function() {
   });
 }
 
-window.setFilter = function(f) {
+window._setFilter = function(f) {
   filterTier = f;
   ['all','diamant','citrine','perle','quartz'].forEach(x => {
     const el = document.getElementById('f-'+x);
@@ -379,10 +394,10 @@ window.setFilter = function(f) {
   renderTable();
 }
 
-window.filterTable = function() { renderTable(); }
+window._filterTable = function() { renderTable(); }
 
 // ===== AJOUTER POINTS =====
-window.openAddPts = function(email) {
+window._openAddPts = function(email) {
   activeEmail = email;
   const c = allClients.find(x => x.email === email);
   document.getElementById('modal-pts-title').textContent = '+ Points — ' + c.prenom + ' ' + c.nom;
@@ -393,13 +408,13 @@ window.openAddPts = function(email) {
   setTimeout(() => document.getElementById('m-achat').focus(), 100);
 }
 
-window.calcPreview = function() {
+window._calcPreview = function() {
   const achat = Math.round(parseFloat(document.getElementById('m-achat').value)||0);
   const bonus = parseInt(document.getElementById('m-bonus').value)||0;
   document.getElementById('pts-preview').textContent = '+ '+(achat+bonus)+' pts à ajouter';
 }
 
-window.confirmerPts = async function() {
+window._confirmerPts = async function() {
   const achat = Math.round(parseFloat(document.getElementById('m-achat').value)||0);
   const bonus = parseInt(document.getElementById('m-bonus').value)||0;
   const total = achat + bonus;
@@ -435,14 +450,14 @@ window.confirmerPts = async function() {
 }
 
 // ===== NOUVELLE CLIENTE =====
-window.openNewClient = function() {
+window._openNewClient = function() {
   ['nc-prenom','nc-nom','nc-email'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('nc-pts').value = '0';
   document.getElementById('modal-new').classList.add('open');
   setTimeout(() => document.getElementById('nc-prenom').focus(), 100);
 }
 
-window.confirmerNew = async function() {
+window._confirmerNew = async function() {
   const prenom = document.getElementById('nc-prenom').value.trim();
   const nom = document.getElementById('nc-nom').value.trim();
   const email = document.getElementById('nc-email').value.trim().toLowerCase();
@@ -475,7 +490,7 @@ window.confirmerNew = async function() {
 }
 
 // ===== HISTORIQUE =====
-window.openHist = function(email) {
+window._openHist = function(email) {
   const c = allClients.find(x => x.email === email);
   document.getElementById('modal-hist-title').textContent = 'Historique — ' + c.prenom + ' ' + c.nom;
   const body = document.getElementById('modal-hist-body');
@@ -494,7 +509,7 @@ window.openHist = function(email) {
 }
 
 // ===== SUPPRIMER =====
-window.supprimerClient = async function(email) {
+window._supprimerClient = async function(email) {
   const c = allClients.find(x => x.email === email);
   if (!confirm('Supprimer la carte de ' + c.prenom + ' ' + c.nom + ' ?')) return;
   const ok = await sbDelete(email);
@@ -507,9 +522,9 @@ window.supprimerClient = async function(email) {
 }
 
 // ===== UTILS =====
-window.closeModal = function(id) { document.getElementById(id).classList.remove('open'); }
+window._closeModal = function(id) { document.getElementById(id).classList.remove('open'); }
 
-function toast(msg) {
+window._toast = function(msg) {
   const t = document.getElementById('toast');
   t.textContent = msg;
   t.classList.add('show');
