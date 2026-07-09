@@ -704,7 +704,7 @@ nav button.on{color:var(--violet)}
     <div class="grab"></div>
     <h2>💰 Versement banque</h2>
     <div class="seg" style="margin-bottom:14px">
-      <button id="virt-auto-btn" class="on" onclick="setVirementMode('auto')">Tickets du jour</button>
+      <button id="virt-auto-btn" class="on" onclick="setVirementMode('auto')">Versements en attente</button>
       <button id="virt-manual-btn" onclick="setVirementMode('manual')">Saisie manuelle</button>
     </div>
 
@@ -1885,10 +1885,11 @@ function renderJournal(){
         `<span style="font-size:10px;background:${m.payMode==='cash'?'var(--violet-wash)':'var(--blue-wash)'};color:${m.payMode==='cash'?'var(--violet)':'var(--blue)'};padding:2px 6px;border-radius:6px;margin-left:4px">${m.payMode==='cash'?'💶':'💳'}</span>` : '';
       const isZ = m.reason && m.reason.startsWith('Versement banque — clôture Z');
       const reprZ = isZ ? `<button class="del" onclick="reprintZ('${m.date}','${(m.reason.split(' — ')[2]||'').replace(/'/g,"\\'")}')" style="color:var(--violet);font-size:15px" title="Réimprimer clôture Z">📋</button>` : '';
+      const bancedBadge = m.banked ? `<span style="font-size:10px;background:#e6f4ea;color:#2e9e6b;padding:2px 6px;border-radius:6px;margin-left:4px">✓ Bancé</span>` : '';
       const div = document.createElement('div'); div.className = 'mv-line';
       div.innerHTML = `
         <div class="pill ${m.type}">${m.type==='in'?'＋':'－'}</div>
-        <div class="m-info"><div class="t">${esc(m.reason)}${payBadge}</div><div class="d">${m.date.split('-').reverse().join('/')} ${m.time}</div></div>
+        <div class="m-info"><div class="t">${esc(m.reason)}${payBadge}${bancedBadge}</div><div class="d">${m.date.split('-').reverse().join('/')} ${m.time}</div></div>
         <div class="amt ${m.type==='in'?'plus':'minus'}">${m.type==='in'?'+':'−'}${euro(m.amount)}</div>
         <button class="del" onclick="printSingleMv(${m.id})" style="color:var(--violet);font-size:15px" title="Imprimer">⎙</button>${reprZ}`;
       mvBox.appendChild(div);
@@ -2236,25 +2237,23 @@ window.addManualLine = function(){
 window.openVirement = function(){
   virementMode = 'auto';
   setVirementMode('auto');
-  const tickets = state.sales.filter(s=>s.date===state.day && !s.cancelled && cashOfSale(s)>0);
+  // Versements banque non encore traités
+  const versements = state.movements.filter(m=>m.type==='out' && m.reason && m.reason.startsWith('Versement banque') && !m.banked);
   const box = document.getElementById('virement-tickets');
   document.getElementById('virement-date').value = todayStr();
   document.getElementById('virement-date-manual').value = todayStr();
   document.getElementById('virt-manual-lines').innerHTML = '';
-  if(tickets.length===0){
-    box.innerHTML='<div class="empty">Aucun ticket espèces aujourd\'hui</div>';
+  if(versements.length===0){
+    box.innerHTML='<div class="empty">Aucun versement en attente</div>';
   } else {
-    box.innerHTML = tickets.map(s=>{
-      const ref=s.ref||makeRef(s.num);
-      const cash=cashOfSale(s);
-      const names=s.items.map(i=>i.name+(i.qty>1?'×'+i.qty:'')).join(', ');
+    box.innerHTML = versements.map(mv=>{
       return `<div class="mv-line" style="padding:8px 0">
-        <input type="checkbox" id="vt-${s.id}" data-amt="${cash}" onchange="updateVirementTotal()" checked style="width:20px;height:20px;cursor:pointer">
+        <input type="checkbox" id="vt-${mv.id}" data-id="${mv.id}" data-amt="${mv.amount}" onchange="updateVirementTotal()" checked style="width:20px;height:20px;cursor:pointer">
         <div class="m-info" style="flex:1;margin-left:8px">
-          <div class="t">${esc(ref)} · ${esc(names)}</div>
-          <div class="d">${s.time}${s.marche?' · '+esc(s.marche):''}</div>
+          <div class="t">${esc(mv.reason)}</div>
+          <div class="d">${mv.date.split('-').reverse().join('/')} ${mv.time}</div>
         </div>
-        <div class="amt plus">+${euro(cash)}</div>
+        <div class="amt plus">+${euro(mv.amount)}</div>
       </div>`;
     }).join('');
   }
@@ -2281,19 +2280,23 @@ window.printVirement = function(){
   let dateV, rows='', total=0;
   if(virementMode==='auto'){
     dateV = document.getElementById('virement-date').value;
-    const selected=[];
+    const selectedMvs=[];
     document.querySelectorAll('#virement-tickets input[type=checkbox]:checked').forEach(cb=>{
-      const id=parseInt(cb.id.replace('vt-',''));
-      const s=state.sales.find(x=>x.id===id);
-      if(s) selected.push(s);
+      const id=parseInt(cb.dataset.id);
+      const mv=state.movements.find(x=>x.id===id);
+      if(mv) selectedMvs.push(mv);
     });
-    if(selected.length===0){ toast("Aucun ticket sélectionné"); return; }
-    total=selected.reduce((a,s)=>a+cashOfSale(s),0);
-    selected.forEach(s=>{
-      const ref=s.ref||makeRef(s.num);
-      const names=s.items.map(i=>i.name+(i.qty>1?' ×'+i.qty:'')).join(', ');
-      rows+=`<tr><td>${esc(ref)}</td><td>${s.date.split('-').reverse().join('/')} ${s.time}</td><td>${s.marche?esc(s.marche):'-'}</td><td>${esc(names)}</td><td class="r"><b>${euro(cashOfSale(s))}</b></td></tr>`;
+    if(selectedMvs.length===0){ toast("Aucun versement sélectionné"); return; }
+    total=selectedMvs.reduce((a,m)=>a+m.amount,0);
+    selectedMvs.forEach(mv=>{
+      rows+=`<tr><td>—</td><td>${mv.date.split('-').reverse().join('/')} ${mv.time}</td><td>—</td><td>${esc(mv.reason)}</td><td class="r"><b>${euro(mv.amount)}</b></td></tr>`;
     });
+    // Marquer comme bancés après impression
+    selectedMvs.forEach(async mv=>{
+      mv.banked = true;
+      await saveMovement(mv);
+    });
+    save();
   } else {
     dateV = document.getElementById('virement-date-manual').value;
     const lines = document.querySelectorAll('#virt-manual-lines .mv-line');
