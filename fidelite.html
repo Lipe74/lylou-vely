@@ -267,7 +267,11 @@ const clientDoc = (email) => doc(db, 'lylou_vely', 'fidelite', 'clients', email)
 
 // ===== API FIREBASE =====
 async function sbSelect(email) {
-  const snap = await getDoc(clientDoc(email));
+  console.log('sbSelect appelé avec:', email);
+  const ref = clientDoc(email);
+  console.log('chemin doc:', ref.path);
+  const snap = await getDoc(ref);
+  console.log('doc existe:', snap.exists(), snap.data());
   return snap.exists() ? [snap.data()] : [];
 }
 
