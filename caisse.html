@@ -1328,7 +1328,7 @@ async function finalizeSale(){
   const saleMethod = methods.length > 1 ? 'mix' : methods[0];
   const sale = {
     id: Date.now(), num: state.ticketCounter, ref,
-    time: nowTime(), date: state.day,
+    time: nowTime(), date: state.day, marche: state.marche || '',
     items: cart.map(l=>({name:l.name,price:l.price,qty:l.qty})),
     subtotal: cartSubtotal(),
     discount: cartDiscount ? {type:cartDiscount.type, value:cartDiscount.value, motif:cartDiscount.motif, amount:cartDiscount.amount} : null,
@@ -1780,21 +1780,50 @@ function renderJournal(){
   const box = document.getElementById('jr-list');
   if(filtered.length===0){ box.innerHTML='<div class="empty">Aucune vente</div>'; return; }
   box.innerHTML='';
+
+  // Grouper par marché
+  const groupes = [];
+  const marchesVus = {};
   [...filtered].reverse().forEach(sale=>{
-    const m = sale.method; const cls = m==='especes'?'esp':(m==='qr'?'qr':(m==='carte'?'carte':'mix'));
-    const ic = m==='especes'?'💶':(m==='qr'?'📱':(m==='carte'?'💳':'🔀'));
-    const names = sale.items.map(i=>i.name+(i.qty>1?'×'+i.qty:'')).join(', ');
-    const ref = sale.ref || makeRef(sale.num);
-    const div=document.createElement('div'); div.className='jr-line'+(sale.cancelled?' cancelled':'');
-    const actions = sale.cancelled
-      ? `<span class="jr-badge">ANNULÉ</span><button class="del" onclick="reprint(${sale.id})" style="color:var(--muted);font-size:15px">⎙</button>`
-      : `<button class="del" onclick="reprint(${sale.id})" style="color:var(--violet);font-size:15px">⎙</button>
-         <button class="del" onclick="cancelSale(${sale.id})" style="color:var(--red);font-size:15px">⊘</button>`;
-    div.innerHTML = `
-      <div class="pill ${cls}">${ic}</div>
-      <div class="j-info"><div class="t">${esc(ref)} · ${esc(names)}</div><div class="d">${sale.date.split('-').reverse().join('/')} ${sale.time} · ${METHOD_LABEL[sale.method]}</div></div>
-      <div class="amt">${euro(sale.total)}</div>${actions}`;
-    box.appendChild(div);
+    const marche = sale.marche || '';
+    if(!marchesVus[marche]){
+      marchesVus[marche] = [];
+      groupes.push({marche, sales:marchesVus[marche]});
+    }
+    marchesVus[marche].push(sale);
+  });
+
+  groupes.forEach(groupe=>{
+    // Entête du groupe si plusieurs marchés
+    if(groupes.length > 1){
+      const hdr = document.createElement('div');
+      hdr.style.cssText = 'font-weight:600;font-size:13px;color:var(--violet);padding:8px 0 4px;border-bottom:2px solid var(--violet);margin-bottom:6px';
+      const ventes = groupe.sales.filter(s=>!s.cancelled);
+      const ca = ventes.reduce((a,s)=>a+s.total,0);
+      const esp = ventes.reduce((a,s)=>a+methodAmount(s,'especes'),0);
+      const qr = ventes.reduce((a,s)=>a+methodAmount(s,'qr'),0);
+      const carte = ventes.reduce((a,s)=>a+methodAmount(s,'carte'),0);
+      hdr.innerHTML = `🏪 ${esc(groupe.marche||'Sans marché')} — CA : ${euro(ca)} · 💶 ${euro(esp)} · 📱 ${euro(qr)} · 💳 ${euro(carte)}`;
+      box.appendChild(hdr);
+    }
+
+    groupe.sales.forEach(sale=>{
+      const m = sale.method; const cls = m==='especes'?'esp':(m==='qr'?'qr':(m==='carte'?'carte':'mix'));
+      const ic = m==='especes'?'💶':(m==='qr'?'📱':(m==='carte'?'💳':'🔀'));
+      const names = sale.items.map(i=>i.name+(i.qty>1?'×'+i.qty:'')).join(', ');
+      const ref = sale.ref || makeRef(sale.num);
+      const div=document.createElement('div'); div.className='jr-line'+(sale.cancelled?' cancelled':'');
+      const actions = sale.cancelled
+        ? `<span class="jr-badge">ANNULÉ</span><button class="del" onclick="reprint(${sale.id})" style="color:var(--muted);font-size:15px">⎙</button>`
+        : `<button class="del" onclick="reprint(${sale.id})" style="color:var(--violet);font-size:15px">⎙</button>
+           <button class="del" onclick="cancelSale(${sale.id})" style="color:var(--red);font-size:15px">⊘</button>`;
+      const marcheTag = (groupes.length===1 && sale.marche) ? `<span style="font-size:10px;color:var(--violet);margin-left:4px">🏪 ${esc(sale.marche)}</span>` : '';
+      div.innerHTML = `
+        <div class="pill ${cls}">${ic}</div>
+        <div class="j-info"><div class="t">${esc(ref)} · ${esc(names)}${marcheTag}</div><div class="d">${sale.date.split('-').reverse().join('/')} ${sale.time} · ${METHOD_LABEL[sale.method]}</div></div>
+        <div class="amt">${euro(sale.total)}</div>${actions}`;
+      box.appendChild(div);
+    });
   });
 
   // Mouvements filtrés
@@ -2067,7 +2096,7 @@ window.printZ = function(){
     setTimeout(()=>{
       if(confirm(`💰 Versement banque\n\nVous avez ${euro(surplus)} à retirer.\n\nConfirmer le versement de ${euro(surplus)} vers la banque ?`)){
         const mv = {id:Date.now(), type:'out', amount:surplus,
-          reason:'Versement banque — clôture Z '+state.day.split('-').reverse().join('/'),
+          reason:'Versement banque — clôture Z '+state.day.split('-').reverse().join('/')+(state.marche?' — '+state.marche:''),
           payMode:'cash', time:nowTime(), date:state.day};
         state.movements.push(mv); save(); saveMovement(mv);
         renderMovements(); renderHeaderKPIs(); renderCaisse();
