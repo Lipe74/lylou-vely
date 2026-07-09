@@ -274,6 +274,13 @@ async function sbUpdate(email, data) {
   return [data];
 }
 
+
+// Aliases locaux
+const inscrire = (...a) => window.inscrire?.(...a);
+const seConnecter = (...a) => window.seConnecter?.(...a);
+const utiliserRecompense = (...a) => window.utiliserRecompense?.(...a);
+const seDeconnecter = (...a) => window.seDeconnecter?.(...a);
+
 // ===== DONNÉES CLIENT =====
 let clientData = null;
 
@@ -312,7 +319,7 @@ window.inscrire = async function() {
   if (existing && existing.length > 0) {
     clientData = existing[0];
     sessionStorage.setItem('llv_email', email);
-    afficherCarte();
+    window.afficherCarte();
     toastF('Bienvenue de retour ' + clientData.prenom + ' ! 💜');
     btn.disabled = false; btn.textContent = 'Créer ma carte 💎';
     return;
@@ -331,7 +338,7 @@ window.inscrire = async function() {
   if (result && result[0]) {
     clientData = result[0];
     sessionStorage.setItem('llv_email', email);
-    afficherCarte();
+    window.afficherCarte();
     toastF('Bienvenue ' + prenom + ' ! 💎');
   } else {
     showError_(errEl, 'Erreur lors de la création. Réessayez.');
@@ -353,7 +360,7 @@ window.seConnecter = async function() {
   if (result && result.length > 0) {
     clientData = result[0];
     sessionStorage.setItem('llv_email', email);
-    afficherCarte();
+    window.afficherCarte();
     toastF('Bonjour ' + clientData.prenom + ' ! 💜');
   } else {
     showError_(errEl, 'Aucune carte trouvée pour cet e-mail');
@@ -441,7 +448,7 @@ if (savedEmail) {
   sbSelect(`email=eq.${encodeURIComponent(savedEmail)}`).then(result => {
     if (result && result.length > 0) {
       clientData = result[0];
-      afficherCarte();
+      window.afficherCarte();
     }
   });
 }

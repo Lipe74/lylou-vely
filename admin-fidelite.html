@@ -107,8 +107,11 @@
   <div class="login-box">
     <h1>Espace Admin 💜</h1>
     <p>Lylou-Vely — Gestion fidélité</p>
+    <label style="display:block;font-size:12px;text-transform:uppercase;letter-spacing:0.8px;color:var(--text-soft);margin-bottom:6px;">Email</label>
+    <input class="inp" type="email" id="pwd-input" placeholder="infos@lylou-vely.be" value="infos@lylou-vely.be" style="margin-bottom:12px" />
     <label style="display:block;font-size:12px;text-transform:uppercase;letter-spacing:0.8px;color:var(--text-soft);margin-bottom:6px;">Mot de passe</label>
-    <input class="inp" type="password" id="pwd-input" placeholder="••••••••" onkeydown="if(event.key==='Enter')login()" />
+    <input class="inp" type="password" id="pwd-pw" placeholder="••••••••" onkeydown="if(event.key==='Enter')login()" />
+    <div id="login-err" style="display:none;color:#9b3030;font-size:13px;margin:8px 0"></div>
     <button class="btn-primary" onclick="login()">Accéder au dashboard</button>
   </div>
 </div>
@@ -212,6 +215,7 @@
 // ===== CONFIG FIREBASE =====
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
 import { getFirestore, doc, getDoc, setDoc, deleteDoc, collection, getDocs, orderBy, query } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
+import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDagghvP8ujE0fdUcYsOfmLaXps2ZSUexo",
@@ -223,12 +227,31 @@ const firebaseConfig = {
 };
 const fbApp = initializeApp(firebaseConfig);
 const db = getFirestore(fbApp);
+const auth = getAuth(fbApp);
 const CLIENTS_PATH = 'lylou_vely/fidelite/clients';
-const ADMIN_PWD = '1F23f1e329';
 
 let allClients = [];
 let filterTier = 'all';
 let activeEmail = null;
+
+// Aliases locaux
+const login = (...a) => window.login?.(...a);
+const logout = (...a) => window.logout?.(...a);
+const loadAll = (...a) => window.loadAll?.(...a);
+const updateStats = (...a) => window.updateStats?.(...a);
+const renderTable = (...a) => window.renderTable?.(...a);
+const setFilter = (...a) => window.setFilter?.(...a);
+const filterTable = (...a) => window.filterTable?.(...a);
+const openAddPts = (...a) => window.openAddPts?.(...a);
+const calcPreview = (...a) => window.calcPreview?.(...a);
+const confirmerPts = (...a) => window.confirmerPts?.(...a);
+const openNewClient = (...a) => window.openNewClient?.(...a);
+const confirmerNew = (...a) => window.confirmerNew?.(...a);
+const openHist = (...a) => window.openHist?.(...a);
+const supprimerClient = (...a) => window.supprimerClient?.(...a);
+const closeModal = (...a) => window.closeModal?.(...a);
+const toast = (...a) => window.toast?.(...a);
+
 
 // ===== API FIREBASE =====
 async function sbGetAll() {
@@ -254,33 +277,36 @@ async function sbDelete(email) {
 }
 
 // ===== AUTH =====
-window.login = function() {
-  const pwd = document.getElementById('pwd-input').value;
-  if (pwd === ADMIN_PWD) {
-    document.getElementById('section-login').style.display = 'none';
-    document.getElementById('section-admin').style.display = 'block';
-    sessionStorage.setItem('llv_admin', '1');
-    loadAll();
-  } else {
-    toast('Mot de passe incorrect');
+window.login = async function() {
+  const email = document.getElementById('pwd-input').value.trim();
+  const pw = document.getElementById('pwd-pw').value;
+  const errEl = document.getElementById('login-err');
+  if(!email||!pw){ errEl.textContent='Email et mot de passe requis'; errEl.style.display='block'; return; }
+  try{
+    await signInWithEmailAndPassword(auth, email, pw);
+  }catch(e){
+    errEl.textContent='Email ou mot de passe incorrect';
+    errEl.style.display='block';
   }
 }
 
-window.logout = function() {
-  sessionStorage.removeItem('llv_admin');
-  document.getElementById('section-login').style.display = 'flex';
-  document.getElementById('section-admin').style.display = 'none';
-  document.getElementById('pwd-input').value = '';
+window.logout = async function() {
+  await auth.signOut();
 }
 
-if (sessionStorage.getItem('llv_admin')) {
-  document.getElementById('section-login').style.display = 'none';
-  document.getElementById('section-admin').style.display = 'block';
-  loadAll();
-}
+onAuthStateChanged(auth, user => {
+  if(user){
+    document.getElementById('section-login').style.display = 'none';
+    document.getElementById('section-admin').style.display = 'block';
+    loadAll();
+  } else {
+    document.getElementById('section-login').style.display = 'flex';
+    document.getElementById('section-admin').style.display = 'none';
+  }
+});
 
 // ===== CHARGEMENT =====
-async window.loadAll = function() {
+window.loadAll = async function() {
   document.getElementById('table-loading').style.display = 'block';
   document.getElementById('clients-table').style.display = 'none';
   document.getElementById('empty-state').style.display = 'none';
@@ -373,7 +399,7 @@ window.calcPreview = function() {
   document.getElementById('pts-preview').textContent = '+ '+(achat+bonus)+' pts à ajouter';
 }
 
-async window.confirmerPts = function() {
+window.confirmerPts = async function() {
   const achat = Math.round(parseFloat(document.getElementById('m-achat').value)||0);
   const bonus = parseInt(document.getElementById('m-bonus').value)||0;
   const total = achat + bonus;
@@ -416,7 +442,7 @@ window.openNewClient = function() {
   setTimeout(() => document.getElementById('nc-prenom').focus(), 100);
 }
 
-async window.confirmerNew = function() {
+window.confirmerNew = async function() {
   const prenom = document.getElementById('nc-prenom').value.trim();
   const nom = document.getElementById('nc-nom').value.trim();
   const email = document.getElementById('nc-email').value.trim().toLowerCase();
@@ -468,7 +494,7 @@ window.openHist = function(email) {
 }
 
 // ===== SUPPRIMER =====
-async window.supprimerClient = function(email) {
+window.supprimerClient = async function(email) {
   const c = allClients.find(x => x.email === email);
   if (!confirm('Supprimer la carte de ' + c.prenom + ' ' + c.nom + ' ?')) return;
   const ok = await sbDelete(email);
