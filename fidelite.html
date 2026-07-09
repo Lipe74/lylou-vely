@@ -326,7 +326,7 @@ window._inscrire = async function() {
   btn.disabled = true; btn.textContent = 'Vérification...';
 
   // Vérifie si déjà inscrit
-  const existing = await sbSelect(`email=eq.${encodeURIComponent(email)}`);
+  const existing = await sbSelect(email);
   if (existing && existing.length > 0) {
     clientData = existing[0];
     sessionStorage.setItem('llv_email', email);
@@ -367,7 +367,7 @@ window._seConnecter = async function() {
   const btn = document.getElementById('btn-login');
   btn.disabled = true; btn.textContent = 'Recherche...';
 
-  const result = await sbSelect(`email=eq.${encodeURIComponent(email)}`);
+  const result = await sbSelect(email);
   if (result && result.length > 0) {
     clientData = result[0];
     sessionStorage.setItem('llv_email', email);
@@ -456,7 +456,7 @@ function toastF(msg) {
 // ===== AUTO-CONNEXION =====
 const savedEmail = sessionStorage.getItem('llv_email');
 if (savedEmail) {
-  sbSelect(`email=eq.${encodeURIComponent(savedEmail)}`).then(result => {
+  sbSelect(savedEmail).then(result => {
     if (result && result.length > 0) {
       clientData = result[0];
       window._window._afficherCarte();
