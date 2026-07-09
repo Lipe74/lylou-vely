@@ -241,34 +241,37 @@
 
 <div class="toast" id="toast"></div>
 
-<script>
-// ===== CONFIG SUPABASE =====
-const SUPABASE_URL = 'https://cghzmsvhclrsufqcqzzu.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_lcrB5gQYAEylFk7fmKdsUA_UlvRyt8_';
+<script type="module">
+// ===== CONFIG FIREBASE =====
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
+import { getFirestore, doc, getDoc, setDoc, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
 
-// ===== API SUPABASE =====
-async function sbSelect(filter) {
-  const url = `${SUPABASE_URL}/rest/v1/clients?${filter}&select=*`;
-  const r = await fetch(url, { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } });
-  return r.json();
+const firebaseConfig = {
+  apiKey: "AIzaSyDagghvP8ujE0fdUcYsOfmLaXps2ZSUexo",
+  authDomain: "phil-mobile.firebaseapp.com",
+  projectId: "phil-mobile",
+  storageBucket: "phil-mobile.firebasestorage.app",
+  messagingSenderId: "193213939481",
+  appId: "1:193213939481:web:f8a750e89f0e645b62cf88"
+};
+const fbApp = initializeApp(firebaseConfig);
+const db = getFirestore(fbApp);
+const CLIENTS_PATH = 'lylou_vely/fidelite/clients';
+
+// ===== API FIREBASE =====
+async function sbSelect(email) {
+  const snap = await getDoc(doc(db, CLIENTS_PATH, email));
+  return snap.exists() ? [snap.data()] : [];
 }
 
 async function sbInsert(data) {
-  const r = await fetch(`${SUPABASE_URL}/rest/v1/clients`, {
-    method: 'POST',
-    headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=representation' },
-    body: JSON.stringify(data)
-  });
-  return r.json();
+  await setDoc(doc(db, CLIENTS_PATH, data.email), data);
+  return [data];
 }
 
 async function sbUpdate(email, data) {
-  const r = await fetch(`${SUPABASE_URL}/rest/v1/clients?email=eq.${encodeURIComponent(email)}`, {
-    method: 'PATCH',
-    headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=representation' },
-    body: JSON.stringify(data)
-  });
-  return r.json();
+  await setDoc(doc(db, CLIENTS_PATH, email), data, {merge: true});
+  return [data];
 }
 
 // ===== DONNÉES CLIENT =====
@@ -291,15 +294,15 @@ function getProgress(pts) {
 }
 
 // ===== INSCRIPTION =====
-async function inscrire() {
+window.inscrire = async function() {
   const prenom = document.getElementById('input-prenom').value.trim();
   const nom = document.getElementById('input-nom').value.trim();
   const email = document.getElementById('input-email').value.trim().toLowerCase();
   const errEl = document.getElementById('error-inscription');
   errEl.style.display = 'none';
 
-  if (!prenom || !nom || !email) { showError(errEl, 'Merci de remplir tous les champs'); return; }
-  if (!email.includes('@')) { showError(errEl, 'E-mail invalide'); return; }
+  if (!prenom || !nom || !email) { showError_(errEl, 'Merci de remplir tous les champs'); return; }
+  if (!email.includes('@')) { showError_(errEl, 'E-mail invalide'); return; }
 
   const btn = document.getElementById('btn-inscrire');
   btn.disabled = true; btn.textContent = 'Vérification...';
@@ -310,7 +313,7 @@ async function inscrire() {
     clientData = existing[0];
     sessionStorage.setItem('llv_email', email);
     afficherCarte();
-    toast('Bienvenue de retour ' + clientData.prenom + ' ! 💜');
+    toastF('Bienvenue de retour ' + clientData.prenom + ' ! 💜');
     btn.disabled = false; btn.textContent = 'Créer ma carte 💎';
     return;
   }
@@ -329,19 +332,19 @@ async function inscrire() {
     clientData = result[0];
     sessionStorage.setItem('llv_email', email);
     afficherCarte();
-    toast('Bienvenue ' + prenom + ' ! 💎');
+    toastF('Bienvenue ' + prenom + ' ! 💎');
   } else {
-    showError(errEl, 'Erreur lors de la création. Réessayez.');
+    showError_(errEl, 'Erreur lors de la création. Réessayez.');
   }
   btn.disabled = false; btn.textContent = 'Créer ma carte 💎';
 }
 
 // ===== CONNEXION =====
-async function seConnecter() {
+window.seConnecter = async function() {
   const email = document.getElementById('input-login-email').value.trim().toLowerCase();
   const errEl = document.getElementById('error-login');
   errEl.style.display = 'none';
-  if (!email) { showError(errEl, 'Entrez votre e-mail'); return; }
+  if (!email) { showError_(errEl, 'Entrez votre e-mail'); return; }
 
   const btn = document.getElementById('btn-login');
   btn.disabled = true; btn.textContent = 'Recherche...';
@@ -351,21 +354,21 @@ async function seConnecter() {
     clientData = result[0];
     sessionStorage.setItem('llv_email', email);
     afficherCarte();
-    toast('Bonjour ' + clientData.prenom + ' ! 💜');
+    toastF('Bonjour ' + clientData.prenom + ' ! 💜');
   } else {
-    showError(errEl, 'Aucune carte trouvée pour cet e-mail');
+    showError_(errEl, 'Aucune carte trouvée pour cet e-mail');
   }
   btn.disabled = false; btn.textContent = 'Accéder à ma carte';
 }
 
 // ===== AFFICHAGE =====
-function afficherCarte() {
+window.afficherCarte = function() {
   document.getElementById('section-inscription').style.display = 'none';
   document.getElementById('section-carte').style.display = 'block';
   rafraichirCarte();
 }
 
-function rafraichirCarte() {
+window.rafraichirCarte = function() {
   const pts = clientData.points || 0;
   const tier = getTier(pts);
   const prog = getProgress(pts);
@@ -401,8 +404,8 @@ function rafraichirCarte() {
 }
 
 // ===== RÉCOMPENSES =====
-async function utiliserRecompense(cost, msg) {
-  if (clientData.points < cost) { toast('Points insuffisants 💜'); return; }
+window.utiliserRecompense = async function(cost, msg) {
+  if (clientData.points < cost) { toastF('Points insuffisants 💜'); return; }
   clientData.points -= cost;
   const hist = clientData.historique || [];
   hist.push({ desc: msg, date: new Date().toLocaleDateString('fr-BE'), pts: -cost });
@@ -410,11 +413,11 @@ async function utiliserRecompense(cost, msg) {
   clientData.tier = getTier(clientData.points).id;
   await sbUpdate(clientData.email, { points: clientData.points, historique: hist, tier: clientData.tier });
   rafraichirCarte();
-  toast(msg + ' 🎁');
+  toastF(msg + ' 🎁');
 }
 
 // ===== DÉCONNEXION =====
-function seDeconnecter() {
+window.seDeconnecter = function() {
   sessionStorage.removeItem('llv_email');
   clientData = null;
   document.getElementById('section-carte').style.display = 'none';
@@ -423,9 +426,9 @@ function seDeconnecter() {
 }
 
 // ===== UTILS =====
-function showError(el, msg) { el.textContent = msg; el.style.display = 'block'; }
+function showError_(el, msg) { el.textContent = msg; el.style.display = 'block'; }
 
-function toast(msg) {
+function toastF(msg) {
   const t = document.getElementById('toast');
   t.textContent = msg;
   t.classList.add('show');
