@@ -43,7 +43,8 @@ input,select{font-family:inherit;font-size:16px}
 #gate .err{color:var(--red);font-size:13px;height:16px;margin-top:8px}
 
 /* Header */
-header{background:linear-gradient(160deg,var(--violet) 0%,var(--violet-d) 100%);color:#fff;padding:12px 14px;position:sticky;top:0;z-index:50;box-shadow:0 3px 14px rgba(81,46,122,.25)}
+header{background:linear-gradient(160deg,var(--violet) 0%,var(--violet-d) 100%);color:#fff;padding:12px 14px;position:sticky;top:0;z-index:50;box-shadow:0 3px 14px rgba(81,46,122,.25);transition:background .3s}
+header.test-mode{background:linear-gradient(160deg,#b8860b 0%,#8b6508 100%);box-shadow:0 3px 14px rgba(184,134,11,.35)}
 .hdr-top{display:flex;align-items:center;justify-content:space-between}
 .hdr-top .title{font-family:'Cormorant Garamond',serif;font-size:22px;line-height:1}
 .hdr-top .title small{display:block;font-family:'Jost';font-size:10px;letter-spacing:3px;opacity:.8;text-transform:uppercase;margin-top:2px}
@@ -400,6 +401,7 @@ nav button.on{color:var(--violet)}
           <h3 style="font-size:19px;flex:1">Mouvements du jour</h3>
           <button class="btn btn-outline" style="width:auto;padding:8px 14px;font-size:13px" onclick="exportMovementsPDF()">PDF</button>
           <button class="btn btn-outline" style="width:auto;padding:8px 14px;font-size:13px" onclick="printMovements()">Imprimer</button>
+          <button class="btn btn-primary" style="width:auto;padding:8px 14px;font-size:13px" onclick="openVirement()">💰 Versement</button>
         </div>
         <div id="mv-list"></div>
       </div>
@@ -701,6 +703,26 @@ nav button.on{color:var(--violet)}
   </div>
 </div>
 
+<!-- ===== MODALE VERSEMENT BANQUE ===== -->
+<div class="overlay hidden" id="virement-overlay">
+  <div class="sheet">
+    <div class="grab"></div>
+    <h2>💰 Versement banque</h2>
+    <p style="font-size:13px;color:var(--muted);text-align:center;margin-bottom:14px">Sélectionne les tickets espèces à inclure dans le versement.</p>
+    <div class="field">
+      <label>Date du versement</label>
+      <input type="date" id="virement-date">
+    </div>
+    <div id="virement-tickets" style="margin:10px 0;max-height:300px;overflow-y:auto"></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-top:1px dashed var(--line);margin-top:6px">
+      <span style="font-size:14px;color:var(--muted)">Total sélectionné</span>
+      <span style="font-family:'Cormorant Garamond',serif;font-size:28px;color:var(--violet);font-weight:600" id="virement-total">0,00 €</span>
+    </div>
+    <button class="btn btn-primary" onclick="printVirement()">Générer le document</button>
+    <button class="btn btn-outline" style="margin-top:8px" onclick="closeVirement()">Fermer</button>
+  </div>
+</div>
+
 <script type="module">
 /* ============================================================
    CAISSE LYLOU-VELY v2 — vanilla JS + Firebase Firestore
@@ -953,14 +975,17 @@ window.go = function(tab){
 };
 
 /* ---- Refresh ---- */
-window.doRefresh = function(){
-  state = load();
-  checkNewDay();
+window.doRefresh = async function(){
+  toast("Rechargement en cours…");
+  await loadConfig();
+  await loadSales();
+  await loadMovements();
+  save();
   loadArticlesFromFirebase();
   countQty = {};
   initDenoms();
   renderAll();
-  toast("Données rechargées");
+  toast("✅ Données rechargées depuis Firebase");
 };
 
 
@@ -985,6 +1010,7 @@ function updateModeUI(){
   const test = mode==='test';
   document.getElementById('test-banner').style.display = test ? 'block' : 'none';
   document.getElementById('reset-zone').style.display = test ? 'block' : 'none';
+  document.querySelector('header').classList.toggle('test-mode', test);
   // Réglages
   const sm = document.getElementById('settings-mode');
   if(sm){ sm.textContent = test ? 'TEST' : 'PRODUCTION'; sm.className = 'mode-val '+(test?'test':'prod'); }
@@ -2161,7 +2187,101 @@ window.printZ = function(){
   }
 };
 
-/* ============ NOUVELLE JOURNÉE / RESET ============ */
+/* ============ VERSEMENT BANQUE ============ */
+window.openVirement = function(){
+  // Tickets espèces du jour non annulés
+  const tickets = state.sales.filter(s=>s.date===state.day && !s.cancelled && cashOfSale(s)>0);
+  const box = document.getElementById('virement-tickets');
+  document.getElementById('virement-date').value = todayStr();
+  if(tickets.length===0){
+    box.innerHTML='<div class="empty">Aucun ticket espèces aujourd\'hui</div>';
+  } else {
+    box.innerHTML = tickets.map(s=>{
+      const ref=s.ref||makeRef(s.num);
+      const cash=cashOfSale(s);
+      const names=s.items.map(i=>i.name+(i.qty>1?'×'+i.qty:'')).join(', ');
+      return `<div class="mv-line" style="padding:8px 0">
+        <input type="checkbox" id="vt-${s.id}" data-amt="${cash}" onchange="updateVirementTotal()" checked style="width:20px;height:20px;cursor:pointer">
+        <div class="m-info" style="flex:1;margin-left:8px">
+          <div class="t">${esc(ref)} · ${esc(names)}</div>
+          <div class="d">${s.time}${s.marche?' · '+esc(s.marche):''}</div>
+        </div>
+        <div class="amt plus">+${euro(cash)}</div>
+      </div>`;
+    }).join('');
+  }
+  updateVirementTotal();
+  document.getElementById('virement-overlay').classList.remove('hidden');
+};
+window.closeVirement = function(){ document.getElementById('virement-overlay').classList.add('hidden'); };
+window.updateVirementTotal = function(){
+  let total=0;
+  document.querySelectorAll('#virement-tickets input[type=checkbox]:checked').forEach(cb=>{
+    total+=parseFloat(cb.dataset.amt)||0;
+  });
+  document.getElementById('virement-total').textContent=euro(total);
+};
+window.printVirement = function(){
+  const dateV = document.getElementById('virement-date').value;
+  const dateLabel = dateV ? dateV.split('-').reverse().join('/') : todayStr().split('-').reverse().join('/');
+  const selected=[];
+  document.querySelectorAll('#virement-tickets input[type=checkbox]:checked').forEach(cb=>{
+    const id=parseInt(cb.id.replace('vt-',''));
+    const s=state.sales.find(x=>x.id===id);
+    if(s) selected.push(s);
+  });
+  if(selected.length===0){ toast("Aucun ticket sélectionné"); return; }
+  const total=selected.reduce((a,s)=>a+cashOfSale(s),0);
+  let rows='';
+  selected.forEach(s=>{
+    const ref=s.ref||makeRef(s.num);
+    const names=s.items.map(i=>i.name+(i.qty>1?' ×'+i.qty:'')).join(', ');
+    rows+=`<tr><td>${esc(ref)}</td><td>${s.date.split('-').reverse().join('/')} ${s.time}</td><td>${s.marche?esc(s.marche):'-'}</td><td>${esc(names)}</td><td class="r"><b>${euro(cashOfSale(s))}</b></td></tr>`;
+  });
+  const html=`<!DOCTYPE html><html><head><meta charset="UTF-8">
+    <title>${esc(SELLER.brand)} — Versement banque</title>
+    <style>
+      body{font-family:Arial,sans-serif;font-size:12px;color:#000;padding:30px;max-width:700px;margin:0 auto}
+      h1{color:#6B3FA0;font-size:24px;text-align:center;margin:0 0 4px;font-family:Georgia,serif}
+      .sub{text-align:center;font-size:11px;color:#777;margin-bottom:20px}
+      .titre{font-size:16px;font-weight:600;margin:20px 0 4px;color:#333;border-bottom:2px solid #6B3FA0;padding-bottom:4px}
+      table{width:100%;border-collapse:collapse;margin-bottom:16px}
+      th{background:#f5f0fa;color:#6B3FA0;padding:6px 8px;text-align:left;font-size:11px;border-bottom:2px solid #6B3FA0}
+      td{padding:5px 8px;border-bottom:1px solid #eee;font-size:11px}
+      td.r{text-align:right}
+      .total-box{background:#f5f0fa;border:2px solid #6B3FA0;border-radius:8px;padding:16px;text-align:center;margin:16px 0}
+      .total-label{font-size:13px;color:#555;margin-bottom:4px}
+      .total-amt{font-size:32px;font-weight:600;color:#6B3FA0;font-family:Georgia,serif}
+      .sign-box{display:flex;gap:40px;margin-top:30px}
+      .sign{flex:1;border-top:1px solid #333;padding-top:6px;font-size:11px;color:#555;text-align:center}
+      .foot{text-align:center;font-size:10px;color:#999;margin-top:20px;border-top:1px solid #eee;padding-top:8px}
+    </style></head><body>
+    <h1>${esc(SELLER.brand)}</h1>
+    <div class="sub">${esc(SELLER.legal)} · TVA ${esc(SELLER.vat)}<br>${esc(SELLER.address)}</div>
+    <div class="titre">Document de versement en banque</div>
+    <div style="font-size:12px;margin-bottom:12px">
+      <b>Date du versement :</b> ${dateLabel} &nbsp;|&nbsp;
+      <b>Nb tickets :</b> ${selected.length} &nbsp;|&nbsp;
+      <b>Marché :</b> ${state.marche||'-'}
+    </div>
+    <table>
+      <thead><tr><th>Réf.</th><th>Date/Heure</th><th>Marché</th><th>Articles</th><th class="r">Espèces</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <div class="total-box">
+      <div class="total-label">Montant total à verser en banque</div>
+      <div class="total-amt">${euro(total)}</div>
+    </div>
+    <div class="sign-box">
+      <div class="sign">Signature du responsable<br><br><br></div>
+      <div class="sign">Cachet / Tampon<br><br><br></div>
+    </div>
+    <div class="foot">Document généré le ${new Date().toLocaleString('fr-BE')} — ${esc(SELLER.brand)}</div>
+    </body></html>`;
+  const w=openPrintWindow(html);
+  if(w) setTimeout(()=>w.print(),400);
+  closeVirement();
+};
 window.newDay = function(){
   if(!confirm("Nouvelle journée ?\n\nL'historique est conservé.\nLe fond de caisse et la numérotation sont conservés.\n\nPense à faire ta clôture Z avant.")) return;
   showFondConfirmation();
