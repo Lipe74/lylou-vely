@@ -1415,6 +1415,7 @@ function showTicket(sale){
     </div>
     <div class="t-meta"><span>Reçu n°</span><span><b>${ref}</b></span></div>
     <div class="t-meta"><span>${sale.date.split('-').reverse().join('/')}</span><span>${sale.time}</span></div>
+    ${sale.marche ? `<div style="text-align:center;font-size:11px;color:#555;margin:2px 0">🏪 ${esc(sale.marche)}</div>` : ''}
     ${items}
     ${discountBlock}
     ${tvaBlock}
@@ -1836,12 +1837,14 @@ function renderJournal(){
     [...mvs].reverse().forEach(m=>{
       const payBadge = (m.type==='out' && m.payMode) ?
         `<span style="font-size:10px;background:${m.payMode==='cash'?'var(--violet-wash)':'var(--blue-wash)'};color:${m.payMode==='cash'?'var(--violet)':'var(--blue)'};padding:2px 6px;border-radius:6px;margin-left:4px">${m.payMode==='cash'?'💶':'💳'}</span>` : '';
+      const isZ = m.reason && m.reason.startsWith('Versement banque — clôture Z');
+      const reprZ = isZ ? `<button class="del" onclick="reprintZ('${m.date}','${(m.reason.split(' — ')[2]||'').replace(/'/g,"\\'")}')" style="color:var(--violet);font-size:15px" title="Réimprimer clôture Z">📋</button>` : '';
       const div = document.createElement('div'); div.className = 'mv-line';
       div.innerHTML = `
         <div class="pill ${m.type}">${m.type==='in'?'＋':'－'}</div>
         <div class="m-info"><div class="t">${esc(m.reason)}${payBadge}</div><div class="d">${m.date.split('-').reverse().join('/')} ${m.time}</div></div>
         <div class="amt ${m.type==='in'?'plus':'minus'}">${m.type==='in'?'+':'−'}${euro(m.amount)}</div>
-        <button class="del" onclick="printSingleMv(${m.id})" style="color:var(--violet);font-size:15px" title="Imprimer">⎙</button>`;
+        <button class="del" onclick="printSingleMv(${m.id})" style="color:var(--violet);font-size:15px" title="Imprimer">⎙</button>${reprZ}`;
       mvBox.appendChild(div);
     });
   } else {
@@ -1949,19 +1952,32 @@ function buildJournalHTML(){
   const totalIn = mvs.filter(m=>m.type==='in').reduce((a,m)=>a+m.amount,0);
   const totalOut = mvs.filter(m=>m.type==='out').reduce((a,m)=>a+m.amount,0);
   const dateLabel = document.getElementById('journal-date').textContent;
+
+  // Grouper les ventes par marché
+  const groupes = [];
+  const marchesVus = {};
+  s.forEach(sale=>{
+    const marche = sale.marche || '(sans marché)';
+    if(!marchesVus[marche]){ marchesVus[marche]=[]; groupes.push({marche, sales:marchesVus[marche]}); }
+    marchesVus[marche].push(sale);
+  });
+
   let html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
     <title>${esc(SELLER.brand)} — Journal</title>
     <style>body{font-family:Arial,sans-serif;font-size:12px;color:#000;padding:20px;background:#fff}
     h1{color:#6B3FA0;font-size:20px;text-align:center;margin:0 0 4px}
     .sub{text-align:center;font-size:11px;color:#777;margin-bottom:16px}
-    .kpis{display:flex;gap:16px;margin-bottom:12px;font-size:11px}
-    .kpi{flex:1;background:#f5f0fa;padding:8px;border-radius:6px;text-align:center}
+    .kpis{display:flex;gap:8px;margin-bottom:12px;font-size:11px;flex-wrap:wrap}
+    .kpi{flex:1;background:#f5f0fa;padding:8px;border-radius:6px;text-align:center;min-width:80px}
     .kpi b{display:block;font-size:14px;color:#6B3FA0}
-    table{width:100%;border-collapse:collapse;margin-bottom:20px}
+    table{width:100%;border-collapse:collapse;margin-bottom:12px}
     th{border-bottom:2px solid #333;padding:4px;text-align:left;font-size:11px}
     td{border-bottom:1px solid #eee;padding:4px;font-size:11px}
-    td.r{text-align:right} .sect{font-weight:600;margin:12px 0 6px;font-size:13px}
-    .foot{text-align:center;font-size:10px;color:#999;margin-top:16px}</style></head><body>
+    td.r{text-align:right}
+    .sect{font-weight:600;margin:14px 0 6px;font-size:13px}
+    .marche-hdr{background:#f5f0fa;color:#6B3FA0;font-weight:600;padding:6px 8px;border-radius:6px;margin:12px 0 6px;font-size:12px}
+    .marche-sub{font-size:10px;color:#555;margin-bottom:6px}
+    .foot{text-align:center;font-size:10px;color:#999;margin-top:16px;border-top:1px solid #eee;padding-top:8px}</style></head><body>
     <h1>${esc(SELLER.brand)}</h1>
     <div class="sub">${esc(SELLER.legal)} · TVA ${esc(SELLER.vat)}</div>
     <div style="font-weight:600;margin-bottom:8px">${esc(dateLabel)}</div>
@@ -1972,22 +1988,37 @@ function buildJournalHTML(){
       <div class="kpi"><b>${euro(qr)}</b>QR Code</div>
       <div class="kpi"><b>${euro(carte)}</b>Carte</div>
     </div>
-    <div class="sect">Ventes</div>
-    <table><thead><tr><th>Réf.</th><th>Articles</th><th>Mode</th><th style="text-align:right">Total</th></tr></thead><tbody>`;
-  if(s.length===0) html+='<tr><td colspan="4" style="color:#999">Aucune vente</td></tr>';
-  s.forEach(sale=>{
-    const ref=sale.ref||makeRef(sale.num);
-    const names=sale.items.map(i=>i.name+(i.qty>1?' ×'+i.qty:'')).join(', ');
-    html+=`<tr><td>${esc(ref)}</td><td>${esc(names)}</td><td>${METHOD_LABEL[sale.method]}</td><td class="r">${euro(sale.total)}</td></tr>`;
+    <div class="sect">Ventes</div>`;
+
+  // Ventes groupées par marché
+  groupes.forEach(groupe=>{
+    const gca=groupe.sales.reduce((a,x)=>a+x.total,0);
+    const gesp=groupe.sales.reduce((a,x)=>a+methodAmount(x,'especes'),0);
+    const gqr=groupe.sales.reduce((a,x)=>a+methodAmount(x,'qr'),0);
+    const gcarte=groupe.sales.reduce((a,x)=>a+methodAmount(x,'carte'),0);
+    if(groupes.length>1){
+      html+=`<div class="marche-hdr">🏪 ${esc(groupe.marche)} — CA : ${euro(gca)}</div>
+      <div class="marche-sub">💶 Espèces : ${euro(gesp)} · 📱 QR : ${euro(gqr)} · 💳 Carte : ${euro(gcarte)}</div>`;
+    }
+    html+=`<table><thead><tr><th>Réf.</th><th>Articles</th><th>Mode</th><th style="text-align:right">Total</th></tr></thead><tbody>`;
+    groupe.sales.forEach(sale=>{
+      const ref=sale.ref||makeRef(sale.num);
+      const names=sale.items.map(i=>i.name+(i.qty>1?' ×'+i.qty:'')).join(', ');
+      const cancelled=sale.cancelled?' style="text-decoration:line-through;color:#999"':'';
+      html+=`<tr${cancelled}><td>${esc(ref)}</td><td>${esc(names)}</td><td>${METHOD_LABEL[sale.method]}</td><td class="r">${euro(sale.total)}</td></tr>`;
+    });
+    html+='</tbody></table>';
   });
-  html+='</tbody></table>';
+  if(s.length===0) html+='<p style="color:#999">Aucune vente</p>';
+
+  // Mouvements
   if(mvs.length>0){
     html+=`<div class="sect">Mouvements</div>
-    <table><thead><tr><th>Type</th><th>Motif</th><th>Mode</th><th style="text-align:right">Montant</th></tr></thead><tbody>`;
+    <table><thead><tr><th>Type</th><th>Motif</th><th>Date</th><th>Mode</th><th style="text-align:right">Montant</th></tr></thead><tbody>`;
     mvs.forEach(m=>{
       const sign=m.type==='in'?'+':'−';
       const pm=m.payMode==='card'?'💳 Carte':m.payMode==='cash'?'💶 Liquide':'-';
-      html+=`<tr><td>${sign}</td><td>${esc(m.reason)}</td><td>${pm}</td><td class="r" style="color:${m.type==='in'?'green':'red'}">${sign}${euro(m.amount)}</td></tr>`;
+      html+=`<tr><td>${sign}</td><td>${esc(m.reason)}</td><td>${m.date.split('-').reverse().join('/')} ${m.time}</td><td>${pm}</td><td class="r" style="color:${m.type==='in'?'green':'red'}">${sign}${euro(m.amount)}</td></tr>`;
     });
     html+=`</tbody></table>
     <div style="font-size:11px"><b>Total entrées : +${euro(totalIn)}</b> &nbsp;|&nbsp; <b>Total sorties : −${euro(totalOut)}</b></div>`;
@@ -2051,20 +2082,29 @@ window.exportCSV = function(){
 };
 
 /* ============ CLÔTURE Z ============ */
-window.printZ = function(){
-  const valid = state.sales.filter(x=>x.date===state.day && !x.cancelled);
-  const cancelledN = state.sales.filter(x=>x.date===state.day && x.cancelled).length;
+function buildZHTML(day, marche){
+  const valid = state.sales.filter(x=>x.date===day && !x.cancelled);
+  const cancelledN = state.sales.filter(x=>x.date===day && x.cancelled).length;
   const ca=valid.reduce((a,x)=>a+x.total,0);
   const esp=valid.reduce((a,x)=>a+methodAmount(x,'especes'),0);
   const qr=valid.reduce((a,x)=>a+methodAmount(x,'qr'),0);
   const carte=valid.reduce((a,x)=>a+methodAmount(x,'carte'),0);
-  currentTicketRef = 'cloture-'+state.day;
-  const area=document.getElementById('ticket-area');
-  area.innerHTML = `
+  const mvs=dayMovements(day);
+  const inTotal=mvs.filter(m=>m.type==='in').reduce((a,m)=>a+m.amount,0);
+  const outTotal=mvs.filter(m=>m.type==='out').reduce((a,m)=>a+m.amount,0);
+  const cashOut=mvs.filter(m=>m.type==='out'&&m.payMode!=='card').reduce((a,m)=>a+m.amount,0);
+  const cardOut=mvs.filter(m=>m.type==='out'&&m.payMode==='card').reduce((a,m)=>a+m.amount,0);
+  const theo = state.fond + esp + inTotal - cashOut;
+  return {ca,esp,qr,carte,cancelledN,valid,theo,inTotal,outTotal,cashOut,cardOut,mvs};
+}
+
+function buildZTicketHTML(day, marche, ca, esp, qr, carte, cancelledN, theo, inTotal, outTotal, cashOut, cardOut){
+  const valid = state.sales.filter(x=>x.date===day && !x.cancelled);
+  return `
     <div class="t-head"><div class="lg">${esc(SELLER.brand)}</div><div class="sl">Clôture Z</div>
       <div class="t-legal">${esc(SELLER.legal)}<br>TVA ${esc(SELLER.vat)}</div></div>
-    ${state.marche ? `<div style="text-align:center;font-weight:600;font-size:14px;margin-bottom:4px">🏪 ${esc(state.marche)}</div>` : ''}
-    <div class="t-meta"><span>${state.day.split('-').reverse().join('/')}</span><span>${nowTime()}</span></div>
+    ${marche ? `<div style="text-align:center;font-weight:600;font-size:14px;margin-bottom:4px">🏪 ${esc(marche)}</div>` : ''}
+    <div class="t-meta"><span>${day.split('-').reverse().join('/')}</span><span>${nowTime()}</span></div>
     <div class="t-item"><span>Nombre de ventes</span><span>${valid.length}</span></div>
     <div class="t-item"><span>Tickets annulés</span><span>${cancelledN}</span></div>
     <div class="t-sep"></div>
@@ -2077,21 +2117,36 @@ window.printZ = function(){
     <div class="t-item"><span>Carte</span><span>${euro(carte)}</span></div>
     <div class="t-sep"></div>
     <div class="t-item"><span>Fond de caisse</span><span>${euro(state.fond)}</span></div>
-    <div class="t-item"><span>Entrées</span><span>${euro(sumIn())}</span></div>
-    <div class="t-item"><span>Sorties totales</span><span>${euro(sumOut())}</span></div>
-    ${(()=>{ const dMvs=dayMovements(state.day).filter(m=>m.type==='out'); const cashOut=dMvs.filter(m=>m.payMode==='cash').reduce((a,m)=>a+m.amount,0); const cardOut=dMvs.filter(m=>m.payMode==='card').reduce((a,m)=>a+m.amount,0); return (cashOut>0||cardOut>0)?`<div class="t-sub"><span>dont 💶 Liquide</span><span>-${euro(cashOut)}</span></div><div class="t-sub"><span>dont 💳 Carte</span><span>-${euro(cardOut)}</span></div>`:''; })()}
-    <div class="t-tot"><span>Espèces en caisse</span><span>${euro(theoreticalCash())}</span></div>
-    ${theoreticalCash() > state.fond + 0.01 ? `<div class="t-sep"></div>
+    <div class="t-item"><span>Entrées</span><span>${euro(inTotal)}</span></div>
+    <div class="t-item"><span>Sorties totales</span><span>${euro(outTotal)}</span></div>
+    ${(cashOut>0||cardOut>0)?`<div class="t-sub"><span>dont 💶 Liquide</span><span>-${euro(cashOut)}</span></div><div class="t-sub"><span>dont 💳 Carte</span><span>-${euro(cardOut)}</span></div>`:''}
+    <div class="t-tot"><span>Espèces en caisse</span><span>${euro(theo)}</span></div>
+    ${theo > state.fond + 0.01 ? `<div class="t-sep"></div>
       <div style="font-size:11px;font-weight:600;color:#555;margin-bottom:4px">Détail du versement :</div>
       <div class="t-sub"><span>Ventes espèces</span><span>+${euro(esp)}</span></div>
-      ${sumIn() > 0 ? `<div class="t-sub"><span>Entrées</span><span>+${euro(sumIn())}</span></div>` : ''}
-      ${sumCashOut() > 0 ? `<div class="t-sub"><span>Sorties liquide</span><span>−${euro(sumCashOut())}</span></div>` : ''}
-      <div class="t-item" style="font-weight:600;color:#2e9e6b;font-size:14px;border-top:1px dashed #ccc;padding-top:6px;margin-top:4px"><span>💰 À retirer (versement)</span><span>${euro(theoreticalCash() - state.fond)}</span></div>
+      ${inTotal > 0 ? `<div class="t-sub"><span>Entrées</span><span>+${euro(inTotal)}</span></div>` : ''}
+      ${cashOut > 0 ? `<div class="t-sub"><span>Sorties liquide</span><span>−${euro(cashOut)}</span></div>` : ''}
+      <div class="t-item" style="font-weight:600;color:#2e9e6b;font-size:14px;border-top:1px dashed #ccc;padding-top:6px;margin-top:4px"><span>💰 À retirer (versement)</span><span>${euro(theo - state.fond)}</span></div>
       <div style="font-size:10px;color:#777;text-align:center;margin-top:4px">Pour conserver le fond de caisse de ${euro(state.fond)}</div>` : ''}
     <div class="t-foot">Clôture générée le ${new Date().toLocaleString('fr-BE')}</div>`;
+}
+
+window.reprintZ = function(day, marche){
+  const {ca,esp,qr,carte,cancelledN,theo,inTotal,outTotal,cashOut,cardOut} = buildZHTML(day, marche);
+  currentTicketRef = 'cloture-'+day;
+  document.getElementById('ticket-area').innerHTML = buildZTicketHTML(day, marche, ca, esp, qr, carte, cancelledN, theo, inTotal, outTotal, cashOut, cardOut);
+  document.getElementById('ticket-overlay').classList.remove('hidden');
+};
+
+window.printZ = function(){
+  const d = state.day;
+  const {ca,esp,qr,carte,cancelledN,theo,inTotal,outTotal,cashOut,cardOut} = buildZHTML(d, state.marche);
+  currentTicketRef = 'cloture-'+d;
+  const area=document.getElementById('ticket-area');
+  area.innerHTML = buildZTicketHTML(d, state.marche, ca, esp, qr, carte, cancelledN, theo, inTotal, outTotal, cashOut, cardOut);
   document.getElementById('ticket-overlay').classList.remove('hidden');
   // Proposer versement banque si surplus
-  const surplus = theoreticalCash() - state.fond;
+  const surplus = theo - state.fond;
   if(surplus > 0.01){
     setTimeout(()=>{
       if(confirm(`💰 Versement banque\n\nVous avez ${euro(surplus)} à retirer.\n\nConfirmer le versement de ${euro(surplus)} vers la banque ?`)){
