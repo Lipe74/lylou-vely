@@ -523,14 +523,13 @@ nav button.on{color:var(--violet)}
 
     <!-- QR Bancontact -->
     <div id="pay-qr" class="hidden">
-      <h2>Paiement QR — Bancontact</h2>
-      <div class="qr-amount-lbl">Montant à faire saisir au client</div>
+      <h2>Paiement QR — Virement CBC</h2>
+      <div class="qr-amount-lbl">Montant exact pré-rempli pour le client</div>
       <div class="pay-amt" id="qr-amount">0,00 €</div>
       <div class="qr-wrap">
-        <img id="qr-img" src="qr-bancontact.png" alt="QR Bancontact Lylou-Vely" onerror="this.style.display='none';document.getElementById('qr-missing').style.display='block'">
-        <div id="qr-missing">Place le fichier <b>qr-bancontact.png</b> à côté de la page.</div>
+        <div id="qr-sepa"></div>
       </div>
-      <p class="qr-steps">Le client scanne, saisit le montant, confirme (PIN / empreinte).<br>Vérifie la confirmation sur ton portail commerçant.</p>
+      <p class="qr-steps">Le client scanne avec son app bancaire.<br>Le montant est pré-rempli — il n'a qu'à confirmer.<br>Virement instantané sur ton compte CBC.</p>
       <button class="btn btn-primary" onclick="confirmExternal('qr')">Paiement confirmé ✓</button>
       <div class="confirm-refused">
         <button class="btn btn-outline" onclick="backToChoice()">Retour</button>
@@ -1344,7 +1343,37 @@ window.startExternal = function(method){
   document.getElementById('pay-choice').classList.add('hidden');
   if(method==='qr'){
     document.getElementById('pay-qr').classList.remove('hidden');
-    document.getElementById('qr-amount').textContent = euro(payRemaining());
+    const amt = payRemaining();
+    document.getElementById('qr-amount').textContent = euro(amt);
+    // Générer QR SEPA (EPC/GiroCode) avec montant exact
+    const iban = 'BE08732086423213';
+    const bic = 'CPHBBE75'; // CBC BIC
+    const name = 'Lylou-Vely By Zen-Connect';
+    const ref = makeRef(state.ticketCounter+1);
+    const amtStr = amt.toFixed(2);
+    const sepaData = [
+      'BCD',           // Service Tag
+      '002',           // Version
+      '1',             // Encoding UTF-8
+      'SCT',           // SEPA Credit Transfer
+      bic,             // BIC
+      name,            // Nom bénéficiaire
+      iban,            // IBAN
+      'EUR'+amtStr,    // Montant
+      '',              // Purpose
+      ref,             // Référence
+      '',              // Info non structurée
+      'Lylou-Vely'     // Info bénéficiaire
+    ].join('\n');
+    const qrBox = document.getElementById('qr-sepa');
+    qrBox.innerHTML = '';
+    try{
+      new QRCode(qrBox, {
+        text: sepaData, width:200, height:200,
+        colorDark:'#000000', colorLight:'#ffffff',
+        correctLevel: QRCode.CorrectLevel.M
+      });
+    }catch(e){ qrBox.innerHTML='<p>QR indisponible</p>'; }
   } else {
     document.getElementById('pay-sumup').classList.remove('hidden');
     document.getElementById('sumup-amount').textContent = euro(payRemaining());
