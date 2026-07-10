@@ -251,13 +251,31 @@ nav button.on{color:var(--violet)}
   *{margin:0 !important;padding:0 !important}
   body,body *{visibility:hidden;height:0;overflow:hidden}
   #ticket-print,#ticket-print *{visibility:visible;height:auto;overflow:visible}
-  #ticket-print{position:absolute;left:0;top:0;width:100%;background:#fff;padding:2px !important}
-  #ticket-area{max-width:100% !important;padding:4px !important;margin:0 !important}
+  #ticket-print{position:absolute;left:0;top:0;width:100%;background:#fff;padding:20px !important}
+  #ticket-area{
+    max-width:420px !important;
+    margin:0 auto !important;
+    padding:20px !important;
+    font-size:13px !important;
+    line-height:1.6 !important;
+    border:1px solid #ddd !important;
+  }
+  #ticket-area .t-head .lg{font-size:28px !important}
+  #ticket-area .t-head .sl{font-size:11px !important}
+  #ticket-area .t-legal{font-size:11px !important}
+  #ticket-area .t-meta{font-size:12px !important}
+  #ticket-area .t-item{font-size:13px !important;padding:3px 0 !important}
+  #ticket-area .t-sub{font-size:12px !important;padding:2px 0 !important}
+  #ticket-area .t-tot{font-size:18px !important;padding-top:8px !important}
+  #ticket-area .t-pay{font-size:12px !important}
+  #ticket-area .t-foot{font-size:11px !important;padding-top:10px !important;margin-top:10px !important}
+  #ticket-area .t-qr img,#ticket-area .t-qr canvas{width:100px !important;height:100px !important}
+  #ticket-area .paid{font-size:14px !important;padding:4px 14px !important}
   .overlay{position:static !important;background:none !important;padding:0 !important;display:block !important}
   .sheet{box-shadow:none !important;max-width:none !important;padding:0 !important;border-radius:0 !important;max-height:none !important}
   .no-print{display:none !important}
   nav,header,main,#test-banner,#gate{display:none !important}
-  @page{margin:0;padding:0;size:auto}
+  @page{margin:15mm;size:auto}
 }
 </style>
 </head>
