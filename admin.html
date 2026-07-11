@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Lylou-Vely — Admin</title>
+<link rel="icon" type="image/png" href="images/logo.png">
+<meta name="theme-color" content="#6B3FA0">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{--violet:#6B3FA0;--violet-d:#512e7a;--violet-wash:#f3eeff}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Jost',sans-serif;background:var(--violet-wash);min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px}
+  .logo{width:80px;height:80px;object-fit:contain;margin-bottom:16px}
+  .brand{font-family:'Cormorant Garamond',serif;font-size:36px;color:var(--violet);font-weight:600;text-align:center;margin-bottom:4px}
+  .sub{font-size:13px;color:#888;text-align:center;margin-bottom:48px;letter-spacing:2px;text-transform:uppercase}
+  .cards{display:flex;gap:20px;flex-wrap:wrap;justify-content:center;width:100%;max-width:500px}
+  .card{flex:1;min-width:200px;background:#fff;border-radius:20px;padding:32px 24px;text-align:center;text-decoration:none;box-shadow:0 4px 20px rgba(107,63,160,.12);transition:transform .2s,box-shadow .2s;border:2px solid transparent}
+  .card:hover{transform:translateY(-4px);box-shadow:0 8px 30px rgba(107,63,160,.2);border-color:var(--violet)}
+  .card .icon{font-size:40px;margin-bottom:12px}
+  .card .title{font-family:'Cormorant Garamond',serif;font-size:24px;color:var(--violet);font-weight:600;margin-bottom:6px}
+  .card .desc{font-size:13px;color:#888;line-height:1.5}
+  .foot{margin-top:40px;font-size:11px;color:#bbb;text-align:center}
+</style>
+</head>
+<body>
+  <img src="images/logo.png" alt="Lylou-Vely" class="logo" onerror="this.style.display='none'">
+  <div class="brand">Lylou-Vely</div>
+  <div class="sub">Espace Administration</div>
+  <div class="cards">
+    <a href="caisse.html" class="card">
+      <div class="icon">🛒</div>
+      <div class="title">Caisse</div>
+      <div class="desc">Ventes, paiements, journal, clôture Z</div>
+    </a>
+    <a href="admin-fidelite.html" class="card">
+      <div class="icon">💜</div>
+      <div class="title">Fidélité</div>
+      <div class="desc">Gestion des cartes et points clients</div>
+    </a>
+  </div>
+  <div class="foot">Lylou-Vely By Zen-Connect · TVA BE1035199737</div>
+</body>
+</html>
