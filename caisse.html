@@ -1535,18 +1535,31 @@ window.closeTicket = function(){ document.getElementById('ticket-overlay').class
 window.imprimerTicket = function(){
   document.body.classList.remove('print-a4');
   document.body.classList.add('print-58mm');
+  // Forcer @page via style temporaire
   let style = document.getElementById('print-page-style');
   if(!style){ style=document.createElement('style'); style.id='print-page-style'; document.head.appendChild(style); }
-  style.textContent = '@page{margin:0;padding:0;size:58mm auto}';
-  setTimeout(()=>{ window.print(); setTimeout(()=>document.body.classList.remove('print-58mm'),500); }, 150);
+  style.textContent = '@media print{@page{margin:0;padding:0;size:58mm auto}}';
+  setTimeout(()=>{
+    window.print();
+    setTimeout(()=>{
+      document.body.classList.remove('print-58mm');
+      if(style) style.textContent = '';
+    },1000);
+  }, 200);
 };
 window.imprimerA4 = function(){
   document.body.classList.remove('print-58mm');
   document.body.classList.add('print-a4');
   let style = document.getElementById('print-page-style');
   if(!style){ style=document.createElement('style'); style.id='print-page-style'; document.head.appendChild(style); }
-  style.textContent = '@page{margin:10mm;size:A5 portrait}';
-  setTimeout(()=>{ window.print(); setTimeout(()=>document.body.classList.remove('print-a4'),500); }, 150);
+  style.textContent = '@media print{@page{margin:10mm;size:A5 portrait}}';
+  setTimeout(()=>{
+    window.print();
+    setTimeout(()=>{
+      document.body.classList.remove('print-a4');
+      if(style) style.textContent = '';
+    },1000);
+  }, 200);
 };
 
 /* Export PDF du ticket */
