@@ -1533,33 +1533,59 @@ function showTicket(sale){
 window.closeTicket = function(){ document.getElementById('ticket-overlay').classList.add('hidden'); };
 
 window.imprimerTicket = function(){
-  document.body.classList.remove('print-a4');
-  document.body.classList.add('print-58mm');
-  // Forcer @page via style temporaire
-  let style = document.getElementById('print-page-style');
-  if(!style){ style=document.createElement('style'); style.id='print-page-style'; document.head.appendChild(style); }
-  style.textContent = '@media print{@page{margin:0;padding:0;size:58mm auto}}';
-  setTimeout(()=>{
-    window.print();
-    setTimeout(()=>{
-      document.body.classList.remove('print-58mm');
-      if(style) style.textContent = '';
-    },1000);
-  }, 200);
+  const area = document.getElementById('ticket-area');
+  if(!area) return;
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+    <title>Ticket ${currentTicketRef}</title>
+    <style>
+      @page{margin:0;size:58mm auto}
+      *{margin:0;padding:0;box-sizing:border-box}
+      body{font-family:Arial,Helvetica,sans-serif;font-size:9px;width:54mm;color:#000;background:#fff;padding:2mm;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+      .t-head{text-align:center;border-bottom:1px dashed #000;padding-bottom:4px;margin-bottom:4px}
+      .t-head .lg{font-size:15px;font-weight:900}
+      .t-head .sl{font-size:7px;letter-spacing:1px;text-transform:uppercase}
+      .t-legal{font-size:7px;text-align:center}
+      .t-meta{display:flex;justify-content:space-between;font-size:8px}
+      .t-item{display:flex;justify-content:space-between;padding:1px 0;font-size:9px}
+      .t-sep{border-top:1px dashed #000;margin:2px 0}
+      .t-sub{display:flex;justify-content:space-between;font-size:8px;color:#333}
+      .t-tot{display:flex;justify-content:space-between;font-weight:900;font-size:12px;border-top:1px dashed #000;padding-top:3px;margin-top:2px}
+      .t-pay{font-size:8px}
+      .paid{display:block;text-align:center;border:2px solid #000;border-radius:4px;padding:2px;font-weight:900;margin:4px auto;width:60px;font-size:9px}
+      .t-qr{text-align:center;margin:4px 0}
+      .t-qr img,.t-qr canvas{width:55px;height:55px}
+      .t-foot{text-align:center;font-size:7px;border-top:1px dashed #000;padding-top:3px;margin-top:3px}
+      .t-testmark{text-align:center;font-size:8px;font-weight:900;border:1px dashed #000;padding:2px;margin-bottom:4px}
+    </style></head><body>${area.innerHTML}</body></html>`;
+  const w = openPrintWindow(html);
+  if(w) setTimeout(()=>w.print(), 400);
 };
 window.imprimerA4 = function(){
-  document.body.classList.remove('print-58mm');
-  document.body.classList.add('print-a4');
-  let style = document.getElementById('print-page-style');
-  if(!style){ style=document.createElement('style'); style.id='print-page-style'; document.head.appendChild(style); }
-  style.textContent = '@media print{@page{margin:10mm;size:A5 portrait}}';
-  setTimeout(()=>{
-    window.print();
-    setTimeout(()=>{
-      document.body.classList.remove('print-a4');
-      if(style) style.textContent = '';
-    },1000);
-  }, 200);
+  const area = document.getElementById('ticket-area');
+  if(!area) return;
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+    <title>Ticket ${currentTicketRef}</title>
+    <style>
+      @page{margin:10mm;size:A5 portrait}
+      body{font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#000;background:#fff;padding:0;-webkit-print-color-adjust:exact}
+      .t-head{text-align:center;border-bottom:1px dashed #000;padding-bottom:8px;margin-bottom:8px}
+      .t-head .lg{font-size:26px;font-weight:900}
+      .t-head .sl{font-size:10px;letter-spacing:2px;text-transform:uppercase}
+      .t-legal{font-size:10px;text-align:center}
+      .t-meta{display:flex;justify-content:space-between;font-size:12px;margin-bottom:2px}
+      .t-item{display:flex;justify-content:space-between;padding:3px 0;font-size:13px}
+      .t-sep{border-top:1px dashed #000;margin:6px 0}
+      .t-sub{display:flex;justify-content:space-between;font-size:12px;color:#333}
+      .t-tot{display:flex;justify-content:space-between;font-weight:900;font-size:18px;border-top:2px solid #000;padding-top:6px;margin-top:4px}
+      .t-pay{font-size:12px}
+      .paid{display:block;text-align:center;border:2px solid #000;border-radius:6px;padding:4px 12px;font-weight:900;margin:8px auto;width:100px;font-size:13px}
+      .t-qr{text-align:center;margin:10px 0}
+      .t-qr img,.t-qr canvas{width:100px;height:100px}
+      .t-foot{text-align:center;font-size:11px;border-top:1px dashed #000;padding-top:8px;margin-top:8px;line-height:1.6}
+      .t-testmark{text-align:center;font-size:11px;font-weight:900;border:1px dashed #000;padding:4px;margin-bottom:8px}
+    </style></head><body>${area.innerHTML}</body></html>`;
+  const w = openPrintWindow(html);
+  if(w) setTimeout(()=>w.print(), 400);
 };
 
 /* Export PDF du ticket */
