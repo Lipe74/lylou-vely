@@ -107,11 +107,8 @@
   <div class="login-box">
     <h1>Espace Admin 💜</h1>
     <p>Lylou-Vely — Gestion fidélité</p>
-    <label style="display:block;font-size:12px;text-transform:uppercase;letter-spacing:0.8px;color:var(--text-soft);margin-bottom:6px;">Email</label>
-    <input class="inp" type="email" id="pwd-input" placeholder="infos@lylou-vely.be" value="infos@lylou-vely.be" style="margin-bottom:12px" />
     <label style="display:block;font-size:12px;text-transform:uppercase;letter-spacing:0.8px;color:var(--text-soft);margin-bottom:6px;">Mot de passe</label>
-    <input class="inp" type="password" id="pwd-pw" placeholder="••••••••" onkeydown="if(event.key==='Enter')login()" />
-    <div id="login-err" style="display:none;color:#9b3030;font-size:13px;margin:8px 0"></div>
+    <input class="inp" type="password" id="pwd-input" placeholder="••••••••" onkeydown="if(event.key==='Enter')login()" />
     <button class="btn-primary" onclick="login()">Accéder au dashboard</button>
   </div>
 </div>
@@ -123,7 +120,10 @@
       <img src="images/logo.png" alt="Lylou-Vely">
       <h1>Fidélité Admin</h1>
     </div>
-    <div class="topbar-right" onclick="logout()">⬅ Déconnexion</div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <a href="admin.html" style="color:#fff;background:rgba(255,255,255,0.15);padding:6px 14px;border-radius:20px;font-size:13px;text-decoration:none" title="Accueil Admin">⚏ Admin</a>
+      <div class="topbar-right" onclick="logout()">⬅ Déconnexion</div>
+    </div>
   </div>
 
   <div class="admin-body">
@@ -212,117 +212,77 @@
 <div class="toast" id="toast"></div>
 
 <script>
-// Wrappers accessibles depuis HTML
-function login() { window._login && window._login(); }
-function logout() { window._logout && window._logout(); }
-function filterTable() { window._filterTable && window._filterTable(); }
-function setFilter(f) { window._setFilter && window._setFilter(f); }
-function openNewClient() { window._openNewClient && window._openNewClient(); }
-function calcPreview() { window._calcPreview && window._calcPreview(); }
-function closeModal(id) { window._closeModal && window._closeModal(id); }
-function openAddPts(e) { window._openAddPts && window._openAddPts(e); }
-function openHist(e) { window._openHist && window._openHist(e); }
-function supprimerClient(e) { window._supprimerClient && window._supprimerClient(e); }
-function confirmerPts() { window._confirmerPts && window._confirmerPts(); }
-function confirmerNew() { window._confirmerNew && window._confirmerNew(); }
-</script>
-<script type="module">
-// ===== CONFIG FIREBASE =====
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
-import { getFirestore, doc, getDoc, setDoc, deleteDoc, collection, getDocs, orderBy, query } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
-import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
-
-const firebaseConfig = {
-  apiKey: "AIzaSyDagghvP8ujE0fdUcYsOfmLaXps2ZSUexo",
-  authDomain: "phil-mobile.firebaseapp.com",
-  projectId: "phil-mobile",
-  storageBucket: "phil-mobile.firebasestorage.app",
-  messagingSenderId: "193213939481",
-  appId: "1:193213939481:web:f8a750e89f0e645b62cf88"
-};
-const fbApp = initializeApp(firebaseConfig);
-const db = getFirestore(fbApp);
-const auth = getAuth(fbApp);
-const clientDoc = (email) => doc(db, 'lylou_vely', 'fidelite', 'clients', email);
-const clientsCol = () => collection(db, 'lylou_vely', 'fidelite', 'clients');
+// ===== CONFIG =====
+const SUPABASE_URL = 'https://cghzmsvhclrsufqcqzzu.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_lcrB5gQYAEylFk7fmKdsUA_UlvRyt8_';
+const ADMIN_PWD = '1F23f1e329';
 
 let allClients = [];
 let filterTier = 'all';
 let activeEmail = null;
 
-// Aliases locaux
-const toast = (m) => window._toast(m);
-const login = (...a) => window._login?.(...a);
-const logout = (...a) => window._logout?.(...a);
-const loadAll = (...a) => window._loadAll?.(...a);
-const updateStats = (...a) => window._updateStats?.(...a);
-const renderTable = (...a) => window._renderTable?.(...a);
-const setFilter = (...a) => window._setFilter?.(...a);
-const filterTable = (...a) => window._filterTable?.(...a);
-const openAddPts = (...a) => window._openAddPts?.(...a);
-const calcPreview = (...a) => window._calcPreview?.(...a);
-const confirmerPts = (...a) => window._confirmerPts?.(...a);
-const openNewClient = (...a) => window._openNewClient?.(...a);
-const confirmerNew = (...a) => window._confirmerNew?.(...a);
-const openHist = (...a) => window._openHist?.(...a);
-const supprimerClient = (...a) => window._supprimerClient?.(...a);
-const closeModal = (...a) => window._closeModal?.(...a);
-
-
-// ===== API FIREBASE =====
+// ===== API =====
 async function sbGetAll() {
-  const snap = await getDocs(clientsCol());
-  const arr = [];
-  snap.forEach(d => arr.push(d.data()));
-  return arr.sort((a,b) => (b.points||0) - (a.points||0));
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/clients?select=*&order=points.desc`, {
+    headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
+  });
+  return r.json();
 }
 
 async function sbInsert(data) {
-  await setDoc(clientDoc(data.email), data);
-  return [data];
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/clients`, {
+    method: 'POST',
+    headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=representation' },
+    body: JSON.stringify(data)
+  });
+  return r.json();
 }
 
 async function sbUpdate(email, data) {
-  await setDoc(clientDoc(email), data, {merge: true});
-  return true;
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/clients?email=eq.${encodeURIComponent(email)}`, {
+    method: 'PATCH',
+    headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  });
+  return r.ok;
 }
 
 async function sbDelete(email) {
-  await deleteDoc(clientDoc(email));
-  return true;
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/clients?email=eq.${encodeURIComponent(email)}`, {
+    method: 'DELETE',
+    headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
+  });
+  return r.ok;
 }
 
 // ===== AUTH =====
-window._login = async function() {
-  const email = document.getElementById('pwd-input').value.trim();
-  const pw = document.getElementById('pwd-pw').value;
-  const errEl = document.getElementById('login-err');
-  if(!email||!pw){ errEl.textContent='Email et mot de passe requis'; errEl.style.display='block'; return; }
-  try{
-    await signInWithEmailAndPassword(auth, email, pw);
-  }catch(e){
-    errEl.textContent='Email ou mot de passe incorrect';
-    errEl.style.display='block';
-  }
-}
-
-window._logout = async function() {
-  await auth.signOut();
-}
-
-onAuthStateChanged(auth, user => {
-  if(user){
+function login() {
+  const pwd = document.getElementById('pwd-input').value;
+  if (pwd === ADMIN_PWD) {
     document.getElementById('section-login').style.display = 'none';
     document.getElementById('section-admin').style.display = 'block';
+    sessionStorage.setItem('llv_admin', '1');
     loadAll();
   } else {
-    document.getElementById('section-login').style.display = 'flex';
-    document.getElementById('section-admin').style.display = 'none';
+    toast('Mot de passe incorrect');
   }
-});
+}
+
+function logout() {
+  sessionStorage.removeItem('llv_admin');
+  document.getElementById('section-login').style.display = 'flex';
+  document.getElementById('section-admin').style.display = 'none';
+  document.getElementById('pwd-input').value = '';
+}
+
+if (sessionStorage.getItem('llv_admin')) {
+  document.getElementById('section-login').style.display = 'none';
+  document.getElementById('section-admin').style.display = 'block';
+  loadAll();
+}
 
 // ===== CHARGEMENT =====
-window._loadAll = async function() {
+async function loadAll() {
   document.getElementById('table-loading').style.display = 'block';
   document.getElementById('clients-table').style.display = 'none';
   document.getElementById('empty-state').style.display = 'none';
@@ -336,7 +296,7 @@ window._loadAll = async function() {
   document.getElementById('table-loading').style.display = 'none';
 }
 
-window._updateStats = function() {
+function updateStats() {
   document.getElementById('stat-total').textContent = allClients.length;
   document.getElementById('stat-pts').textContent = allClients.reduce((s,c) => s+(c.points||0), 0).toLocaleString('fr-BE');
   document.getElementById('stat-diamant').textContent = allClients.filter(c => (c.points||0) >= 1500).length;
@@ -350,7 +310,7 @@ function getTierInfo(pts) {
   return { nom:'🤎 Quartz', id:'quartz' };
 }
 
-window._renderTable = function() {
+function renderTable() {
   const q = document.getElementById('search').value.toLowerCase();
   const filtered = allClients.filter(c => {
     const matchQ = (c.prenom+' '+c.nom+' '+c.email).toLowerCase().includes(q);
@@ -386,7 +346,7 @@ window._renderTable = function() {
   });
 }
 
-window._setFilter = function(f) {
+function setFilter(f) {
   filterTier = f;
   ['all','diamant','citrine','perle','quartz'].forEach(x => {
     const el = document.getElementById('f-'+x);
@@ -395,10 +355,10 @@ window._setFilter = function(f) {
   renderTable();
 }
 
-window._filterTable = function() { renderTable(); }
+function filterTable() { renderTable(); }
 
 // ===== AJOUTER POINTS =====
-window._openAddPts = function(email) {
+function openAddPts(email) {
   activeEmail = email;
   const c = allClients.find(x => x.email === email);
   document.getElementById('modal-pts-title').textContent = '+ Points — ' + c.prenom + ' ' + c.nom;
@@ -409,13 +369,13 @@ window._openAddPts = function(email) {
   setTimeout(() => document.getElementById('m-achat').focus(), 100);
 }
 
-window._calcPreview = function() {
+function calcPreview() {
   const achat = Math.round(parseFloat(document.getElementById('m-achat').value)||0);
   const bonus = parseInt(document.getElementById('m-bonus').value)||0;
   document.getElementById('pts-preview').textContent = '+ '+(achat+bonus)+' pts à ajouter';
 }
 
-window._confirmerPts = async function() {
+async function confirmerPts() {
   const achat = Math.round(parseFloat(document.getElementById('m-achat').value)||0);
   const bonus = parseInt(document.getElementById('m-bonus').value)||0;
   const total = achat + bonus;
@@ -451,14 +411,14 @@ window._confirmerPts = async function() {
 }
 
 // ===== NOUVELLE CLIENTE =====
-window._openNewClient = function() {
+function openNewClient() {
   ['nc-prenom','nc-nom','nc-email'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('nc-pts').value = '0';
   document.getElementById('modal-new').classList.add('open');
   setTimeout(() => document.getElementById('nc-prenom').focus(), 100);
 }
 
-window._confirmerNew = async function() {
+async function confirmerNew() {
   const prenom = document.getElementById('nc-prenom').value.trim();
   const nom = document.getElementById('nc-nom').value.trim();
   const email = document.getElementById('nc-email').value.trim().toLowerCase();
@@ -491,7 +451,7 @@ window._confirmerNew = async function() {
 }
 
 // ===== HISTORIQUE =====
-window._openHist = function(email) {
+function openHist(email) {
   const c = allClients.find(x => x.email === email);
   document.getElementById('modal-hist-title').textContent = 'Historique — ' + c.prenom + ' ' + c.nom;
   const body = document.getElementById('modal-hist-body');
@@ -510,7 +470,7 @@ window._openHist = function(email) {
 }
 
 // ===== SUPPRIMER =====
-window._supprimerClient = async function(email) {
+async function supprimerClient(email) {
   const c = allClients.find(x => x.email === email);
   if (!confirm('Supprimer la carte de ' + c.prenom + ' ' + c.nom + ' ?')) return;
   const ok = await sbDelete(email);
@@ -523,9 +483,9 @@ window._supprimerClient = async function(email) {
 }
 
 // ===== UTILS =====
-window._closeModal = function(id) { document.getElementById(id).classList.remove('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 
-window._toast = function(msg) {
+function toast(msg) {
   const t = document.getElementById('toast');
   t.textContent = msg;
   t.classList.add('show');
