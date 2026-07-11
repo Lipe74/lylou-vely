@@ -248,40 +248,31 @@ nav button.on{color:var(--violet)}
 @keyframes tin{from{opacity:0;transform:translate(-50%,10px)}to{opacity:1;transform:translate(-50%,0)}}
 
 @media print{
-  *{margin:0 !important;padding:0 !important}
+  *{margin:0 !important;padding:0 !important;box-sizing:border-box !important}
   body,body *{visibility:hidden;height:0;overflow:hidden}
   #ticket-print,#ticket-print *{visibility:visible;height:auto;overflow:visible}
-  #ticket-print{position:absolute;left:0;top:0;width:100%;height:100%;background:#fff;padding:0 !important}
-  #ticket-area{
-    width:100% !important;
-    max-width:100% !important;
-    height:100vh !important;
-    margin:0 !important;
-    padding:15mm !important;
-    font-size:15px !important;
-    line-height:2.2 !important;
-    border:none !important;
-    display:flex !important;
-    flex-direction:column !important;
-    justify-content:space-between !important;
-  }
-  #ticket-area .t-foot{margin-top:auto !important;padding-top:20px !important}
-  #ticket-area .t-head .lg{font-size:28px !important}
-  #ticket-area .t-head .sl{font-size:11px !important}
-  #ticket-area .t-legal{font-size:11px !important}
-  #ticket-area .t-meta{font-size:12px !important}
-  #ticket-area .t-item{font-size:13px !important;padding:3px 0 !important}
-  #ticket-area .t-sub{font-size:12px !important;padding:2px 0 !important}
-  #ticket-area .t-tot{font-size:18px !important;padding-top:8px !important}
-  #ticket-area .t-pay{font-size:12px !important}
-  #ticket-area .t-foot{font-size:11px !important;padding-top:10px !important;margin-top:10px !important}
-  #ticket-area .t-qr img,#ticket-area .t-qr canvas{width:100px !important;height:100px !important}
-  #ticket-area .paid{font-size:14px !important;padding:4px 14px !important}
   .overlay{position:static !important;background:none !important;padding:0 !important;display:block !important}
   .sheet{box-shadow:none !important;max-width:none !important;padding:0 !important;border-radius:0 !important;max-height:none !important}
   .no-print{display:none !important}
   nav,header,main,#test-banner,#gate{display:none !important}
-  @page{margin:10mm;size:A5 portrait}
+}
+/* Mode 58mm */
+@media print{
+  body.print-58mm #ticket-print{position:absolute;left:0;top:0;width:58mm;background:#fff;padding:0 !important}
+  body.print-58mm #ticket-area{width:54mm !important;max-width:54mm !important;padding:2mm !important;margin:0 !important;font-size:9px !important;overflow:hidden !important}
+  body.print-58mm #ticket-area .t-head .lg{font-size:15px !important}
+  body.print-58mm #ticket-area .t-tot{font-size:12px !important}
+  body.print-58mm #ticket-area .t-qr img,body.print-58mm #ticket-area .t-qr canvas{width:55px !important;height:55px !important}
+  body.print-58mm{--page-size:58mm auto}
+}
+/* Mode A4 */
+@media print{
+  body.print-a4 #ticket-print{position:absolute;left:0;top:0;width:100%;height:100%;background:#fff;padding:0 !important}
+  body.print-a4 #ticket-area{width:100% !important;max-width:100% !important;height:100vh !important;margin:0 !important;padding:15mm !important;font-size:15px !important;line-height:2.2 !important;border:none !important;display:flex !important;flex-direction:column !important;justify-content:space-between !important}
+  body.print-a4 #ticket-area .t-head .lg{font-size:28px !important}
+  body.print-a4 #ticket-area .t-tot{font-size:20px !important}
+  body.print-a4 #ticket-area .t-qr img,body.print-a4 #ticket-area .t-qr canvas{width:100px !important;height:100px !important}
+  body.print-a4 #ticket-area .t-foot{margin-top:auto !important}
 }
 </style>
 </head>
@@ -582,7 +573,8 @@ nav button.on{color:var(--violet)}
       <div class="row-btns">
         <button class="btn btn-outline" onclick="closeTicket()">Fermer</button>
         <button class="btn btn-ghost" onclick="downloadPDF()">PDF</button>
-        <button class="btn btn-primary" onclick="window.print()">Imprimer</button>
+        <button class="btn btn-ghost" onclick="imprimerTicket()">🖨 58mm</button>
+        <button class="btn btn-primary" onclick="imprimerA4()">🖨 A4</button>
       </div>
     </div>
   </div>
@@ -1522,6 +1514,23 @@ function showTicket(sale){
   document.getElementById('ticket-overlay').classList.remove('hidden');
 }
 window.closeTicket = function(){ document.getElementById('ticket-overlay').classList.add('hidden'); };
+
+window.imprimerTicket = function(){
+  document.body.classList.remove('print-a4');
+  document.body.classList.add('print-58mm');
+  let style = document.getElementById('print-page-style');
+  if(!style){ style=document.createElement('style'); style.id='print-page-style'; document.head.appendChild(style); }
+  style.textContent = '@page{margin:0;padding:0;size:58mm auto}';
+  setTimeout(()=>{ window.print(); setTimeout(()=>document.body.classList.remove('print-58mm'),500); }, 150);
+};
+window.imprimerA4 = function(){
+  document.body.classList.remove('print-58mm');
+  document.body.classList.add('print-a4');
+  let style = document.getElementById('print-page-style');
+  if(!style){ style=document.createElement('style'); style.id='print-page-style'; document.head.appendChild(style); }
+  style.textContent = '@page{margin:10mm;size:A5 portrait}';
+  setTimeout(()=>{ window.print(); setTimeout(()=>document.body.classList.remove('print-a4'),500); }, 150);
+};
 
 /* Export PDF du ticket */
 window.downloadPDF = function(){
