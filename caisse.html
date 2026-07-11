@@ -416,7 +416,8 @@ nav button.on{color:var(--violet)}
         <div class="row-btns" style="margin-bottom:10px">
           <h3 style="font-size:19px;flex:1">Tickets</h3>
           <button class="btn btn-outline" style="width:auto;padding:8px 14px;font-size:13px" onclick="downloadJournalPDF()">PDF</button>
-          <button class="btn btn-outline" style="width:auto;padding:8px 14px;font-size:13px" onclick="printJournal()">Imprimer</button>
+          <button class="btn btn-outline" style="width:auto;padding:8px 14px;font-size:13px" onclick="printJournal('58mm')">🖨 58mm</button>
+          <button class="btn btn-outline" style="width:auto;padding:8px 14px;font-size:13px" onclick="printJournal('a4')">🖨 A4</button>
         </div>
         <div id="jr-list"></div>
       </div>
@@ -424,7 +425,8 @@ nav button.on{color:var(--violet)}
         <div class="row-btns" style="margin-bottom:10px">
           <h3 style="font-size:19px;flex:1">Mouvements</h3>
           <button class="btn btn-outline" style="width:auto;padding:8px 14px;font-size:13px" onclick="downloadJournalMvPDF()">PDF</button>
-          <button class="btn btn-outline" style="width:auto;padding:8px 14px;font-size:13px" onclick="printJournalMv()">Imprimer</button>
+          <button class="btn btn-outline" style="width:auto;padding:8px 14px;font-size:13px" onclick="printJournalMv('58mm')">🖨 58mm</button>
+          <button class="btn btn-outline" style="width:auto;padding:8px 14px;font-size:13px" onclick="printJournalMv('a4')">🖨 A4</button>
         </div>
         <div id="jr-mv-list"></div>
       </div>
@@ -464,8 +466,8 @@ nav button.on{color:var(--violet)}
       <div class="card">
         <div class="row-btns" style="margin-bottom:10px">
           <h3 style="font-size:19px;flex:1">Mouvements du jour</h3>
-          <button class="btn btn-outline" style="width:auto;padding:8px 14px;font-size:13px" onclick="exportMovementsPDF()">PDF</button>
-          <button class="btn btn-outline" style="width:auto;padding:8px 14px;font-size:13px" onclick="printMovements()">Imprimer</button>
+          <button class="btn btn-outline" style="width:auto;padding:8px 14px;font-size:13px" onclick="printMovements('58mm')">🖨 58mm</button>
+          <button class="btn btn-outline" style="width:auto;padding:8px 14px;font-size:13px" onclick="printMovements('a4')">🖨 A4</button>
           <button class="btn btn-primary" style="width:auto;padding:8px 14px;font-size:13px" onclick="openVirement()">💰 Versement</button>
         </div>
         <div id="mv-list"></div>
@@ -601,7 +603,8 @@ nav button.on{color:var(--violet)}
     <div class="no-print" style="margin-top:16px">
       <div class="row-btns">
         <button class="btn btn-outline" onclick="closeMvPrint()">Fermer</button>
-        <button class="btn btn-ghost" onclick="exportMovementsPDF()">PDF / Imprimer</button>
+        <button class="btn btn-ghost" onclick="exportMovementsPDF('58mm')">🖨 58mm</button>
+        <button class="btn btn-ghost" onclick="exportMovementsPDF('a4')">🖨 A4</button>
       </div>
     </div>
   </div>
@@ -1507,7 +1510,7 @@ function showTicket(sale){
     </div>
     <div class="t-meta"><span>Reçu n°</span><span><b>${ref}</b></span></div>
     <div class="t-meta"><span>${sale.date.split('-').reverse().join('/')}</span><span>${sale.time}</span></div>
-    ${sale.marche ? `<div style="text-align:center;font-size:11px;color:#555;margin:2px 0">🏪 ${esc(sale.marche)}</div>` : ''}
+    ${sale.marche ? `<div style="text-align:center;font-size:11px;color:#555;margin:2px 0">Marche : ${esc(sale.marche)}</div>` : ''}
     ${items}
     ${discountBlock}
     ${tvaBlock}
@@ -1727,7 +1730,7 @@ function renderMovements(){
   box.innerHTML='';
   [...mvs].reverse().forEach(m=>{
     const payBadge = (m.type==='out' && m.payMode) ?
-      `<span style="font-size:10px;background:${m.payMode==='cash'?'var(--violet-wash)':'var(--blue-wash)'};color:${m.payMode==='cash'?'var(--violet)':'var(--blue)'};padding:2px 6px;border-radius:6px;margin-left:4px">${m.payMode==='cash'?'💶 Liquide':'💳 Carte'}</span>` : '';
+      `<span style="font-size:10px;background:${m.payMode==='cash'?'var(--violet-wash)':'var(--blue-wash)'};color:${m.payMode==='cash'?'var(--violet)':'var(--blue)'};padding:2px 6px;border-radius:6px;margin-left:4px">${m.payMode==='cash'?'Liquide':'Carte'}</span>` : '';
     const bancedBadge = m.banked ? `<span style="font-size:10px;background:#e6f4ea;color:#2e9e6b;padding:2px 6px;border-radius:6px;margin-left:4px">✓ Bancé</span>` : '';
     const div=document.createElement('div'); div.className='mv-line';
     div.innerHTML = `
@@ -1745,8 +1748,8 @@ window.printMovements = function(){
   area.innerHTML = buildMvPrintHTML();
   document.getElementById('mvprint-overlay').classList.remove('hidden');
 };
-window.exportMovementsPDF = function(){
-  const w = openPrintWindow(buildMvPrintWindowHTML());
+window.exportMovementsPDF = function(mode){
+  const w = openPrintWindow(buildMvPrintWindowHTML(), mode||'a4');
   if(w) setTimeout(()=>w.print(), 400);
 };
 function buildMvPrintWindowHTML(){
@@ -1928,7 +1931,7 @@ function renderJournal(){
         ? `<span class="jr-badge">ANNULÉ</span><button class="del" onclick="reprint(${sale.id})" style="color:var(--muted);font-size:15px">⎙</button>`
         : `<button class="del" onclick="reprint(${sale.id})" style="color:var(--violet);font-size:15px">⎙</button>
            <button class="del" onclick="cancelSale(${sale.id})" style="color:var(--red);font-size:15px">⊘</button>`;
-      const marcheTag = (groupes.length===1 && sale.marche) ? `<span style="font-size:10px;color:var(--violet);margin-left:4px">🏪 ${esc(sale.marche)}</span>` : '';
+      const marcheTag = (groupes.length===1 && sale.marche) ? `<span style="font-size:10px;color:var(--violet);margin-left:4px">Marche : ${esc(sale.marche)}</span>` : '';
       div.innerHTML = `
         <div class="pill ${cls}">${ic}</div>
         <div class="j-info"><div class="t">${esc(ref)} · ${esc(names)}${marcheTag}</div><div class="d">${sale.date.split('-').reverse().join('/')} ${sale.time} · ${METHOD_LABEL[sale.method]}</div></div>
@@ -1984,7 +1987,7 @@ window.printSingleMv = function(id){
   const m = state.movements.find(x=>x.id===id);
   if(!m) return;
   const sign = m.type==='in'?'+':'−';
-  const pm = m.payMode==='card'?'💳 Carte':m.payMode==='cash'?'💶 Liquide':'—';
+  const pm = m.payMode==='card'?'Carte':m.payMode==='cash'?'Liquide':'—';
   const typeLabel = m.type==='in'?'Entrée':'Sortie';
   const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
     <title>${esc(SELLER.brand)} — Justificatif</title>
@@ -2010,12 +2013,12 @@ window.printSingleMv = function(id){
   if(w) setTimeout(()=>w.print(), 400);
 };
 
-window.printJournalMv = function(){
-  const w = openPrintWindow(buildJournalMvHTML());
+window.printJournalMv = function(mode){
+  const w = openPrintWindow(buildJournalMvHTML(), mode||'a4');
   if(w) setTimeout(()=>w.print(), 400);
 };
-window.downloadJournalMvPDF = function(){
-  const w = openPrintWindow(buildJournalMvHTML());
+window.downloadJournalMvPDF = function(mode){
+  const w = openPrintWindow(buildJournalMvHTML(), mode||'a4');
   if(w) setTimeout(()=>w.print(), 400);
 };
 function buildJournalMvHTML(){
@@ -2041,7 +2044,7 @@ function buildJournalMvHTML(){
   if(mvs.length===0) html+='<tr><td colspan="5" style="color:#999">Aucun mouvement</td></tr>';
   [...mvs].forEach(m=>{
     const sign = m.type==='in'?'+':'−';
-    const pm = m.payMode==='card'?'💳 Carte':m.payMode==='cash'?'💶 Liquide':'—';
+    const pm = m.payMode==='card'?'Carte':m.payMode==='cash'?'Liquide':'—';
     const cls = m.type==='in'?'plus':'minus';
     html+=`<tr><td>${sign}</td><td>${esc(m.reason)}</td><td>${m.date.split('-').reverse().join('/')} ${m.time}</td><td>${pm}</td><td class="r ${cls}">${sign}${euro(m.amount)}</td></tr>`;
   });
@@ -2128,7 +2131,7 @@ function buildJournalHTML(){
     <table><thead><tr><th>Type</th><th>Motif</th><th>Date</th><th>Mode</th><th style="text-align:right">Montant</th></tr></thead><tbody>`;
     mvs.forEach(m=>{
       const sign=m.type==='in'?'+':'−';
-      const pm=m.payMode==='card'?'💳 Carte':m.payMode==='cash'?'💶 Liquide':'-';
+      const pm=m.payMode==='card'?'Carte':m.payMode==='cash'?'Liquide':'-';
       html+=`<tr><td>${sign}</td><td>${esc(m.reason)}</td><td>${m.date.split('-').reverse().join('/')} ${m.time}</td><td>${pm}</td><td class="r" style="color:${m.type==='in'?'green':'red'}">${sign}${euro(m.amount)}</td></tr>`;
     });
     html+=`</tbody></table>
@@ -2151,10 +2154,14 @@ function getFilteredMovements(){
   }
   return all;
 }
-function openPrintWindow(htmlContent){
+function openPrintWindow(htmlContent, mode){
   const w = window.open('','_blank','width=800,height=600');
   if(!w){ toast("Popup bloqué — autorise les popups pour imprimer"); return null; }
-  w.document.write(htmlContent);
+  // Injecter CSS selon le mode
+  const css58 = `<style>@page{margin:0;size:58mm auto}body{font-family:Arial,Helvetica,sans-serif;font-size:9px;width:54mm;margin:0;padding:2mm;color:#000}table{width:100%}th,td{font-size:9px}h1{font-size:14px}*{color:#000 !important;background:#fff !important}</style>`;
+  const cssA4 = `<style>@page{margin:10mm;size:A5 portrait}body{font-family:Arial,Helvetica,sans-serif;font-size:12px;margin:0;padding:0;color:#000}</style>`;
+  const html = mode==='58mm' ? htmlContent.replace('</head>', css58+'</head>') : htmlContent.replace('</head>', cssA4+'</head>');
+  w.document.write(html);
   w.document.close();
   return w;
 }
@@ -2214,7 +2221,7 @@ function buildZTicketHTML(day, marche, ca, esp, qr, carte, cancelledN, theo, inT
   return `
     <div class="t-head"><div class="lg">${esc(SELLER.brand)}</div><div class="sl">Clôture Z</div>
       <div class="t-legal">${esc(SELLER.legal)}<br>TVA ${esc(SELLER.vat)}</div></div>
-    ${marche ? `<div style="text-align:center;font-weight:600;font-size:14px;margin-bottom:4px">🏪 ${esc(marche)}</div>` : ''}
+    ${marche ? `<div style="text-align:center;font-weight:600;font-size:14px;margin-bottom:4px">Marche : ${esc(marche)}</div>` : ''}
     <div class="t-meta"><span>${day.split('-').reverse().join('/')}</span><span>${nowTime()}</span></div>
     <div class="t-item"><span>Nombre de ventes</span><span>${valid.length}</span></div>
     <div class="t-item"><span>Tickets annulés</span><span>${cancelledN}</span></div>
@@ -2230,15 +2237,19 @@ function buildZTicketHTML(day, marche, ca, esp, qr, carte, cancelledN, theo, inT
     <div class="t-item"><span>Fond de caisse</span><span>${euro(state.fond)}</span></div>
     <div class="t-item"><span>Entrées</span><span>${euro(inTotal)}</span></div>
     <div class="t-item"><span>Sorties totales</span><span>${euro(outTotal)}</span></div>
-    ${(cashOut>0||cardOut>0)?`<div class="t-sub"><span>dont 💶 Liquide</span><span>-${euro(cashOut)}</span></div><div class="t-sub"><span>dont 💳 Carte</span><span>-${euro(cardOut)}</span></div>`:''}
+    ${(cashOut>0||cardOut>0)?`<div class="t-sub"><span>dont Liquide</span><span>-${euro(cashOut)}</span></div><div class="t-sub"><span>dont Carte</span><span>-${euro(cardOut)}</span></div>`:''}
     <div class="t-tot"><span>Espèces en caisse</span><span>${euro(theo)}</span></div>
     ${theo > state.fond + 0.01 ? `<div class="t-sep"></div>
       <div style="font-size:11px;font-weight:600;color:#555;margin-bottom:4px">Détail du versement :</div>
       <div class="t-sub"><span>Ventes espèces</span><span>+${euro(esp)}</span></div>
       ${inTotal > 0 ? `<div class="t-sub"><span>Entrées</span><span>+${euro(inTotal)}</span></div>` : ''}
       ${cashOut > 0 ? `<div class="t-sub"><span>Sorties liquide</span><span>−${euro(cashOut)}</span></div>` : ''}
-      <div class="t-item" style="font-weight:600;color:#2e9e6b;font-size:14px;border-top:1px dashed #ccc;padding-top:6px;margin-top:4px"><span>💰 À retirer (versement)</span><span>${euro(theo - state.fond)}</span></div>
-      <div style="font-size:10px;color:#777;text-align:center;margin-top:4px">Pour conserver le fond de caisse de ${euro(state.fond)}</div>` : ''}
+      <div class="t-sep"></div>
+      <div style="text-align:center;border:2px solid #000;border-radius:6px;padding:8px 4px;margin:6px 0;white-space:nowrap;overflow:hidden">
+        <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:1px;margin-bottom:2px">A retirer (versement)</div>
+        <div style="font-size:18px;font-weight:900;letter-spacing:1px">${euro(theo - state.fond)}</div>
+        <div style="font-size:9px;margin-top:2px">Fond conservé : ${euro(state.fond)}</div>
+      </div>` : ''}
     <div class="t-foot">Clôture générée le ${new Date().toLocaleString('fr-BE')}</div>`;
 }
 
