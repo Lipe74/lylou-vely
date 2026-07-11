@@ -108,7 +108,9 @@
     <h1>Espace Admin 💜</h1>
     <p>Lylou-Vely — Gestion fidélité</p>
     <label style="display:block;font-size:12px;text-transform:uppercase;letter-spacing:0.8px;color:var(--text-soft);margin-bottom:6px;">Mot de passe</label>
-    <input class="inp" type="password" id="pwd-input" placeholder="••••••••" onkeydown="if(event.key==='Enter')login()" />
+    <input class="inp" type="email" id="pwd-input" placeholder="infos@lylou-vely.be" value="infos@lylou-vely.be" style="letter-spacing:0">
+    <input class="inp" type="password" id="pwd-pw" placeholder="Mot de passe" onkeydown="if(event.key==='Enter')login()">
+    <div id="login-err" style="display:none;color:#9b3030;font-size:13px;margin:8px 0"></div>
     <button class="btn-primary" onclick="login()">Accéder au dashboard</button>
   </div>
 </div>
@@ -122,7 +124,10 @@
     </div>
     <div style="display:flex;align-items:center;gap:10px">
       <a href="admin.html" style="color:#fff;background:rgba(255,255,255,0.15);padding:6px 14px;border-radius:20px;font-size:13px;text-decoration:none" title="Accueil Admin">⚏ Admin</a>
+      <div style="display:flex;align-items:center;gap:10px">
+      <a href="admin.html" style="color:#fff;background:rgba(255,255,255,0.15);padding:6px 14px;border-radius:20px;font-size:13px;text-decoration:none">⚏ Admin</a>
       <div class="topbar-right" onclick="logout()">⬅ Déconnexion</div>
+    </div>
     </div>
   </div>
 
@@ -212,77 +217,98 @@
 <div class="toast" id="toast"></div>
 
 <script>
-// ===== CONFIG =====
-const SUPABASE_URL = 'https://cghzmsvhclrsufqcqzzu.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_lcrB5gQYAEylFk7fmKdsUA_UlvRyt8_';
-const ADMIN_PWD = '1F23f1e329';
+function login() { window.login && window.login(); }
+function logout() { window.logout && window.logout(); }
+function setFilter(f) { window.setFilter && window.setFilter(f); }
+function filterTable() { window.filterTable && window.filterTable(); }
+function openAddPts(e) { window.openAddPts && window.openAddPts(e); }
+function calcPreview() { window.calcPreview && window.calcPreview(); }
+function confirmerPts() { window.confirmerPts && window.confirmerPts(); }
+function openNewClient() { window.openNewClient && window.openNewClient(); }
+function confirmerNew() { window.confirmerNew && window.confirmerNew(); }
+function openHist(e) { window.openHist && window.openHist(e); }
+function supprimerClient(e) { window.supprimerClient && window.supprimerClient(e); }
+function closeModal(id) { window.closeModal && window.closeModal(id); }
+function toast(m) { window._toast && window._toast(m); }
+</script>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
+import { getFirestore, doc, getDoc, setDoc, deleteDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
+import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
 
+const firebaseConfig = {
+  apiKey: "AIzaSyDagghvP8ujE0fdUcYsOfmLaXps2ZSUexo",
+  authDomain: "phil-mobile.firebaseapp.com",
+  projectId: "phil-mobile",
+  storageBucket: "phil-mobile.firebasestorage.app",
+  messagingSenderId: "193213939481",
+  appId: "1:193213939481:web:f8a750e89f0e645b62cf88"
+};
+const fbApp = initializeApp(firebaseConfig);
+const db = getFirestore(fbApp);
+const auth = getAuth(fbApp);
+const clientDoc = (email) => doc(db, 'lylou_vely', 'fidelite', 'clients', email);
+const clientsCol = () => collection(db, 'lylou_vely', 'fidelite', 'clients');
+// ===== CONFIG =====
 let allClients = [];
 let filterTier = 'all';
 let activeEmail = null;
 
-// ===== API =====
+// ===== API FIREBASE =====
 async function sbGetAll() {
-  const r = await fetch(`${SUPABASE_URL}/rest/v1/clients?select=*&order=points.desc`, {
-    headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
-  });
-  return r.json();
+  const snap = await getDocs(clientsCol());
+  const arr = [];
+  snap.forEach(d => arr.push(d.data()));
+  return arr.sort((a,b) => (b.points||0) - (a.points||0));
 }
 
 async function sbInsert(data) {
-  const r = await fetch(`${SUPABASE_URL}/rest/v1/clients`, {
-    method: 'POST',
-    headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=representation' },
-    body: JSON.stringify(data)
-  });
-  return r.json();
+  await setDoc(clientDoc(data.email), data);
+  return [data];
 }
 
 async function sbUpdate(email, data) {
-  const r = await fetch(`${SUPABASE_URL}/rest/v1/clients?email=eq.${encodeURIComponent(email)}`, {
-    method: 'PATCH',
-    headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify(data)
-  });
-  return r.ok;
+  await setDoc(clientDoc(email), data, {merge: true});
+  return true;
 }
 
 async function sbDelete(email) {
-  const r = await fetch(`${SUPABASE_URL}/rest/v1/clients?email=eq.${encodeURIComponent(email)}`, {
-    method: 'DELETE',
-    headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
-  });
-  return r.ok;
+  await deleteDoc(clientDoc(email));
+  return true;
 }
 
 // ===== AUTH =====
-function login() {
-  const pwd = document.getElementById('pwd-input').value;
-  if (pwd === ADMIN_PWD) {
+// ===== FIREBASE AUTH =====
+window.login = async function() {
+  const email = document.getElementById('pwd-input').value.trim();
+  const pw = document.getElementById('pwd-pw').value;
+  const errEl = document.getElementById('login-err');
+  errEl.style.display = 'none';
+  try {
+    await signInWithEmailAndPassword(auth, email, pw);
+  } catch(e) {
+    errEl.textContent = 'Email ou mot de passe incorrect';
+    errEl.style.display = 'block';
+  }
+};
+
+window.logout = async function() {
+  await signOut(auth);
+};
+
+onAuthStateChanged(auth, user => {
+  if (user) {
     document.getElementById('section-login').style.display = 'none';
     document.getElementById('section-admin').style.display = 'block';
-    sessionStorage.setItem('llv_admin', '1');
     loadAll();
   } else {
-    toast('Mot de passe incorrect');
+    document.getElementById('section-login').style.display = 'flex';
+    document.getElementById('section-admin').style.display = 'none';
   }
-}
-
-function logout() {
-  sessionStorage.removeItem('llv_admin');
-  document.getElementById('section-login').style.display = 'flex';
-  document.getElementById('section-admin').style.display = 'none';
-  document.getElementById('pwd-input').value = '';
-}
-
-if (sessionStorage.getItem('llv_admin')) {
-  document.getElementById('section-login').style.display = 'none';
-  document.getElementById('section-admin').style.display = 'block';
-  loadAll();
-}
+});
 
 // ===== CHARGEMENT =====
-async function loadAll() {
+window.loadAll = async function() {
   document.getElementById('table-loading').style.display = 'block';
   document.getElementById('clients-table').style.display = 'none';
   document.getElementById('empty-state').style.display = 'none';
@@ -296,7 +322,7 @@ async function loadAll() {
   document.getElementById('table-loading').style.display = 'none';
 }
 
-function updateStats() {
+window.updateStats = function() {
   document.getElementById('stat-total').textContent = allClients.length;
   document.getElementById('stat-pts').textContent = allClients.reduce((s,c) => s+(c.points||0), 0).toLocaleString('fr-BE');
   document.getElementById('stat-diamant').textContent = allClients.filter(c => (c.points||0) >= 1500).length;
@@ -310,7 +336,7 @@ function getTierInfo(pts) {
   return { nom:'🤎 Quartz', id:'quartz' };
 }
 
-function renderTable() {
+window.renderTable = function() {
   const q = document.getElementById('search').value.toLowerCase();
   const filtered = allClients.filter(c => {
     const matchQ = (c.prenom+' '+c.nom+' '+c.email).toLowerCase().includes(q);
@@ -346,7 +372,7 @@ function renderTable() {
   });
 }
 
-function setFilter(f) {
+window.setFilter = function(f) {
   filterTier = f;
   ['all','diamant','citrine','perle','quartz'].forEach(x => {
     const el = document.getElementById('f-'+x);
@@ -355,10 +381,10 @@ function setFilter(f) {
   renderTable();
 }
 
-function filterTable() { renderTable(); }
+window.filterTable = function() { renderTable(); }
 
 // ===== AJOUTER POINTS =====
-function openAddPts(email) {
+window.openAddPts = function(email) {
   activeEmail = email;
   const c = allClients.find(x => x.email === email);
   document.getElementById('modal-pts-title').textContent = '+ Points — ' + c.prenom + ' ' + c.nom;
@@ -369,13 +395,13 @@ function openAddPts(email) {
   setTimeout(() => document.getElementById('m-achat').focus(), 100);
 }
 
-function calcPreview() {
+window.calcPreview = function() {
   const achat = Math.round(parseFloat(document.getElementById('m-achat').value)||0);
   const bonus = parseInt(document.getElementById('m-bonus').value)||0;
   document.getElementById('pts-preview').textContent = '+ '+(achat+bonus)+' pts à ajouter';
 }
 
-async function confirmerPts() {
+window.confirmerPts = async function() {
   const achat = Math.round(parseFloat(document.getElementById('m-achat').value)||0);
   const bonus = parseInt(document.getElementById('m-bonus').value)||0;
   const total = achat + bonus;
@@ -411,14 +437,14 @@ async function confirmerPts() {
 }
 
 // ===== NOUVELLE CLIENTE =====
-function openNewClient() {
+window.openNewClient = function() {
   ['nc-prenom','nc-nom','nc-email'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('nc-pts').value = '0';
   document.getElementById('modal-new').classList.add('open');
   setTimeout(() => document.getElementById('nc-prenom').focus(), 100);
 }
 
-async function confirmerNew() {
+window.confirmerNew = async function() {
   const prenom = document.getElementById('nc-prenom').value.trim();
   const nom = document.getElementById('nc-nom').value.trim();
   const email = document.getElementById('nc-email').value.trim().toLowerCase();
@@ -451,7 +477,7 @@ async function confirmerNew() {
 }
 
 // ===== HISTORIQUE =====
-function openHist(email) {
+window.openHist = function(email) {
   const c = allClients.find(x => x.email === email);
   document.getElementById('modal-hist-title').textContent = 'Historique — ' + c.prenom + ' ' + c.nom;
   const body = document.getElementById('modal-hist-body');
@@ -470,7 +496,7 @@ function openHist(email) {
 }
 
 // ===== SUPPRIMER =====
-async function supprimerClient(email) {
+window.supprimerClient = async function(email) {
   const c = allClients.find(x => x.email === email);
   if (!confirm('Supprimer la carte de ' + c.prenom + ' ' + c.nom + ' ?')) return;
   const ok = await sbDelete(email);
@@ -483,9 +509,9 @@ async function supprimerClient(email) {
 }
 
 // ===== UTILS =====
-function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+window.closeModal = function(id) { document.getElementById(id).classList.remove('open'); }
 
-function toast(msg) {
+window._toast = function(msg) {
   const t = document.getElementById('toast');
   t.textContent = msg;
   t.classList.add('show');
