@@ -1535,56 +1535,13 @@ window.closeTicket = function(){ document.getElementById('ticket-overlay').class
 window.imprimerTicket = function(){
   const area = document.getElementById('ticket-area');
   if(!area) return;
-  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
-    <title>Ticket ${currentTicketRef}</title>
-    <style>
-      @page{margin:0;size:58mm auto}
-      *{margin:0;padding:0;box-sizing:border-box}
-      body{font-family:Arial,Helvetica,sans-serif;font-size:9px;width:54mm;color:#000;background:#fff;padding:2mm;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-      .t-head{text-align:center;border-bottom:1px dashed #000;padding-bottom:4px;margin-bottom:4px}
-      .t-head .lg{font-size:15px;font-weight:900}
-      .t-head .sl{font-size:7px;letter-spacing:1px;text-transform:uppercase}
-      .t-legal{font-size:7px;text-align:center}
-      .t-meta{display:flex;justify-content:space-between;font-size:8px}
-      .t-item{display:flex;justify-content:space-between;padding:1px 0;font-size:9px}
-      .t-sep{border-top:1px dashed #000;margin:2px 0}
-      .t-sub{display:flex;justify-content:space-between;font-size:8px;color:#333}
-      .t-tot{display:flex;justify-content:space-between;font-weight:900;font-size:12px;border-top:1px dashed #000;padding-top:3px;margin-top:2px}
-      .t-pay{font-size:8px}
-      .paid{display:block;text-align:center;border:2px solid #000;border-radius:4px;padding:2px;font-weight:900;margin:4px auto;width:60px;font-size:9px}
-      .t-qr{text-align:center;margin:4px 0}
-      .t-qr img,.t-qr canvas{width:55px;height:55px}
-      .t-foot{text-align:center;font-size:7px;border-top:1px dashed #000;padding-top:3px;margin-top:3px}
-      .t-testmark{text-align:center;font-size:8px;font-weight:900;border:1px dashed #000;padding:2px;margin-bottom:4px}
-    </style></head><body>${area.innerHTML}</body></html>`;
-  const w = openPrintWindow(html);
+  const w = openPrintWindow(area.innerHTML, '58mm');
   if(w) setTimeout(()=>w.print(), 400);
 };
 window.imprimerA4 = function(){
   const area = document.getElementById('ticket-area');
   if(!area) return;
-  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
-    <title>Ticket ${currentTicketRef}</title>
-    <style>
-      @page{margin:10mm;size:A5 portrait}
-      body{font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#000;background:#fff;padding:0;-webkit-print-color-adjust:exact}
-      .t-head{text-align:center;border-bottom:1px dashed #000;padding-bottom:8px;margin-bottom:8px}
-      .t-head .lg{font-size:26px;font-weight:900}
-      .t-head .sl{font-size:10px;letter-spacing:2px;text-transform:uppercase}
-      .t-legal{font-size:10px;text-align:center}
-      .t-meta{display:flex;justify-content:space-between;font-size:12px;margin-bottom:2px}
-      .t-item{display:flex;justify-content:space-between;padding:3px 0;font-size:13px}
-      .t-sep{border-top:1px dashed #000;margin:6px 0}
-      .t-sub{display:flex;justify-content:space-between;font-size:12px;color:#333}
-      .t-tot{display:flex;justify-content:space-between;font-weight:900;font-size:18px;border-top:2px solid #000;padding-top:6px;margin-top:4px}
-      .t-pay{font-size:12px}
-      .paid{display:block;text-align:center;border:2px solid #000;border-radius:6px;padding:4px 12px;font-weight:900;margin:8px auto;width:100px;font-size:13px}
-      .t-qr{text-align:center;margin:10px 0}
-      .t-qr img,.t-qr canvas{width:100px;height:100px}
-      .t-foot{text-align:center;font-size:11px;border-top:1px dashed #000;padding-top:8px;margin-top:8px;line-height:1.6}
-      .t-testmark{text-align:center;font-size:11px;font-weight:900;border:1px dashed #000;padding:4px;margin-bottom:8px}
-    </style></head><body>${area.innerHTML}</body></html>`;
-  const w = openPrintWindow(html);
+  const w = openPrintWindow(area.innerHTML, 'a4');
   if(w) setTimeout(()=>w.print(), 400);
 };
 
@@ -2193,14 +2150,19 @@ function getFilteredMovements(){
   }
   return all;
 }
-function openPrintWindow(htmlContent, mode){
-  const w = window.open('','_blank','width=800,height=600');
-  if(!w){ toast("Popup bloqué — autorise les popups pour imprimer"); return null; }
-  // Injecter CSS selon le mode
-  const css58 = `<style>@page{margin:0;size:58mm auto}body{font-family:Arial,Helvetica,sans-serif;font-size:9px;width:54mm;margin:0;padding:2mm;color:#000}table{width:100%}th,td{font-size:9px}h1{font-size:14px}*{color:#000 !important;background:#fff !important}</style>`;
-  const cssA4 = `<style>@page{margin:10mm;size:A5 portrait}body{font-family:Arial,Helvetica,sans-serif;font-size:12px;margin:0;padding:0;color:#000}</style>`;
-  const html = mode==='58mm' ? htmlContent.replace('</head>', css58+'</head>') : htmlContent.replace('</head>', cssA4+'</head>');
-  w.document.write(html);
+function openPrintWindow(bodyHtml, mode){
+  const w = window.open('','_blank','width=900,height=700');
+  if(!w){ toast("Popup bloqué — autorise les popups"); return null; }
+  // Si c'est un HTML complet (contient <!DOCTYPE), l'utiliser tel quel
+  if(bodyHtml.trim().startsWith('<!DOCTYPE') || bodyHtml.trim().startsWith('<html')){
+    w.document.write(bodyHtml);
+  } else {
+    // Sinon c'est un fragment (innerHTML) -> envelopper avec CSS selon le mode
+    const css58 = `@page{margin:0;size:58mm auto}body{width:54mm;padding:2mm;font-size:9px;line-height:1.4;font-family:Arial,Helvetica,sans-serif;color:#000;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}*{color:#000!important;background:transparent!important;text-shadow:none!important;box-shadow:none!important}.t-head{text-align:center;border-bottom:1px dashed #000;padding-bottom:4px;margin-bottom:4px}.t-head .lg{font-size:15px;font-weight:900}.t-head .sl{font-size:7px;text-transform:uppercase;letter-spacing:1px}.t-legal{font-size:7px;text-align:center}.t-meta{display:flex;justify-content:space-between;font-size:8px}.t-item{display:flex;justify-content:space-between;padding:1px 0;font-size:9px}.t-sep{border-top:1px dashed #000;margin:3px 0}.t-sub{display:flex;justify-content:space-between;font-size:8px}.t-tot{display:flex;justify-content:space-between;border-top:1px dashed #000;padding-top:3px;margin-top:2px;font-weight:900;font-size:13px}.t-pay{font-size:8px;margin-top:2px}.paid{display:block;text-align:center;border:2px solid #000;border-radius:4px;padding:2px 8px;font-weight:900;margin:4px auto;width:fit-content;font-size:9px}.t-qr{text-align:center;margin:4px 0}.t-qr img,.t-qr canvas{width:55px;height:55px}.t-foot{text-align:center;font-size:7px;border-top:1px dashed #000;padding-top:3px;margin-top:3px;line-height:1.4}.t-testmark{text-align:center;font-size:8px;font-weight:900;border:1px dashed #000;padding:2px;margin-bottom:4px}`;
+    const cssA4 = `@page{margin:10mm;size:A5 portrait}body{font-size:13px;line-height:1.7;font-family:Arial,Helvetica,sans-serif;color:#000;background:#fff;padding:0;-webkit-print-color-adjust:exact}*{color:#000!important;background:transparent!important;text-shadow:none!important;box-shadow:none!important}.t-head{text-align:center;border-bottom:1px dashed #000;padding-bottom:8px;margin-bottom:8px}.t-head .lg{font-size:26px;font-weight:900}.t-head .sl{font-size:10px;text-transform:uppercase;letter-spacing:2px}.t-legal{font-size:10px;text-align:center}.t-meta{display:flex;justify-content:space-between;font-size:12px;margin-bottom:2px}.t-item{display:flex;justify-content:space-between;padding:3px 0;font-size:13px}.t-sep{border-top:1px dashed #000;margin:6px 0}.t-sub{display:flex;justify-content:space-between;font-size:12px}.t-tot{display:flex;justify-content:space-between;border-top:1px dashed #000;padding-top:6px;margin-top:4px;font-weight:900;font-size:18px}.t-pay{font-size:11px;margin-top:4px}.paid{display:block;text-align:center;border:2px solid #000;border-radius:6px;padding:4px 12px;font-weight:900;margin:8px auto;width:fit-content;font-size:13px}.t-qr{text-align:center;margin:10px 0}.t-qr img,.t-qr canvas{width:100px;height:100px}.t-foot{text-align:center;font-size:11px;border-top:1px dashed #000;padding-top:8px;margin-top:8px;line-height:1.6}.t-testmark{text-align:center;font-size:11px;font-weight:900;border:1px dashed #000;padding:4px;margin-bottom:8px}`;
+    const css = mode==='58mm' ? css58 : cssA4;
+    w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><style>${css}</style></head><body>${bodyHtml}</body></html>`);
+  }
   w.document.close();
   return w;
 }
