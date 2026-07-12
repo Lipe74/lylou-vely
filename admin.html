@@ -8,9 +8,24 @@
 <meta name="theme-color" content="#6B3FA0">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
-  :root{--violet:#6B3FA0;--violet-d:#512e7a;--violet-wash:#f3eeff}
+  :root{--violet:#6B3FA0;--violet-d:#512e7a;--violet-wash:#f3eeff;--card:#ffffff;--muted:#7a7086;--line:#e7dff0;--red:#c0475e}
   *{box-sizing:border-box;margin:0;padding:0}
   body{font-family:'Jost',sans-serif;background:var(--violet-wash);min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px}
+  
+  /* Gate */
+  #gate{position:fixed;inset:0;z-index:200;background:linear-gradient(160deg,var(--violet) 0%,var(--violet-d) 100%);display:flex;align-items:center;justify-content:center;padding:24px}
+  #gate .box{background:var(--card);border-radius:20px;padding:34px 26px;width:100%;max-width:360px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+  #gate .mark{font-family:'Cormorant Garamond',serif;font-size:34px;color:var(--violet);letter-spacing:.5px}
+  #gate .sub{color:var(--muted);font-size:13px;letter-spacing:3px;text-transform:uppercase;margin:2px 0 22px}
+  #gate input{width:100%;padding:14px;border:1.5px solid var(--line);border-radius:12px;text-align:center;letter-spacing:2px;margin-bottom:12px}
+  #gate input:focus{outline:none;border-color:var(--violet)}
+  #gate button{width:100%;padding:14px;background:var(--violet);color:#fff;border-radius:12px;font-weight:500;letter-spacing:1px}
+  #gate .err{color:var(--red);font-size:13px;height:16px;margin-top:8px}
+  
+  /* App content */
+  #app{display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%;min-height:100vh;padding:20px}
+  #app.hidden{display:none}
+  
   .logo{width:80px;height:80px;object-fit:contain;margin-bottom:16px}
   .brand{font-family:'Cormorant Garamond',serif;font-size:36px;color:var(--violet);font-weight:600;text-align:center;margin-bottom:4px}
   .sub{font-size:13px;color:#888;text-align:center;margin-bottom:48px;letter-spacing:2px;text-transform:uppercase}
@@ -21,9 +36,26 @@
   .card .title{font-family:'Cormorant Garamond',serif;font-size:24px;color:var(--violet);font-weight:600;margin-bottom:6px}
   .card .desc{font-size:13px;color:#888;line-height:1.5}
   .foot{margin-top:40px;font-size:11px;color:#bbb;text-align:center}
+  
+  .hidden{display:none !important}
 </style>
 </head>
 <body>
+
+<!-- GATE (Login) -->
+<div id="gate">
+  <div class="box">
+    <div class="mark">🔐 Admin Phil-Mobile</div>
+    <div class="sub">Connexion requise</div>
+    <input type="email" id="gate-email" placeholder="Email" autocomplete="email" value="infos@lylou-vely.be" style="letter-spacing:0">
+    <input type="password" id="gate-pw" placeholder="Mot de passe" autocomplete="current-password">
+    <button onclick="window.doLogin()">Connexion</button>
+    <div class="err" id="gate-err"></div>
+  </div>
+</div>
+
+<!-- APP (Content après login) -->
+<div id="app" class="hidden">
   <img src="images/logo.png" alt="Lylou-Vely" class="logo" onerror="this.style.display='none'">
   <div class="brand">Lylou-Vely</div>
   <div class="sub">Espace Administration</div>
@@ -40,5 +72,55 @@
     </a>
   </div>
   <div class="foot">Lylou-Vely By Zen-Connect · TVA BE1035199737</div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
+import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDagghvP8ujE0fdUcYsOfmLaXps2ZSUexo",
+  authDomain: "phil-mobile.firebaseapp.com",
+  projectId: "phil-mobile",
+  storageBucket: "phil-mobile.firebasestorage.app",
+  messagingSenderId: "193213939481",
+  appId: "1:193213939481:web:f8a750e89f0e645b62cf88"
+};
+
+const fbApp = initializeApp(firebaseConfig);
+const auth = getAuth(fbApp);
+
+/* ---- Firebase Auth ---- */
+window.doLogin = async function(){
+  const email = document.getElementById('gate-email').value.trim();
+  const pw = document.getElementById('gate-pw').value;
+  const err = document.getElementById('gate-err');
+  err.textContent = '';
+  if(!email||!pw){ err.textContent="Email et mot de passe requis"; return; }
+  try{
+    await signInWithEmailAndPassword(auth, email, pw);
+  }catch(e){
+    const msgs = {
+      'auth/wrong-password':'Mot de passe incorrect',
+      'auth/user-not-found':'Utilisateur introuvable',
+      'auth/invalid-credential':'Email ou mot de passe incorrect',
+      'auth/too-many-requests':'Trop de tentatives, réessaie plus tard',
+    };
+    err.textContent = msgs[e.code] || ('Erreur : '+e.message);
+  }
+};
+
+document.getElementById('gate-pw').addEventListener('keydown',e=>{ if(e.key==='Enter') window.doLogin(); });
+
+onAuthStateChanged(auth, user=>{
+  if(user){
+    document.getElementById('gate').classList.add('hidden');
+    document.getElementById('app').classList.remove('hidden');
+  } else {
+    document.getElementById('gate').classList.remove('hidden');
+    document.getElementById('app').classList.add('hidden');
+  }
+});
+</script>
 </body>
 </html>
