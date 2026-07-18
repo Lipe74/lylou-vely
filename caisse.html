@@ -422,15 +422,7 @@ nav button.on{color:var(--violet)}
         </div>
         <div id="jr-list"></div>
       </div>
-      <div class="card" id="jr-mv-card" style="display:none">
-        <div class="row-btns" style="margin-bottom:10px">
-          <h3 style="font-size:19px;flex:1">Mouvements</h3>
-          <button class="btn btn-outline" style="width:auto;padding:8px 14px;font-size:13px" onclick="downloadJournalMvPDF()">PDF</button>
-          <button class="btn btn-outline" style="width:auto;padding:8px 14px;font-size:13px" onclick="printJournalMv('58mm')">🖨 58mm</button>
-          <button class="btn btn-outline" style="width:auto;padding:8px 14px;font-size:13px" onclick="printJournalMv('a4')">🖨 A4</button>
-        </div>
-        <div id="jr-mv-list"></div>
-      </div>
+      <div id="jr-mv-groups"></div>
       <!-- Formulaire entrée/sortie intégré -->
       <div class="card">
         <h3 style="font-size:19px;margin-bottom:12px">Entrées / Sorties</h3>
@@ -1907,14 +1899,22 @@ function renderJournal(){
   groupes.forEach(groupe=>{
     // Entête du groupe si plusieurs marchés
     if(groupes.length > 1){
-      const hdr = document.createElement('div');
-      hdr.style.cssText = 'font-weight:600;font-size:13px;color:var(--violet);padding:8px 0 4px;border-bottom:2px solid var(--violet);margin-bottom:6px';
       const ventes = groupe.sales.filter(s=>!s.cancelled);
       const ca = ventes.reduce((a,s)=>a+s.total,0);
       const esp = ventes.reduce((a,s)=>a+methodAmount(s,'especes'),0);
       const qr = ventes.reduce((a,s)=>a+methodAmount(s,'qr'),0);
       const carte = ventes.reduce((a,s)=>a+methodAmount(s,'carte'),0);
-      hdr.innerHTML = `🏪 ${esc(groupe.marche||'Sans marché')} — CA : ${euro(ca)} · 💶 ${euro(esp)} · 📱 ${euro(qr)} · 💳 ${euro(carte)}`;
+      const mKey = groupe.marche || '(sans marché)';
+      const mArg = mKey.replace(/'/g,"\\'");
+      const hdr = document.createElement('div');
+      hdr.style.cssText = 'padding:8px 0 4px;border-bottom:2px solid var(--violet);margin-bottom:6px';
+      hdr.innerHTML = `
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+          <div style="font-weight:600;font-size:13px;color:var(--violet);flex:1;min-width:180px">🏪 ${esc(groupe.marche||'Sans marché')} — CA : ${euro(ca)} · 💶 ${euro(esp)} · 📱 ${euro(qr)} · 💳 ${euro(carte)}</div>
+          <button class="btn btn-outline" style="width:auto;padding:5px 10px;font-size:12px" onclick="downloadMarchePDF('${mArg}')">PDF</button>
+          <button class="btn btn-outline" style="width:auto;padding:5px 10px;font-size:12px" onclick="printMarche('${mArg}','58mm')">🖨 58mm</button>
+          <button class="btn btn-outline" style="width:auto;padding:5px 10px;font-size:12px" onclick="printMarche('${mArg}','a4')">🖨 A4</button>
+        </div>`;
       box.appendChild(hdr);
     }
 
@@ -1937,30 +1937,68 @@ function renderJournal(){
     });
   });
 
-  // Mouvements filtrés
+  // Mouvements filtrés — séparés par catégorie
   const mvs = getFilteredMovements();
-  const mvCard = document.getElementById('jr-mv-card');
-  const mvBox = document.getElementById('jr-mv-list');
-  if(mvs.length > 0){
-    mvCard.style.display = 'block';
-    mvBox.innerHTML = '';
-    [...mvs].reverse().forEach(m=>{
-      const payBadge = (m.type==='out' && m.payMode) ?
-        `<span style="font-size:10px;background:${m.payMode==='cash'?'var(--violet-wash)':'var(--blue-wash)'};color:${m.payMode==='cash'?'var(--violet)':'var(--blue)'};padding:2px 6px;border-radius:6px;margin-left:4px">${m.payMode==='cash'?'💶':'💳'}</span>` : '';
-      const isZ = m.reason && m.reason.startsWith('Versement banque — clôture Z');
-      const reprZ = isZ ? `<button class="del" onclick="reprintZ('${m.date}','${(m.reason.split(' — ')[2]||'').replace(/'/g,"\\'")}')" style="color:var(--violet);font-size:15px" title="Réimprimer clôture Z">📋</button>` : '';
-      const bancedBadge = m.banked ? `<span style="font-size:10px;background:#e6f4ea;color:#2e9e6b;padding:2px 6px;border-radius:6px;margin-left:4px">✓ Bancé</span>` : '';
-      const div = document.createElement('div'); div.className = 'mv-line';
-      div.innerHTML = `
-        <div class="pill ${m.type}">${m.type==='in'?'＋':'－'}</div>
-        <div class="m-info"><div class="t">${esc(m.reason)}${payBadge}${bancedBadge}</div><div class="d">${m.date.split('-').reverse().join('/')} ${m.time}</div></div>
-        <div class="amt ${m.type==='in'?'plus':'minus'}">${m.type==='in'?'+':'−'}${euro(m.amount)}</div>
-        <button class="del" onclick="printSingleMv(${m.id})" style="color:var(--violet);font-size:15px" title="Imprimer">⎙</button>${reprZ}`;
-      mvBox.appendChild(div);
-    });
-  } else {
-    mvCard.style.display = 'none';
-  }
+  const wrap = document.getElementById('jr-mv-groups');
+  wrap.innerHTML = '';
+  const bank  = mvs.filter(m=>mvCategory(m)==='bank');
+  const stand = mvs.filter(m=>mvCategory(m)==='stand');
+  const other = mvs.filter(m=>mvCategory(m)==='other');
+  renderMvGroup(wrap, 'bank',  '🏦 Versements banque', bank);
+  renderMvGroup(wrap, 'stand', '🏪 Paiement stand',    stand);
+  renderMvGroup(wrap, 'other', '🔁 Autres mouvements', other);
+}
+
+/* Catégorie d'un mouvement */
+function mvCategory(m){
+  const r = m.reason || '';
+  if(r.startsWith('Versement banque')) return 'bank';
+  if(r.startsWith('Paiement stand'))   return 'stand';
+  return 'other';
+}
+
+/* Rendu HTML d'une ligne de mouvement (liste journal) */
+function mvLineHTML(m){
+  const payBadge = (m.type==='out' && m.payMode) ?
+    `<span style="font-size:10px;background:${m.payMode==='cash'?'var(--violet-wash)':'var(--blue-wash)'};color:${m.payMode==='cash'?'var(--violet)':'var(--blue)'};padding:2px 6px;border-radius:6px;margin-left:4px">${m.payMode==='cash'?'💶':'💳'}</span>` : '';
+  const isZ = m.reason && m.reason.startsWith('Versement banque — clôture Z');
+  const reprZ = isZ ? `<button class="del" onclick="reprintZ('${m.date}','${(m.reason.split(' — ')[2]||'').replace(/'/g,"\\'")}')" style="color:var(--violet);font-size:15px" title="Réimprimer clôture Z">📋</button>` : '';
+  const bancedBadge = m.banked ? `<span style="font-size:10px;background:#e6f4ea;color:#2e9e6b;padding:2px 6px;border-radius:6px;margin-left:4px">✓ Bancé</span>` : '';
+  return `
+    <div class="pill ${m.type}">${m.type==='in'?'＋':'－'}</div>
+    <div class="m-info"><div class="t">${esc(m.reason)}${payBadge}${bancedBadge}</div><div class="d">${m.date.split('-').reverse().join('/')} ${m.time}</div></div>
+    <div class="amt ${m.type==='in'?'plus':'minus'}">${m.type==='in'?'+':'−'}${euro(m.amount)}</div>
+    <button class="del" onclick="printSingleMv(${m.id})" style="color:var(--violet);font-size:15px" title="Imprimer">⎙</button>${reprZ}`;
+}
+
+/* Rendu d'un bloc-catégorie de mouvements (titre + total + boutons + liste) */
+function renderMvGroup(container, cat, title, list){
+  if(!list || list.length===0) return;
+  const totalIn  = list.filter(m=>m.type==='in').reduce((a,m)=>a+m.amount,0);
+  const totalOut = list.filter(m=>m.type==='out').reduce((a,m)=>a+m.amount,0);
+  const net = totalIn - totalOut;
+  const netTxt = net>=0 ? `+${euro(net)}` : `−${euro(Math.abs(net))}`;
+  const netCol = net>=0 ? 'var(--green,#2e9e6b)' : 'var(--red)';
+  const card = document.createElement('div');
+  card.className = 'card';
+  card.innerHTML = `
+    <div class="row-btns" style="margin-bottom:10px">
+      <h3 style="font-size:19px;flex:1">${title}</h3>
+      <button class="btn btn-outline" style="width:auto;padding:8px 14px;font-size:13px" onclick="downloadMvCatPDF('${cat}')">PDF</button>
+      <button class="btn btn-outline" style="width:auto;padding:8px 14px;font-size:13px" onclick="printMvCat('${cat}','58mm')">🖨 58mm</button>
+      <button class="btn btn-outline" style="width:auto;padding:8px 14px;font-size:13px" onclick="printMvCat('${cat}','a4')">🖨 A4</button>
+    </div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:8px">
+      ${list.length} mouvement${list.length>1?'s':''} · Total : <b style="color:${netCol}">${netTxt}</b>
+    </div>
+    <div class="mv-cat-list"></div>`;
+  const box = card.querySelector('.mv-cat-list');
+  [...list].reverse().forEach(m=>{
+    const div = document.createElement('div'); div.className='mv-line';
+    div.innerHTML = mvLineHTML(m);
+    box.appendChild(div);
+  });
+  container.appendChild(card);
 }
 window.reprint = function(id){ const s=state.sales.find(x=>x.id===id); if(s) showTicket(s); };
 
@@ -2015,12 +2053,25 @@ window.printJournalMv = function(mode){
   if(w) setTimeout(()=>w.print(), 400);
 };
 window.downloadJournalMvPDF = function(mode){
-  const w = openPrintWindow(buildJournalMvHTML(), mode||'a4');
+  htmlStringToPDF(buildJournalMvHTML(), `mouvements-${(journalDate||todayStr())}.pdf`);
+};
+
+/* ---- Mouvements par catégorie (bank / stand / other) ---- */
+const MV_CAT_LABEL = { bank:'Versements banque', stand:'Paiement stand', other:'Autres mouvements' };
+function getMovementsByCat(cat){
+  return getFilteredMovements().filter(m=>mvCategory(m)===cat);
+}
+window.printMvCat = function(cat, mode){
+  const w = openPrintWindow(buildJournalMvHTML(getMovementsByCat(cat), MV_CAT_LABEL[cat]), mode||'a4');
   if(w) setTimeout(()=>w.print(), 400);
 };
-function buildJournalMvHTML(){
-  const mvs = getFilteredMovements();
-  const dateLabel = document.getElementById('journal-date').textContent;
+window.downloadMvCatPDF = function(cat){
+  htmlStringToPDF(buildJournalMvHTML(getMovementsByCat(cat), MV_CAT_LABEL[cat]), `mouvements-${cat}-${(journalDate||todayStr())}.pdf`);
+};
+
+function buildJournalMvHTML(subset, subtitle){
+  const mvs = subset || getFilteredMovements();
+  const dateLabel = document.getElementById('journal-date').textContent + (subtitle ? ' — ' + subtitle : '');
   const totalIn = mvs.filter(m=>m.type==='in').reduce((a,m)=>a+m.amount,0);
   const totalOut = mvs.filter(m=>m.type==='out').reduce((a,m)=>a+m.amount,0);
   let html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
@@ -2052,17 +2103,69 @@ function buildJournalMvHTML(){
   return html;
 }
 
+/* ============ TÉLÉCHARGEMENT PDF DIRECT (sans fenêtre d'impression) ============ */
+/* Convertit un document HTML complet en PDF A4 multi-pages et le télécharge. */
+async function htmlStringToPDF(fullHtml, filename){
+  if(!window.html2canvas || !window.jspdf){
+    toast("PDF indisponible → impression"); const w=openPrintWindow(fullHtml); if(w) setTimeout(()=>w.print(),400); return;
+  }
+  toast("Génération du PDF…");
+  const iframe = document.createElement('iframe');
+  iframe.style.cssText = 'position:fixed;left:-99999px;top:0;width:820px;border:0;background:#fff';
+  document.body.appendChild(iframe);
+  try{
+    const doc = iframe.contentDocument || iframe.contentWindow.document;
+    doc.open(); doc.write(fullHtml); doc.close();
+    await new Promise(r=>setTimeout(r, 350));
+    const bodyEl = doc.body;
+    iframe.style.height = (bodyEl.scrollHeight + 40) + 'px';
+    const canvas = await html2canvas(bodyEl, {
+      scale: 2, backgroundColor:'#ffffff',
+      windowWidth: 820, width: 820, height: bodyEl.scrollHeight
+    });
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({unit:'mm', format:'a4'});
+    const pageW = 210, pageH = 297, margin = 8;
+    const imgW = pageW - margin*2;
+    const pxPerMm = canvas.width / imgW;
+    const pageHpx = Math.floor((pageH - margin*2) * pxPerMm);
+    const totalH = canvas.height;
+    let rendered = 0, page = 0;
+    while(rendered < totalH){
+      const sliceH = Math.min(pageHpx, totalH - rendered);
+      const pageCanvas = document.createElement('canvas');
+      pageCanvas.width = canvas.width; pageCanvas.height = sliceH;
+      const ctx = pageCanvas.getContext('2d');
+      ctx.fillStyle = '#ffffff'; ctx.fillRect(0,0,pageCanvas.width,pageCanvas.height);
+      ctx.drawImage(canvas, 0, rendered, canvas.width, sliceH, 0, 0, canvas.width, sliceH);
+      if(page>0) pdf.addPage();
+      pdf.addImage(pageCanvas.toDataURL('image/png'), 'PNG', margin, margin, imgW, sliceH/pxPerMm);
+      rendered += sliceH; page++;
+    }
+    pdf.save(filename);
+    toast("PDF téléchargé");
+  }catch(e){
+    toast("Erreur PDF → impression"); const w=openPrintWindow(fullHtml); if(w) setTimeout(()=>w.print(),400);
+  }finally{
+    setTimeout(()=>{ if(iframe.parentNode) iframe.parentNode.removeChild(iframe); }, 500);
+  }
+}
+
 /* Impression journal */
-function buildJournalHTML(){
-  const s = getFilteredSales();
-  const mvs = getFilteredMovements();
+function buildJournalHTML(marcheFilter){
+  let s = getFilteredSales();
+  let mvs = getFilteredMovements();
+  if(marcheFilter){
+    s = s.filter(x=>(x.marche || '(sans marché)') === marcheFilter);
+    mvs = mvs.filter(m=>(m.reason||'').includes(marcheFilter));
+  }
   const ca = s.reduce((a,x)=>a+x.total,0);
   const esp = s.reduce((a,x)=>a+methodAmount(x,'especes'),0);
   const qr = s.reduce((a,x)=>a+methodAmount(x,'qr'),0);
   const carte = s.reduce((a,x)=>a+methodAmount(x,'carte'),0);
   const totalIn = mvs.filter(m=>m.type==='in').reduce((a,m)=>a+m.amount,0);
   const totalOut = mvs.filter(m=>m.type==='out').reduce((a,m)=>a+m.amount,0);
-  const dateLabel = document.getElementById('journal-date').textContent;
+  const dateLabel = document.getElementById('journal-date').textContent + (marcheFilter ? ' — ' + marcheFilter : '');
 
   // Grouper les ventes par marché
   const groupes = [];
@@ -2172,8 +2275,17 @@ window.printJournal = function(){
   if(w) setTimeout(()=>{ w.print(); }, 400);
 };
 window.downloadJournalPDF = function(){
-  const w = openPrintWindow(buildJournalHTML());
-  if(w){ toast("Utilise 'Enregistrer en PDF' dans la fenêtre d'impression"); setTimeout(()=>w.print(),400); }
+  htmlStringToPDF(buildJournalHTML(), `journal-${(journalDate||todayStr())}.pdf`);
+};
+
+/* ---- Export par marché ---- */
+function slug(s){ return (s||'sans-marche').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'') || 'marche'; }
+window.printMarche = function(marche, mode){
+  const w = openPrintWindow(buildJournalHTML(marche), mode||'a4');
+  if(w) setTimeout(()=>w.print(), 400);
+};
+window.downloadMarchePDF = function(marche){
+  htmlStringToPDF(buildJournalHTML(marche), `journal-${slug(marche)}-${(journalDate||todayStr())}.pdf`);
 };
 
 
