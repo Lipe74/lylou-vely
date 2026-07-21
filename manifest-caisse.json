@@ -1,0 +1,28 @@
+{
+  "name": "Lylou-Vely — Caisse",
+  "short_name": "LV Caisse",
+  "description": "Caisse Lylou-Vely — Système de caisse pour marchés",
+  "start_url": "/caisse.html",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#FDF8F0",
+  "theme_color": "#6B3FA0",
+  "orientation": "portrait",
+  "lang": "fr",
+  "icons": [
+    {
+      "src": "images/logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "images/logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["business", "productivity"],
+  "screenshots": []
+}
