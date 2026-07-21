@@ -1984,7 +1984,8 @@ function renderJournal(){
   });
   clotList.sort((a,b)=> a.date<b.date?1:(a.date>b.date?-1:0));
   if(clotList.length){
-    clotBox.innerHTML = `<div style="font-size:12px;color:var(--muted);margin:2px 0 8px">
+    clotBox.innerHTML = `<div style="font-size:13px;font-weight:600;color:var(--violet);margin-bottom:6px">🔒 Clôture de caisse</div>
+    <div style="font-size:12px;color:var(--muted);margin:2px 0 10px;padding-bottom:10px;border-bottom:1px solid #eee">
       ${clotList.map(c=>{
         const mArg=(c.marche||'').replace(/'/g,"\\'");
         const dLabel=c.date.split('-').reverse().join('/');
@@ -1993,6 +1994,12 @@ function renderJournal(){
     </div>`;
   } else {
     clotBox.innerHTML = '';
+  }
+  if(clotList.length){
+    const ticketsLbl = document.createElement('div');
+    ticketsLbl.style.cssText = 'font-size:13px;font-weight:600;color:var(--violet);margin-bottom:6px';
+    ticketsLbl.textContent = '🧾 Tickets';
+    box.appendChild(ticketsLbl);
   }
 
   // Grouper par marché
