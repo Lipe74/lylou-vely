@@ -1425,10 +1425,12 @@ window.launchSumUpApp = function(){
   const amt = payRemaining();
   const title = 'Vente Lylou-Vely'+(state.marche?' — '+state.marche:'');
   const callback = location.origin + location.pathname; // retour sur caisse.html
-  // Sauvegarde la vente en cours (le retour SumUp peut recharger la page)
+  // Sauvegarde la vente en cours (le retour SumUp peut recharger la page,
+  // parfois dans un nouvel onglet → localStorage, pas sessionStorage)
   try{
-    sessionStorage.setItem('sumup_pending', JSON.stringify({
-      cart, cartDiscount, payParts, marche: state.marche, ticketCounter: state.ticketCounter
+    localStorage.setItem('sumup_pending', JSON.stringify({
+      cart, cartDiscount, payParts, marche: state.marche, ticketCounter: state.ticketCounter,
+      ts: Date.now()
     }));
   }catch(e){}
   const url = 'sumupmerchant://pay/1.0'
@@ -1443,28 +1445,41 @@ window.launchSumUpApp = function(){
   if(steps) steps.innerHTML = "Si SumUp ne s'est pas ouvert, lance-le manuellement.<br>Clique ci-dessous une fois le paiement accepté.";
 };
 
-/* Détecte un retour de l'app SumUp (callback) au chargement de la page */
-function checkSumUpCallback(){
-  const p = new URLSearchParams(location.search);
-  if(!p.has('smp-status')) return;
-  const ok = p.get('smp-status') === 'success';
-  history.replaceState(null, '', location.pathname); // nettoie l'URL
-  // Restaure la vente en cours si la page a été rechargée par le retour SumUp
+/* Restaure le panier en cours si l'app a été rechargée pendant un aller-retour SumUp
+   (couvre aussi le cas où Android recharge l'onglet en silence, sans callback) */
+function restorePendingCart(){
   let pending = null;
-  try{ const raw = sessionStorage.getItem('sumup_pending'); if(raw) pending = JSON.parse(raw); }catch(e){}
-  if(pending && cart.length===0){
+  try{
+    const raw = localStorage.getItem('sumup_pending');
+    if(raw){
+      const parsed = JSON.parse(raw);
+      if(parsed.ts && (Date.now() - parsed.ts) < 15*60*1000) pending = parsed; // valide 15 min max
+    }
+  }catch(e){}
+  if(pending && cart.length===0 && (pending.cart||[]).length>0){
     cart = pending.cart || [];
     cartDiscount = pending.cartDiscount || null;
     payParts = pending.payParts || [];
     if(pending.marche) state.marche = pending.marche;
     renderCart();
+    toast('🛒 Panier en cours restauré');
   }
-  sessionStorage.removeItem('sumup_pending');
+  localStorage.removeItem('sumup_pending');
+  return pending;
+}
+
+/* Détecte un retour de l'app SumUp (callback) au chargement de la page */
+function checkSumUpCallback(){
+  const p = new URLSearchParams(location.search);
+  restorePendingCart();
+  if(!p.has('smp-status')) return; // pas de callback SumUp dans l'URL
+  const ok = p.get('smp-status') === 'success';
+  history.replaceState(null, '', location.pathname); // nettoie l'URL
   if(ok){
     toast('✓ Paiement SumUp confirmé');
     if(cart.length>0 || payParts.length>0) confirmExternal('carte');
   } else if(p.get('smp-status') === 'failed'){
-    toast('✗ Paiement SumUp refusé/annulé — vérifie ton panier');
+    toast('✗ Paiement SumUp refusé/annulé — panier conservé');
     window.go('vente');
   }
 }
