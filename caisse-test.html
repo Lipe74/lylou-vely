@@ -420,6 +420,7 @@ nav button.on{color:var(--violet)}
           <button class="btn btn-outline" style="width:auto;padding:8px 14px;font-size:13px" onclick="printJournal('58mm')">🖨 58mm</button>
           <button class="btn btn-outline" style="width:auto;padding:8px 14px;font-size:13px" onclick="printJournal('a4')">🖨 A4</button>
         </div>
+        <div id="jr-cloture-links"></div>
         <div id="jr-list"></div>
       </div>
       <div id="jr-mv-groups"></div>
@@ -1968,8 +1969,29 @@ function renderJournal(){
         return x.date.startsWith(today.slice(0,7));
       });
   const box = document.getElementById('jr-list');
-  if(filtered.length===0){ box.innerHTML='<div class="empty">Aucune vente</div>'; return; }
+  const clotBox = document.getElementById('jr-cloture-links');
+  if(filtered.length===0){ box.innerHTML='<div class="empty">Aucune vente</div>'; clotBox.innerHTML=''; return; }
   box.innerHTML='';
+
+  // Clôtures Z réimprimables (par date+marché réellement vendu, même sans versement banque)
+  const clotSeen = {};
+  const clotList = [];
+  [...filtered].filter(x=>!x.cancelled).forEach(x=>{
+    const key = x.date+'|'+(x.marche||'');
+    if(!clotSeen[key]){ clotSeen[key]=1; clotList.push({date:x.date, marche:x.marche||''}); }
+  });
+  clotList.sort((a,b)=> a.date<b.date?1:(a.date>b.date?-1:0));
+  if(clotList.length){
+    clotBox.innerHTML = `<div style="font-size:12px;color:var(--muted);margin:2px 0 8px">
+      ${clotList.map(c=>{
+        const mArg=(c.marche||'').replace(/'/g,"\\'");
+        const dLabel=c.date.split('-').reverse().join('/');
+        return `<button class="btn btn-outline" style="width:auto;padding:4px 10px;font-size:11px;margin:2px 4px 2px 0" onclick="reprintZ('${c.date}','${mArg}')">📋 Clôture ${dLabel}${c.marche?' — '+esc(c.marche):''}</button>`;
+      }).join('')}
+    </div>`;
+  } else {
+    clotBox.innerHTML = '';
+  }
 
   // Grouper par marché
   const groupes = [];
