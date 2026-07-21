@@ -405,7 +405,7 @@ nav button.on{color:var(--violet)}
         <div class="summary">
           <div class="s"><div class="k">Espèces</div><div class="v" id="jr-esp">0,00 €</div></div>
           <div class="s"><div class="k">QR Code</div><div class="v" id="jr-qr">0,00 €</div></div>
-          <div class="s"><div class="k">Carte</div><div class="v" id="jr-carte">0,00 €</div></div>
+          <div class="s"><div class="k">Carte</div><div class="v" id="jr-carte">0,00 €</div><div id="jr-sumup-fee" style="font-size:11px;color:#a15c00;margin-top:2px"></div></div>
         </div>
         <div class="summary" style="margin-top:0">
           <div class="s"><div class="k">Ventes</div><div class="v" id="jr-count">0</div></div>
@@ -564,7 +564,8 @@ nav button.on{color:var(--violet)}
       <div class="qr-amount-lbl">Montant à encaisser sur le terminal</div>
       <div class="pay-amt" id="sumup-amount">0,00 €</div>
       <div class="confirm-icon">💳</div>
-      <p class="confirm-steps">Lance le paiement sur ton terminal SumUp.<br>Clique ci-dessous une fois le paiement accepté.</p>
+      <p class="confirm-steps" id="sumup-steps">Lance le paiement sur ton terminal SumUp.<br>Clique ci-dessous une fois le paiement accepté.</p>
+      <button class="btn btn-primary" onclick="launchSumUpApp()" style="margin-bottom:10px">📲 Ouvrir SumUp</button>
       <button class="btn btn-primary" onclick="confirmExternal('carte')">Paiement accepté ✓</button>
       <div class="confirm-refused">
         <button class="btn btn-outline" onclick="backToChoice()">Retour</button>
@@ -803,6 +804,20 @@ const COINS = [0.01,0.02,0.05,0.10,0.20,0.50,1,2];
 const BILLS = [5,10,20,50,100,200,500];
 const METHOD_LABEL = {especes:'Espèces', qr:'QR Code', carte:'Carte (SumUp)', mix:'Mixte'};
 
+/* --- SumUp : commission & lien direct --- */
+const SUMUP_RATE = 0.0275; // 2,75% — commission SumUp, à modifier ici si le taux change
+const SUMUP_AFFILIATE_KEY = 'sup_afk_4vALlrRnw2fmGnJwQcOsF3tdPZCsY5Pq';
+const SUMUP_APP_ID = 'be.lylouvely.caisse';
+function sumupCommission(amount){ return Math.round(amount*SUMUP_RATE*100)/100; }
+function sumupNet(amount){ return Math.round((amount - sumupCommission(amount))*100)/100; }
+/* Ligne HTML "commission / net" à insérer sous un montant carte, ou '' si montant nul */
+function sumupLineHTML(carteAmount, cls){
+  if(!carteAmount || carteAmount<=0) return '';
+  const c = sumupCommission(carteAmount), net = sumupNet(carteAmount);
+  return `<div class="${cls||'t-sub'}" style="color:#a15c00"><span>dont commission SumUp (2,75%)</span><span>−${euro(c)}</span></div>
+    <div class="${cls||'t-sub'}"><span>Net reçu SumUp</span><span>${euro(net)}</span></div>`;
+}
+
 /* ---- État ---- */
 let state = load();
 let cart = [];
@@ -958,6 +973,7 @@ async function openApp(){
   updateModeUI();
   renderAll();
   loadArticlesFromFirebase();
+  checkSumUpCallback();
   // Nouveau jour → confirmation fond
   if(state.day !== todayStr()){
     showFondConfirmation();
@@ -1400,8 +1416,58 @@ window.startExternal = function(method){
   } else {
     document.getElementById('pay-sumup').classList.remove('hidden');
     document.getElementById('sumup-amount').textContent = euro(payRemaining());
+    setTimeout(()=>launchSumUpApp(), 250);
   }
 };
+
+/* Lance l'app SumUp via le lien d'affiliation, avec le montant pré-rempli */
+window.launchSumUpApp = function(){
+  const amt = payRemaining();
+  const title = 'Vente Lylou-Vely'+(state.marche?' — '+state.marche:'');
+  const callback = location.origin + location.pathname; // retour sur caisse.html
+  // Sauvegarde la vente en cours (le retour SumUp peut recharger la page)
+  try{
+    sessionStorage.setItem('sumup_pending', JSON.stringify({
+      cart, cartDiscount, payParts, marche: state.marche, ticketCounter: state.ticketCounter
+    }));
+  }catch(e){}
+  const url = 'sumupmerchant://pay/1.0'
+    + '?affiliate-key=' + encodeURIComponent(SUMUP_AFFILIATE_KEY)
+    + '&app-id=' + encodeURIComponent(SUMUP_APP_ID)
+    + '&total=' + amt.toFixed(2)
+    + '&currency=EUR'
+    + '&title=' + encodeURIComponent(title)
+    + '&callback=' + encodeURIComponent(callback);
+  try{ window.location.href = url; }catch(e){}
+  const steps = document.getElementById('sumup-steps');
+  if(steps) steps.innerHTML = "Si SumUp ne s'est pas ouvert, lance-le manuellement.<br>Clique ci-dessous une fois le paiement accepté.";
+};
+
+/* Détecte un retour de l'app SumUp (callback) au chargement de la page */
+function checkSumUpCallback(){
+  const p = new URLSearchParams(location.search);
+  if(!p.has('smp-status')) return;
+  const ok = p.get('smp-status') === 'success';
+  history.replaceState(null, '', location.pathname); // nettoie l'URL
+  // Restaure la vente en cours si la page a été rechargée par le retour SumUp
+  let pending = null;
+  try{ const raw = sessionStorage.getItem('sumup_pending'); if(raw) pending = JSON.parse(raw); }catch(e){}
+  if(pending && cart.length===0){
+    cart = pending.cart || [];
+    cartDiscount = pending.cartDiscount || null;
+    payParts = pending.payParts || [];
+    if(pending.marche) state.marche = pending.marche;
+    renderCart();
+  }
+  sessionStorage.removeItem('sumup_pending');
+  if(ok){
+    toast('✓ Paiement SumUp confirmé');
+    if(cart.length>0 || payParts.length>0) confirmExternal('carte');
+  } else if(p.get('smp-status') === 'failed'){
+    toast('✗ Paiement SumUp refusé/annulé — vérifie ton panier');
+    window.go('vente');
+  }
+}
 window.confirmExternal = function(method){
   const rem = payRemaining();
   payParts.push({method, amount:rem});
@@ -1481,6 +1547,9 @@ function showTicket(sale){
   } else {
     payInfo = `<div class="t-pay">Paiement : ${METHOD_LABEL[sale.method]}${sale.cancelled?' — remboursé':''}</div>`;
   }
+  // Commission SumUp (si une partie du paiement est en carte)
+  const carteAmt = methodAmount(sale, 'carte');
+  const sumupBlock = (!sale.cancelled && carteAmt>0) ? sumupLineHTML(carteAmt, 't-pay') : '';
   // rendu espèces
   let cashExtra = '';
   const cashPart = sale.payments ? sale.payments.find(p=>p.method==='especes') : null;
@@ -1509,6 +1578,7 @@ function showTicket(sale){
     ${tvaBlock}
     <div class="t-tot"><span>Total TVAC</span><span>${euro(totalTVAC)}</span></div>
     ${payInfo}
+    ${sumupBlock}
     ${cashExtra}
     ${stamp}
     <div class="t-qr" id="t-qr"></div>
@@ -1858,6 +1928,8 @@ function renderJournal(){
   document.getElementById('jr-esp').textContent = euro(esp);
   document.getElementById('jr-qr').textContent = euro(qr);
   document.getElementById('jr-carte').textContent = euro(carte);
+  const jrFee = document.getElementById('jr-sumup-fee');
+  jrFee.textContent = carte>0 ? `−${euro(sumupCommission(carte))} commission · net ${euro(sumupNet(carte))}` : '';
   document.getElementById('jr-count').textContent = s.length;
   document.getElementById('jr-avg').textContent = euro(s.length?ca/s.length:0);
   document.getElementById('jr-cash').textContent = euro(theoreticalCash());
@@ -2201,6 +2273,7 @@ function buildJournalHTML(marcheFilter){
       <div class="kpi"><b>${euro(esp)}</b>Espèces</div>
       <div class="kpi"><b>${euro(qr)}</b>QR Code</div>
       <div class="kpi"><b>${euro(carte)}</b>Carte</div>
+      ${carte>0?`<div class="kpi" style="background:#fff3e0"><b style="color:#a15c00">−${euro(sumupCommission(carte))}</b>Commission SumUp</div>`:''}
     </div>
     <div class="sect">Ventes</div>`;
 
@@ -2212,7 +2285,7 @@ function buildJournalHTML(marcheFilter){
     const gcarte=groupe.sales.reduce((a,x)=>a+methodAmount(x,'carte'),0);
     if(groupes.length>1){
       html+=`<div class="marche-hdr">🏪 ${esc(groupe.marche)} — CA : ${euro(gca)}</div>
-      <div class="marche-sub">💶 Espèces : ${euro(gesp)} · 📱 QR : ${euro(gqr)} · 💳 Carte : ${euro(gcarte)}</div>`;
+      <div class="marche-sub">💶 Espèces : ${euro(gesp)} · 📱 QR : ${euro(gqr)} · 💳 Carte : ${euro(gcarte)}${gcarte>0?` (commission SumUp −${euro(sumupCommission(gcarte))}, net ${euro(sumupNet(gcarte))})`:''}</div>`;
     }
     html+=`<table><thead><tr><th>Réf.</th><th>Articles</th><th>Mode</th><th style="text-align:right">Total</th></tr></thead><tbody>`;
     groupe.sales.forEach(sale=>{
@@ -2347,6 +2420,7 @@ function buildZTicketHTML(day, marche, ca, esp, qr, carte, cancelledN, theo, inT
     <div class="t-item"><span>Espèces</span><span>${euro(esp)}</span></div>
     <div class="t-item"><span>QR Code</span><span>${euro(qr)}</span></div>
     <div class="t-item"><span>Carte</span><span>${euro(carte)}</span></div>
+    ${sumupLineHTML(carte)}
     <div class="t-sep"></div>
     <div class="t-item"><span>Fond de caisse</span><span>${euro(state.fond)}</span></div>
     <div class="t-item"><span>Entrées</span><span>${euro(inTotal)}</span></div>
