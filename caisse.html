@@ -566,9 +566,10 @@ nav button.on{color:var(--violet)}
       <h2>Paiement par carte — SumUp</h2>
       <div class="qr-amount-lbl">Montant à encaisser sur le terminal</div>
       <div class="pay-amt" id="sumup-amount">0,00 €</div>
+      <button class="btn btn-outline" onclick="copySumUpAmount()" style="width:auto;padding:6px 14px;font-size:13px;margin-bottom:10px">📋 Copier le montant</button>
       <div class="confirm-icon">💳</div>
-      <p class="confirm-steps" id="sumup-steps">Lance le paiement sur ton terminal SumUp.<br>Clique ci-dessous une fois le paiement accepté.</p>
-      <button class="btn btn-primary" onclick="launchSumUpApp()" style="margin-bottom:10px">📲 Ouvrir SumUp</button>
+      <p class="confirm-steps" id="sumup-steps">Terminal HS ? Ouvre SumUp toi-même → Facturer → Tap to Pay, colle le montant copié.<br>Clique ci-dessous une fois le paiement accepté.</p>
+      <button class="btn btn-primary" onclick="launchSumUpApp()" style="margin-bottom:10px">📲 Ouvrir SumUp (Terminal)</button>
       <button class="btn btn-primary" onclick="confirmExternal('carte')">Paiement accepté ✓</button>
       <div class="confirm-refused">
         <button class="btn btn-outline" onclick="backToChoice()">Retour</button>
@@ -1419,7 +1420,19 @@ window.startExternal = function(method){
   } else {
     document.getElementById('pay-sumup').classList.remove('hidden');
     document.getElementById('sumup-amount').textContent = euro(payRemaining());
-    setTimeout(()=>launchSumUpApp(), 250);
+    // Lancement auto désactivé temporairement (terminal HS → SumUp force le flux Terminal
+    // et exclut Tap to Pay). Le bouton "Ouvrir SumUp" reste dispo pour un lancement manuel.
+  }
+};
+
+/* Copie le montant à encaisser (pratique pour saisie manuelle Tap to Pay) */
+window.copySumUpAmount = function(){
+  const amt = payRemaining().toFixed(2);
+  try{
+    navigator.clipboard.writeText(amt);
+    toast('📋 Montant copié : '+amt+' €');
+  }catch(e){
+    toast('Montant : '+amt+' €');
   }
 };
 
