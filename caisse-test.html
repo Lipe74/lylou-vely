@@ -662,7 +662,7 @@ nav button.on{color:var(--violet)}
     <h2>☀️ Nouvelle journée</h2>
     <p style="text-align:center;color:var(--muted);font-size:14px;margin:8px 0 16px">Confirme ton fond de caisse et le nom du marché.</p>
     <div style="text-align:center;font-family:'Cormorant Garamond',serif;font-size:36px;color:var(--violet);font-weight:600;margin-bottom:6px" id="fond-current"></div>
-    <div class="field" style="margin-top:12px"><label>Fond de caisse (laisser vide pour garder)</label><input type="number" inputmode="decimal" id="fond-input" placeholder="Montant €" step="0.01"></div>
+    <div class="field" style="margin-top:12px"><label>Fond de caisse (pré-rempli, modifie si différent)</label><input type="number" inputmode="decimal" id="fond-input" placeholder="Montant €" step="0.01"></div>
     <div class="field" style="margin-top:10px"><label>Nom du marché</label><input type="text" id="marche-input" placeholder="Ex. : Marché de Tilff" autocomplete="off"></div>
     <button class="btn btn-primary" style="margin-top:14px" onclick="confirmFond()">Démarrer la journée</button>
   </div>
@@ -985,8 +985,9 @@ async function openApp(){
 }
 
 function showFondConfirmation(){
+  const t = theoreticalCash(); // fond + mouvements du jour en cours (ex: remise de pièces après clôture)
   document.getElementById('fond-current').textContent = euro(state.fond);
-  document.getElementById('fond-input').value = '';
+  document.getElementById('fond-input').value = t>0 ? t.toFixed(2) : (state.fond>0 ? state.fond.toFixed(2) : '');
   document.getElementById('marche-input').value = state.marche || '';
   document.getElementById('fond-overlay').classList.remove('hidden');
 }
