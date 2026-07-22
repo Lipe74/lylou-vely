@@ -809,7 +809,7 @@ const BILLS = [5,10,20,50,100,200,500];
 const METHOD_LABEL = {especes:'Espèces', qr:'QR Code', carte:'Carte (SumUp)', mix:'Mixte'};
 
 /* --- SumUp : commission & lien direct --- */
-const SUMUP_RATE = 0.0275; // 2,75% — commission SumUp, à modifier ici si le taux change
+const SUMUP_RATE = 0.0175; // 1,75% — Tap to Pay (terminal HS pour l'instant). Remettre à 0.0275 si retour au terminal.
 const SUMUP_AFFILIATE_KEY = 'sup_afk_4vALlrRnw2fmGnJwQcOsF3tdPZCsY5Pq';
 const SUMUP_APP_ID = 'be.lylouvely.caisse';
 function sumupCommission(amount){ return Math.round(amount*SUMUP_RATE*100)/100; }
@@ -818,7 +818,7 @@ function sumupNet(amount){ return Math.round((amount - sumupCommission(amount))*
 function sumupLineHTML(carteAmount, cls){
   if(!carteAmount || carteAmount<=0) return '';
   const c = sumupCommission(carteAmount), net = sumupNet(carteAmount);
-  return `<div class="${cls||'t-sub'}" style="color:#a15c00"><span>dont commission SumUp (2,75%)</span><span>−${euro(c)}</span></div>
+  return `<div class="${cls||'t-sub'}" style="color:#a15c00"><span>dont commission SumUp (${(SUMUP_RATE*100).toFixed(2).replace(/\.?0+$/,'').replace('.',',')}%)</span><span>−${euro(c)}</span></div>
     <div class="${cls||'t-sub'}"><span>Net reçu SumUp</span><span>${euro(net)}</span></div>`;
 }
 
