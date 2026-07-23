@@ -484,10 +484,6 @@ nav button.on{color:var(--violet)}
     <section class="tab" id="tab-stats">
       <h1 class="section-title">Statistiques</h1>
       <p class="section-sub">Évolution mensuelle de tes ventes</p>
-      <div style="text-align:right;margin-bottom:10px">
-        <button class="btn btn-outline" style="width:auto;padding:8px 16px;font-size:13px" onclick="downloadStatsPDF()">📄 Exporter en PDF</button>
-        <button class="btn btn-outline" style="width:auto;padding:8px 16px;font-size:13px" onclick="printStats()">🖨 A4</button>
-      </div>
 
       <div class="card">
         <div class="row-btns" style="margin-bottom:10px">
@@ -500,13 +496,18 @@ nav button.on{color:var(--violet)}
       </div>
 
       <div class="card">
-        <div class="row-btns" style="margin-bottom:10px">
+        <div class="row-btns" style="margin-bottom:10px;flex-wrap:wrap">
           <h3 style="font-size:19px;flex:1" id="stats-table-title">Par marché</h3>
           <button class="btn btn-outline btn-primary" id="stats-view-marche" style="width:auto;padding:6px 12px;font-size:12px" onclick="setStatsTableMode('marche')">Par marché</button>
           <button class="btn btn-outline" id="stats-view-mois" style="width:auto;padding:6px 12px;font-size:12px" onclick="setStatsTableMode('mois')">Par mois</button>
+          <button class="btn btn-outline" style="width:auto;padding:6px 12px;font-size:12px" onclick="downloadStatsTablePDF()">📄 PDF</button>
+          <button class="btn btn-outline" style="width:auto;padding:6px 12px;font-size:12px" onclick="printStatsTable()">🖨 A4</button>
         </div>
         <div id="stats-marche-filter" style="text-align:right;margin-bottom:8px">
           <select id="stats-marche-select" onchange="renderStatsTable()" style="padding:6px 10px;border-radius:8px;border:1px solid #ddd;font-size:13px"></select>
+        </div>
+        <div id="stats-mois-filter" style="text-align:right;margin-bottom:8px;display:none">
+          <select id="stats-mois-select" onchange="renderStatsTable()" style="padding:6px 10px;border-radius:8px;border:1px solid #ddd;font-size:13px"></select>
         </div>
         <div id="stats-table"></div>
       </div>
@@ -2871,12 +2872,27 @@ function renderHeaderKPIs(){
   if(hm) hm.textContent = state.marche ? '🏪 '+state.marche : '';
 }
 
-/* Ouvre une fenêtre d'impression A4 pour la vue Statistiques (capture identique au PDF) */
-window.printStats = async function(){
+/* Télécharge le tableau Statistiques affiché (Par marché ou Par mois) en PDF */
+window.downloadStatsTablePDF = async function(){
+  if(!window.html2canvas || !window.jspdf){ toast("PDF indisponible"); return; }
+  toast("Génération du PDF…");
+  try{
+    const node = document.getElementById('stats-table');
+    const canvas = await html2canvas(node, { scale:2, backgroundColor:'#ffffff' });
+    const suffix = statsTableMode==='mois' ? 'par-mois' : 'par-marche';
+    canvasToPDFPages(canvas, `statistiques-${suffix}-${todayStr()}.pdf`);
+    toast("PDF téléchargé");
+  }catch(e){
+    toast("Erreur lors de la génération du PDF");
+  }
+};
+
+/* Ouvre une fenêtre d'impression A4 pour le tableau Statistiques affiché */
+window.printStatsTable = async function(){
   if(!window.html2canvas){ toast("Impression indisponible"); return; }
   toast("Préparation de l'impression…");
   try{
-    const node = document.getElementById('tab-stats');
+    const node = document.getElementById('stats-table');
     const canvas = await html2canvas(node, { scale:2, backgroundColor:'#ffffff' });
     const imgData = canvas.toDataURL('image/png');
     const w = window.open('','_blank','width=900,height=700');
@@ -2890,20 +2906,6 @@ window.printStats = async function(){
     setTimeout(()=>w.print(), 500);
   }catch(e){
     toast("Erreur lors de la préparation de l'impression");
-  }
-};
-
-/* Télécharge la vue Statistiques (graphique + tableau) en PDF, tel qu'affiché à l'écran */
-window.downloadStatsPDF = async function(){
-  if(!window.html2canvas || !window.jspdf){ toast("PDF indisponible"); return; }
-  toast("Génération du PDF…");
-  try{
-    const node = document.getElementById('tab-stats');
-    const canvas = await html2canvas(node, { scale:2, backgroundColor:'#ffffff' });
-    canvasToPDFPages(canvas, `statistiques-${todayStr()}.pdf`);
-    toast("PDF téléchargé");
-  }catch(e){
-    toast("Erreur lors de la génération du PDF");
   }
 };
 
@@ -2944,6 +2946,23 @@ function computeMarcheMonthlyStats(){
   return byMarche;
 }
 
+/* Regroupe les ventes valides par marché puis par DATE réelle (historique complet, pas agrégé par mois) */
+function computeMarcheDateStats(){
+  const byMarche = {};
+  state.sales.filter(s=>!s.cancelled).forEach(s=>{
+    const marche = s.marche || '(sans marché)';
+    const d = s.date;
+    if(!byMarche[marche]) byMarche[marche] = {};
+    if(!byMarche[marche][d]) byMarche[marche][d] = {esp:0, qr:0, carte:0, ca:0, count:0};
+    byMarche[marche][d].esp += methodAmount(s,'especes');
+    byMarche[marche][d].qr += methodAmount(s,'qr');
+    byMarche[marche][d].carte += methodAmount(s,'carte');
+    byMarche[marche][d].ca += s.total;
+    byMarche[marche][d].count += 1;
+  });
+  return byMarche;
+}
+
 function monthLabel(ym){
   const [y,m] = ym.split('-');
   const noms = ['Jan','Fév','Mar','Avr','Mai','Juin','Juil','Août','Sep','Oct','Nov','Déc'];
@@ -2965,6 +2984,14 @@ function renderStats(){
   sel.innerHTML = '<option value="__all__">Tous les marchés</option>' +
     marches.map(m=>`<option value="${esc(m)}">${esc(m)}</option>`).join('');
   if(marches.includes(prevVal) || prevVal==='__all__') sel.value = prevVal;
+
+  // Remplit le sélecteur de mois (le plus récent avec données par défaut)
+  const moisSel = document.getElementById('stats-mois-select');
+  const months = [...new Set(state.sales.filter(s=>!s.cancelled).map(s=>s.date.slice(0,7)))].sort().reverse();
+  const prevMois = moisSel.value;
+  moisSel.innerHTML = months.map(m=>`<option value="${m}">${monthLabel(m)}</option>`).join('');
+  if(months.includes(prevMois)) moisSel.value = prevMois; else if(months.length) moisSel.value = months[0];
+
   renderStatsChart();
   window.renderStatsTable();
   renderStatsProducts();
@@ -3032,7 +3059,7 @@ function renderStatsChart(){
 function renderStatsTableByMarche(){
   const sel = document.getElementById('stats-marche-select');
   const chosen = sel.value || '__all__';
-  const byMarche = computeMarcheMonthlyStats();
+  const byMarche = computeMarcheDateStats();
   const box = document.getElementById('stats-table');
 
   const marchesToShow = chosen==='__all__' ? Object.keys(byMarche).sort() : [chosen];
@@ -3043,20 +3070,20 @@ function renderStatsTableByMarche(){
 
   let html = '';
   marchesToShow.forEach(marche=>{
-    const months = byMarche[marche];
-    if(!months) return;
-    const sortedMonths = Object.keys(months).sort().reverse();
+    const dates = byMarche[marche];
+    if(!dates) return;
+    const sortedDates = Object.keys(dates).sort().reverse();
     html += `<div style="font-weight:600;color:var(--violet);margin:14px 0 6px;font-size:13px">🏪 ${esc(marche)}</div>
       <table style="width:100%;border-collapse:collapse;font-size:12px">
         <thead><tr style="border-bottom:2px solid #eee;text-align:left">
-          <th style="padding:4px">Mois</th><th style="padding:4px;text-align:right">CA</th>
+          <th style="padding:4px">Date</th><th style="padding:4px;text-align:right">CA</th>
           <th style="padding:4px;text-align:right">💶 Espèces</th><th style="padding:4px;text-align:right">📱 QR</th>
           <th style="padding:4px;text-align:right">💳 Carte</th><th style="padding:4px;text-align:right">Ventes</th>
         </tr></thead><tbody>`;
-    sortedMonths.forEach(m=>{
-      const d = months[m];
+    sortedDates.forEach(dt=>{
+      const d = dates[dt];
       html += `<tr style="border-bottom:1px solid #f2f2f2">
-        <td style="padding:4px">${monthLabel(m)}</td>
+        <td style="padding:4px">${dt.split('-').reverse().join('/')}</td>
         <td style="padding:4px;text-align:right;font-weight:600">${euro(d.ca)}</td>
         <td style="padding:4px;text-align:right">${euro(d.esp)}</td>
         <td style="padding:4px;text-align:right">${euro(d.qr)}</td>
@@ -3089,7 +3116,9 @@ function computeMonthMarcheStats(){
 function renderStatsTableByMonth(){
   const byMonth = computeMonthMarcheStats();
   const box = document.getElementById('stats-table');
-  const months = Object.keys(byMonth).sort().reverse();
+  const moisSel = document.getElementById('stats-mois-select');
+  const chosenMonth = moisSel.value;
+  const months = chosenMonth && byMonth[chosenMonth] ? [chosenMonth] : [];
   if(months.length===0){ box.innerHTML = '<div class="empty">Pas encore de données</div>'; return; }
 
   let html = '';
@@ -3141,6 +3170,7 @@ window.setStatsTableMode = function(mode){
   document.getElementById('stats-view-mois').classList.toggle('btn-primary', mode==='mois');
   document.getElementById('stats-table-title').textContent = mode==='marche' ? 'Par marché' : 'Par mois';
   document.getElementById('stats-marche-filter').style.display = mode==='marche' ? 'block' : 'none';
+  document.getElementById('stats-mois-filter').style.display = mode==='mois' ? 'block' : 'none';
   window.renderStatsTable();
 };
 window.renderStatsTable = function(){
