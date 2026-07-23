@@ -523,9 +523,14 @@ nav button.on{color:var(--violet)}
           <div class="tx"><b>QR Code</b><span>Bancontact — le client scanne et paie</span></div>
           <div class="arr">›</div>
         </button>
-        <button class="pay-btn" onclick="startExternal('carte')">
+        <button class="pay-btn" onclick="startExternal('carte-sumup')">
           <div class="ic carte">💳</div>
-          <div class="tx"><b>Carte (SumUp)</b><span>Terminal de paiement</span></div>
+          <div class="tx"><b>Carte (SumUp)</b><span>Tap to Pay ou terminal</span></div>
+          <div class="arr">›</div>
+        </button>
+        <button class="pay-btn" onclick="startExternal('carte-viva')">
+          <div class="ic carte">💳</div>
+          <div class="tx"><b>Carte (Viva Wallet)</b><span>Bancontact, moins cher</span></div>
           <div class="arr">›</div>
         </button>
       </div>
@@ -569,12 +574,27 @@ nav button.on{color:var(--violet)}
       <button class="btn btn-primary" onclick="copySumUpAmount()" style="width:auto;padding:8px 18px;font-size:14px;margin-bottom:6px">📋 Copier le montant</button>
       <div class="confirm-icon">💳</div>
       <p class="confirm-steps" id="sumup-steps">Ouvre l'app SumUp depuis ton téléphone (pas ce bouton) → Facturer → Tap to Pay → colle le montant.<br>Clique ci-dessous une fois le paiement accepté.</p>
-      <button class="btn btn-primary" onclick="confirmExternal('carte')" style="margin-bottom:10px">Paiement accepté ✓</button>
+      <button class="btn btn-primary" onclick="confirmExternal('carte','sumup')" style="margin-bottom:10px">Paiement accepté ✓</button>
       <div class="confirm-refused">
         <button class="btn btn-outline" onclick="backToChoice()">Retour</button>
         <button class="btn btn-danger" onclick="backToChoice()">Refusé / Annulé</button>
       </div>
       <button onclick="launchSumUpApp()" style="background:none;border:none;color:var(--muted);font-size:11px;text-decoration:underline;margin-top:14px;cursor:pointer">Terminal réparé ? Lancer via terminal SumUp →</button>
+    </div>
+
+    <!-- Viva Wallet -->
+    <div id="pay-viva" class="hidden">
+      <h2>Paiement par carte — Viva Wallet</h2>
+      <div class="qr-amount-lbl">Montant à encaisser</div>
+      <div class="pay-amt" id="viva-amount">0,00 €</div>
+      <button class="btn btn-primary" onclick="copyVivaAmount()" style="width:auto;padding:8px 18px;font-size:14px;margin-bottom:6px">📋 Copier le montant</button>
+      <div class="confirm-icon">💳</div>
+      <p class="confirm-steps">Ouvre l'app "Viva.com Terminal" sur ton téléphone → colle le montant → fais tapper la carte.<br>Clique ci-dessous une fois le paiement accepté.</p>
+      <button class="btn btn-primary" onclick="confirmExternal('carte','viva')" style="margin-bottom:10px">Paiement accepté ✓</button>
+      <div class="confirm-refused">
+        <button class="btn btn-outline" onclick="backToChoice()">Retour</button>
+        <button class="btn btn-danger" onclick="backToChoice()">Refusé / Annulé</button>
+      </div>
     </div>
   </div>
 </div>
@@ -820,6 +840,52 @@ function sumupLineHTML(carteAmount, cls){
   const c = sumupCommission(carteAmount), net = sumupNet(carteAmount);
   return `<div class="${cls||'t-sub'}" style="color:#a15c00"><span>dont commission SumUp (${(SUMUP_RATE*100).toFixed(2).replace(/\.?0+$/,'').replace('.',',')}%)</span><span>−${euro(c)}</span></div>
     <div class="${cls||'t-sub'}"><span>Net reçu SumUp</span><span>${euro(net)}</span></div>`;
+}
+
+/* --- Viva Wallet : commission (Bancontact = frais fixe) --- */
+const VIVA_BANCONTACT_FEE = 0.14; // frais fixe confirmé par téléphone (Bancontact carte présente)
+const VIVA_MIN_FEE = 0.03; // minimum contractuel par transaction
+const PROVIDER_LABEL = { sumup:'SumUp', viva:'Viva Wallet' };
+
+/* Commission d'une part de paiement carte (payParts / sale.payments), selon le prestataire utilisé */
+function cardPartCommission(part){
+  const amt = part.amount || 0;
+  if(part.provider === 'viva') return Math.max(VIVA_BANCONTACT_FEE, VIVA_MIN_FEE);
+  return sumupCommission(amt); // 'sumup' par défaut (compat anciennes ventes sans provider)
+}
+function cardPartNet(part){
+  return Math.round((part.amount - cardPartCommission(part))*100)/100;
+}
+/* Regroupe les parts carte d'un tableau de ventes par prestataire : {sumup:{amount,commission}, viva:{...}} */
+function cardBreakdown(salesArr){
+  const res = { sumup:{amount:0,commission:0}, viva:{amount:0,commission:0} };
+  (salesArr||[]).forEach(s=>{
+    (s.payments||[]).filter(p=>p.method==='carte').forEach(p=>{
+      const prov = p.provider==='viva' ? 'viva' : 'sumup';
+      res[prov].amount += p.amount;
+      res[prov].commission += cardPartCommission(p);
+    });
+  });
+  return res;
+}
+/* Lignes HTML commission pour UNE vente (ticket de vente), une ligne par prestataire utilisé */
+function cardCommissionLinesHTML(sale, cls){
+  const parts = (sale.payments||[]).filter(p=>p.method==='carte');
+  if(!parts.length) return '';
+  const byProv = {};
+  parts.forEach(p=>{
+    const prov = p.provider==='viva' ? 'viva' : 'sumup';
+    if(!byProv[prov]) byProv[prov] = {amount:0, commission:0};
+    byProv[prov].amount += p.amount;
+    byProv[prov].commission += cardPartCommission(p);
+  });
+  return Object.keys(byProv).map(prov=>{
+    const d = byProv[prov];
+    const net = Math.round((d.amount - d.commission)*100)/100;
+    const rateTxt = prov==='viva' ? `${euro(VIVA_BANCONTACT_FEE)} fixe` : `${(SUMUP_RATE*100).toFixed(2).replace(/\.?0+$/,'').replace('.',',')}%`;
+    return `<div class="${cls||'t-sub'}" style="color:#a15c00"><span>dont commission ${PROVIDER_LABEL[prov]} (${rateTxt})</span><span>−${euro(d.commission)}</span></div>
+      <div class="${cls||'t-sub'}"><span>Net reçu ${PROVIDER_LABEL[prov]}</span><span>${euro(net)}</span></div>`;
+  }).join('');
 }
 
 /* ---- État ---- */
@@ -1305,7 +1371,7 @@ window.openPay = function(){
 window.closePay = function(){ document.getElementById('pay-overlay').classList.add('hidden'); payParts=[]; };
 
 function showPayChoice(){
-  ['pay-cash','pay-qr','pay-sumup'].forEach(id=>document.getElementById(id).classList.add('hidden'));
+  ['pay-cash','pay-qr','pay-sumup','pay-viva'].forEach(id=>document.getElementById(id).classList.add('hidden'));
   document.getElementById('pay-choice').classList.remove('hidden');
   const rem = payRemaining();
   document.getElementById('pay-amt').textContent = euro(rem);
@@ -1418,6 +1484,9 @@ window.startExternal = function(method){
         correctLevel: QRCode.CorrectLevel.M
       });
     }catch(e){ qrBox.innerHTML='<p>QR indisponible</p>'; }
+  } else if(method==='carte-viva'){
+    document.getElementById('pay-viva').classList.remove('hidden');
+    document.getElementById('viva-amount').textContent = euro(payRemaining());
   } else {
     document.getElementById('pay-sumup').classList.remove('hidden');
     document.getElementById('sumup-amount').textContent = euro(payRemaining());
@@ -1494,15 +1563,28 @@ function checkSumUpCallback(){
   history.replaceState(null, '', location.pathname); // nettoie l'URL
   if(ok){
     toast('✓ Paiement SumUp confirmé');
-    if(cart.length>0 || payParts.length>0) confirmExternal('carte');
+    if(cart.length>0 || payParts.length>0) confirmExternal('carte','sumup');
   } else if(p.get('smp-status') === 'failed'){
     toast('✗ Paiement SumUp refusé/annulé — panier conservé');
     window.go('vente');
   }
 }
-window.confirmExternal = function(method){
+/* Copie le montant à encaisser pour Viva Wallet */
+window.copyVivaAmount = function(){
+  const amt = payRemaining().toFixed(2);
+  try{
+    navigator.clipboard.writeText(amt);
+    toast('📋 Montant copié : '+amt+' €');
+  }catch(e){
+    toast('Montant : '+amt+' €');
+  }
+};
+
+window.confirmExternal = function(method, provider){
   const rem = payRemaining();
-  payParts.push({method, amount:rem});
+  const part = {method, amount:rem};
+  if(method==='carte') part.provider = provider || 'sumup';
+  payParts.push(part);
   finalizeSale();
 };
 
@@ -1571,17 +1653,18 @@ function showTicket(sale){
     <div class="t-sub"><span>TVA 21 %</span><span>${euro(totalTVA)}</span></div>`;
 
   // paiement
+  const paymentLabel = (p)=> p.method==='carte' ? `Carte (${PROVIDER_LABEL[p.provider==='viva'?'viva':'sumup']})` : METHOD_LABEL[p.method];
   let payInfo = '';
   if(sale.payments && sale.payments.length > 1){
     payInfo = sale.payments.map(p=>
-      `<div class="t-pay">· ${METHOD_LABEL[p.method]} : ${euro(p.amount)}</div>`
+      `<div class="t-pay">· ${paymentLabel(p)} : ${euro(p.amount)}</div>`
     ).join('');
   } else {
-    payInfo = `<div class="t-pay">Paiement : ${METHOD_LABEL[sale.method]}${sale.cancelled?' — remboursé':''}</div>`;
+    const singleLabel = (sale.payments && sale.payments[0]) ? paymentLabel(sale.payments[0]) : METHOD_LABEL[sale.method];
+    payInfo = `<div class="t-pay">Paiement : ${singleLabel}${sale.cancelled?' — remboursé':''}</div>`;
   }
-  // Commission SumUp (si une partie du paiement est en carte)
-  const carteAmt = methodAmount(sale, 'carte');
-  const sumupBlock = (!sale.cancelled && carteAmt>0) ? sumupLineHTML(carteAmt, 't-pay') : '';
+  // Commission carte (SumUp et/ou Viva Wallet selon le prestataire utilisé)
+  const sumupBlock = (!sale.cancelled) ? cardCommissionLinesHTML(sale, 't-pay') : '';
   // rendu espèces
   let cashExtra = '';
   const cashPart = sale.payments ? sale.payments.find(p=>p.method==='especes') : null;
@@ -1961,7 +2044,15 @@ function renderJournal(){
   document.getElementById('jr-qr').textContent = euro(qr);
   document.getElementById('jr-carte').textContent = euro(carte);
   const jrFee = document.getElementById('jr-sumup-fee');
-  jrFee.textContent = carte>0 ? `−${euro(sumupCommission(carte))} commission · net ${euro(sumupNet(carte))}` : '';
+  if(carte>0){
+    const bd = cardBreakdown(s);
+    const parts = [];
+    if(bd.sumup.amount>0) parts.push(`SumUp −${euro(bd.sumup.commission)}`);
+    if(bd.viva.amount>0) parts.push(`Viva −${euro(bd.viva.commission)}`);
+    jrFee.textContent = parts.join(' · ');
+  } else {
+    jrFee.textContent = '';
+  }
   document.getElementById('jr-count').textContent = s.length;
   document.getElementById('jr-avg').textContent = euro(s.length?ca/s.length:0);
   document.getElementById('jr-cash').textContent = euro(theoreticalCash());
@@ -2036,13 +2127,18 @@ function renderJournal(){
       const esp = ventes.reduce((a,s)=>a+methodAmount(s,'especes'),0);
       const qr = ventes.reduce((a,s)=>a+methodAmount(s,'qr'),0);
       const carte = ventes.reduce((a,s)=>a+methodAmount(s,'carte'),0);
+      const mBd = cardBreakdown(ventes);
+      const mFeeParts = [];
+      if(mBd.sumup.amount>0) mFeeParts.push(`SumUp −${euro(mBd.sumup.commission)}`);
+      if(mBd.viva.amount>0) mFeeParts.push(`Viva −${euro(mBd.viva.commission)}`);
+      const mFeeTxt = mFeeParts.length ? ` (${mFeeParts.join(' · ')})` : '';
       const mKey = groupe.marche || '(sans marché)';
       const mArg = mKey.replace(/'/g,"\\'");
       const hdr = document.createElement('div');
       hdr.style.cssText = 'padding:8px 0 4px;border-bottom:2px solid var(--violet);margin-bottom:6px';
       hdr.innerHTML = `
         <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-          <div style="font-weight:600;font-size:13px;color:var(--violet);flex:1;min-width:180px">🏪 ${esc(groupe.marche||'Sans marché')} — CA : ${euro(ca)} · 💶 ${euro(esp)} · 📱 ${euro(qr)} · 💳 ${euro(carte)}</div>
+          <div style="font-weight:600;font-size:13px;color:var(--violet);flex:1;min-width:180px">🏪 ${esc(groupe.marche||'Sans marché')} — CA : ${euro(ca)} · 💶 ${euro(esp)} · 📱 ${euro(qr)} · 💳 ${euro(carte)}${mFeeTxt}</div>
           <button class="btn btn-outline" style="width:auto;padding:5px 10px;font-size:12px" onclick="downloadMarchePDF('${mArg}')">PDF</button>
           <button class="btn btn-outline" style="width:auto;padding:5px 10px;font-size:12px" onclick="printMarche('${mArg}','58mm')">🖨 58mm</button>
           <button class="btn btn-outline" style="width:auto;padding:5px 10px;font-size:12px" onclick="printMarche('${mArg}','a4')">🖨 A4</button>
@@ -2333,7 +2429,10 @@ function buildJournalHTML(marcheFilter){
       <div class="kpi"><b>${euro(esp)}</b>Espèces</div>
       <div class="kpi"><b>${euro(qr)}</b>QR Code</div>
       <div class="kpi"><b>${euro(carte)}</b>Carte</div>
-      ${carte>0?`<div class="kpi" style="background:#fff3e0"><b style="color:#a15c00">−${euro(sumupCommission(carte))}</b>Commission SumUp</div>`:''}
+      ${(()=>{ const bd=cardBreakdown(s); let h='';
+        if(bd.sumup.amount>0) h+=`<div class="kpi" style="background:#fff3e0"><b style="color:#a15c00">−${euro(bd.sumup.commission)}</b>Commission SumUp</div>`;
+        if(bd.viva.amount>0) h+=`<div class="kpi" style="background:#fff3e0"><b style="color:#a15c00">−${euro(bd.viva.commission)}</b>Commission Viva</div>`;
+        return h; })()}
     </div>
     <div class="sect">Ventes</div>`;
 
@@ -2344,8 +2443,13 @@ function buildJournalHTML(marcheFilter){
     const gqr=groupe.sales.reduce((a,x)=>a+methodAmount(x,'qr'),0);
     const gcarte=groupe.sales.reduce((a,x)=>a+methodAmount(x,'carte'),0);
     if(groupes.length>1){
+      const gBd = cardBreakdown(groupe.sales);
+      const gFeeParts = [];
+      if(gBd.sumup.amount>0) gFeeParts.push(`commission SumUp −${euro(gBd.sumup.commission)}`);
+      if(gBd.viva.amount>0) gFeeParts.push(`commission Viva −${euro(gBd.viva.commission)}`);
+      const gFeeTxt = gFeeParts.length ? ` (${gFeeParts.join(', ')})` : '';
       html+=`<div class="marche-hdr">🏪 ${esc(groupe.marche)} — CA : ${euro(gca)}</div>
-      <div class="marche-sub">💶 Espèces : ${euro(gesp)} · 📱 QR : ${euro(gqr)} · 💳 Carte : ${euro(gcarte)}${gcarte>0?` (commission SumUp −${euro(sumupCommission(gcarte))}, net ${euro(sumupNet(gcarte))})`:''}</div>`;
+      <div class="marche-sub">💶 Espèces : ${euro(gesp)} · 📱 QR : ${euro(gqr)} · 💳 Carte : ${euro(gcarte)}${gFeeTxt}</div>`;
     }
     html+=`<table><thead><tr><th>Réf.</th><th>Articles</th><th>Mode</th><th style="text-align:right">Total</th></tr></thead><tbody>`;
     groupe.sales.forEach(sale=>{
@@ -2480,7 +2584,10 @@ function buildZTicketHTML(day, marche, ca, esp, qr, carte, cancelledN, theo, inT
     <div class="t-item"><span>Espèces</span><span>${euro(esp)}</span></div>
     <div class="t-item"><span>QR Code</span><span>${euro(qr)}</span></div>
     <div class="t-item"><span>Carte</span><span>${euro(carte)}</span></div>
-    ${sumupLineHTML(carte)}
+    ${(()=>{ const bd=cardBreakdown(valid); let h='';
+      if(bd.sumup.amount>0) h+=`<div class="t-sub" style="color:#a15c00"><span>dont commission SumUp</span><span>−${euro(bd.sumup.commission)}</span></div>`;
+      if(bd.viva.amount>0) h+=`<div class="t-sub" style="color:#a15c00"><span>dont commission Viva Wallet</span><span>−${euro(bd.viva.commission)}</span></div>`;
+      return h; })()}
     <div class="t-sep"></div>
     <div class="t-item"><span>Fond de caisse</span><span>${euro(state.fond)}</span></div>
     <div class="t-item"><span>Entrées</span><span>${euro(inTotal)}</span></div>
