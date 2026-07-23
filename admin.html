@@ -198,7 +198,7 @@
         </div>
 
         <div class="form-group">
-          <label>Photo (chemin de l'image, ex. images/marche-tilff.png)</label>
+          <label>Photo (par défaut : images/marches.png — remplace si tu as une photo spécifique)</label>
           <input type="text" id="marche-photo" placeholder="images/marche-tilff.png">
         </div>
 
@@ -395,7 +395,7 @@ window.resetMarcheForm = function(){
   document.getElementById('marche-jour-hebdo').value = 'Lundi';
   document.getElementById('marche-occurrence').value = '1er';
   document.getElementById('marche-jour-mensuel').value = 'Lundi';
-  document.getElementById('marche-photo').value = '';
+  document.getElementById('marche-photo').value = 'images/marches.png';
   document.getElementById('marche-facebook').value = '';
   document.getElementById('marche-maps').value = '';
   document.getElementById('marche-form-title').textContent = 'Nouveau marché';
