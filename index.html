@@ -704,9 +704,9 @@ function googleCalLink(m){
   const {start,end} = prochaineDate(m);
   const rule = recurRule(m);
   const params = new URLSearchParams({
-    action:'TEMPLATE', text:m.nom,
+    action:'TEMPLATE', text:'Lylou-Vely - '+m.nom,
     dates: fmtCal(start)+'/'+fmtCal(end),
-    details:'Marché '+m.nom+' - Lylou-Vely',
+    details:'Créations artisanales Lylou-Vely — retrouvez-nous sur place !',
     location:m.adresse, ctz:'Europe/Brussels'
   });
   return 'https://calendar.google.com/calendar/render?'+params.toString()+(rule?('&recur=RRULE:'+rule):'');
@@ -721,9 +721,9 @@ function icsContent(m){
     'DTSTART;TZID=Europe/Brussels:'+fmtCal(start),
     'DTEND;TZID=Europe/Brussels:'+fmtCal(end),
     (rule?('RRULE:'+rule):null),
-    'SUMMARY:'+m.nom,
+    'SUMMARY:Lylou-Vely - '+m.nom,
     'LOCATION:'+m.adresse,
-    'DESCRIPTION:Marché '+m.nom+' - Lylou-Vely',
+    'DESCRIPTION:Créations artisanales Lylou-Vely — retrouvez-nous sur place !',
     'END:VEVENT','END:VCALENDAR'
   ].filter(Boolean).join('\r\n');
 }
