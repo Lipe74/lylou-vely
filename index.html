@@ -174,6 +174,9 @@
     .marche-mini-body { padding:1.1rem 1.2rem 1.3rem; }
     .marche-mini-nom { font-family:'Playfair Display',serif; font-size:1.1rem; color:var(--violet); margin-bottom:.5rem; }
     .marche-mini-line { display:flex; align-items:flex-start; gap:.5rem; font-size:.86rem; color:var(--text-mid); margin-bottom:.3rem; line-height:1.5; }
+    .marche-mini-links { display:flex; gap:.6rem; margin-top:.7rem; flex-wrap:wrap; }
+    .marche-mini-link { font-size:.78rem; font-weight:700; color:var(--violet); text-decoration:none; border:1.3px solid var(--violet); padding:.35rem .7rem; border-radius:50px; transition:all .2s; }
+    .marche-mini-link:hover { background:var(--violet); color:#fff; }
 
     /* AVIS GOOGLE */
     .avis-card { background:#fff; border:1px solid var(--lavande); border-radius:18px; padding:1.4rem 1.5rem; box-shadow:0 4px 16px rgba(107,63,160,.08); }
@@ -456,12 +459,6 @@
         <div id="marches-passes-liste" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1.2rem;text-align:left;opacity:.55;"></div>
       </div>
 
-      <a href="marches.html"
-         class="btn-primary"
-         style="margin-top:32px;display:inline-block;">
-         Voir tous les détails des marchés 📍
-      </a>
-
     </div>
 
   </div>
@@ -645,14 +642,117 @@ function estPasse(m){
   const today = new Date(); today.setHours(0,0,0,0);
   return new Date(m.dateFixe+'T00:00:00') < today;
 }
-function carteMarche(m){
+
+/* ---- Calendrier ---- */
+const JOURS = ['Dimanche','Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi'];
+const DAY_CODE = {Lundi:'MO',Mardi:'TU',Mercredi:'WE',Jeudi:'TH',Vendredi:'FR',Samedi:'SA',Dimanche:'SU'};
+const OCC_NUM = {'1er':1,'2ème':2,'3ème':3,'4ème':4,'Dernier':-1};
+function pad(n){ return String(n).padStart(2,'0'); }
+
+function nthWeekdayOfMonth(year, month, targetDay, occ){
+  if(occ === -1){
+    const last = new Date(year, month+1, 0);
+    const diff = (last.getDay() - targetDay + 7) % 7;
+    last.setDate(last.getDate()-diff);
+    return last;
+  }
+  const first = new Date(year, month, 1);
+  const diff = (targetDay - first.getDay() + 7) % 7;
+  first.setDate(first.getDate() + diff + (occ-1)*7);
+  return first;
+}
+function prochaineOccurrenceMensuelle(targetDay, occ){
+  const today = new Date(); today.setHours(0,0,0,0);
+  for(let add=0; add<3; add++){
+    const d = nthWeekdayOfMonth(today.getFullYear(), today.getMonth()+add, targetDay, occ);
+    if(d >= today) return d;
+  }
+  return today;
+}
+function prochaineDate(m){
+  const [h1,mi1] = (m.heureDebut||'10:00').split(':').map(Number);
+  const [h2,mi2] = (m.heureFin||'18:00').split(':').map(Number);
+  let start;
+  if(m.type==='fixe'){
+    start = new Date(m.dateFixe+'T00:00:00');
+  } else if(m.type==='hebdo'){
+    const targetDay = JOURS.indexOf(m.jourSemaine);
+    start = new Date(); start.setHours(0,0,0,0);
+    const diff = (targetDay - start.getDay() + 7) % 7;
+    start.setDate(start.getDate()+diff);
+  } else {
+    const targetDay = JOURS.indexOf(m.jourMensuel);
+    start = prochaineOccurrenceMensuelle(targetDay, OCC_NUM[m.occurrence] || 1);
+  }
+  start.setHours(h1||10, mi1||0, 0, 0);
+  const end = new Date(start);
+  end.setHours(h2||18, mi2||0, 0, 0);
+  return { start, end };
+}
+function fmtCal(d){
+  return d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+'T'+pad(d.getHours())+pad(d.getMinutes())+'00';
+}
+function recurRule(m){
+  if(m.type==='hebdo') return 'FREQ=WEEKLY;BYDAY='+DAY_CODE[m.jourSemaine];
+  if(m.type==='mensuel'){
+    const occ = OCC_NUM[m.occurrence] || 1;
+    return 'FREQ=MONTHLY;BYDAY='+(occ===-1?'-1':occ)+DAY_CODE[m.jourMensuel];
+  }
+  return '';
+}
+function googleCalLink(m){
+  const {start,end} = prochaineDate(m);
+  const rule = recurRule(m);
+  const params = new URLSearchParams({
+    action:'TEMPLATE', text:m.nom,
+    dates: fmtCal(start)+'/'+fmtCal(end),
+    details:'Marché '+m.nom+' - Lylou-Vely',
+    location:m.adresse, ctz:'Europe/Brussels'
+  });
+  return 'https://calendar.google.com/calendar/render?'+params.toString()+(rule?('&recur=RRULE:'+rule):'');
+}
+function icsContent(m){
+  const {start,end} = prochaineDate(m);
+  const rule = recurRule(m);
+  const dtStamp = fmtCal(new Date())+'Z';
+  return ['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Lylou-Vely//Marches//FR','BEGIN:VEVENT',
+    'UID:'+Date.now()+'-'+Math.random().toString(36).slice(2)+'@lylou-vely.be',
+    'DTSTAMP:'+dtStamp,
+    'DTSTART;TZID=Europe/Brussels:'+fmtCal(start),
+    'DTEND;TZID=Europe/Brussels:'+fmtCal(end),
+    (rule?('RRULE:'+rule):null),
+    'SUMMARY:'+m.nom,
+    'LOCATION:'+m.adresse,
+    'DESCRIPTION:Marché '+m.nom+' - Lylou-Vely',
+    'END:VEVENT','END:VCALENDAR'
+  ].filter(Boolean).join('\r\n');
+}
+window._marchesIndex = {};
+window.downloadIcsMarche = function(id){
+  const m = window._marchesIndex[id];
+  if(!m) return;
+  const blob = new Blob([icsContent(m)], {type:'text/calendar;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'marche-'+m.nom.toLowerCase().replace(/[^a-z0-9]+/g,'-')+'.ics';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url), 3000);
+};
+
+function carteMarche(id, m){
+  window._marchesIndex[id] = m;
   const photoBlock = m.photo ? `<img src="${m.photo}" alt="${m.nom}">` : `📍`;
+  const mapsLink = m.maps ? `<a href="${m.maps}" target="_blank" class="marche-mini-link">🗺️ Maps</a>` : '';
+  const fbLink = m.facebook ? `<a href="${m.facebook}" target="_blank" class="marche-mini-link">📘 Facebook</a>` : '';
+  const gcalLink = `<a href="${googleCalLink(m)}" target="_blank" class="marche-mini-link">📅 Google Cal.</a>`;
+  const icsLink = `<a href="javascript:void(0)" onclick="window.downloadIcsMarche('${id}')" class="marche-mini-link">🍎 Apple / Autres</a>`;
   return `<div class="marche-mini-card">
       <div class="marche-mini-photo${m.photo ? '' : ' placeholder'}">${photoBlock}</div>
       <div class="marche-mini-body">
         <div class="marche-mini-nom">${m.nom}</div>
         <div class="marche-mini-line">🕐 ${frequenceTexte(m)} (${m.heures})</div>
         <div class="marche-mini-line">📍 ${m.adresse}</div>
+        <div class="marche-mini-links">${mapsLink}${fbLink}${gcalLink}${icsLink}</div>
       </div>
     </div>`;
 }
@@ -667,8 +767,8 @@ onSnapshot(query(marchesCol, orderBy("creeLe","asc")), snap=>{
   let htmlActifs = '', htmlPasses = '';
   snap.forEach(d=>{
     const m = d.data();
-    if(estPasse(m)) htmlPasses += carteMarche(m);
-    else htmlActifs += carteMarche(m);
+    if(estPasse(m)) htmlPasses += carteMarche(d.id, m);
+    else htmlActifs += carteMarche(d.id, m);
   });
   el.innerHTML = htmlActifs || '<p style="grid-column:1/-1;text-align:center;color:var(--text-mid);">Aucun marché à venir pour le moment.</p>';
   if(htmlPasses){ elPasses.innerHTML = htmlPasses; wrapPasses.style.display = 'block'; }
