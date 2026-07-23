@@ -459,8 +459,8 @@
 <div class="section bg-lavande" id="avis">
   <div class="section-inner">
 
-    <h2 class="section-title">Ce qu'elles en pensent 💜</h2>
-    <p class="section-sub">Les avis de nos clientes</p>
+    <h2 class="section-title">Ce qu'ils en pensent 💜</h2>
+    <p class="section-sub">Les avis de nos clients</p>
 
     <div id="avis-liste" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1.4rem;max-width:1000px;margin:0 auto;">
       Chargement des avis...
@@ -652,8 +652,14 @@ onSnapshot(query(marchesCol, orderBy("creeLe","asc")), snap=>{
   el.innerHTML = html;
 });
 
+function formatDateAvis(iso){
+  if(!iso) return '';
+  const [y,m,d] = iso.split('-');
+  return `${d}/${m}/${y}`;
+}
+
 const avisCol = collection(db, "lylou_vely", "avis", "items");
-onSnapshot(query(avisCol, orderBy("creeLe","desc")), snap=>{
+onSnapshot(query(avisCol, orderBy("date","desc")), snap=>{
   const el = document.getElementById('avis-liste');
   if(!el) return;
   if(snap.empty){ el.innerHTML = '<p style="text-align:center;color:var(--text-mid);grid-column:1/-1;">Aucun avis pour le moment.</p>'; return; }
@@ -665,7 +671,7 @@ onSnapshot(query(avisCol, orderBy("creeLe","desc")), snap=>{
     const stars = '★'.repeat(a.etoiles) + '☆'.repeat(5-a.etoiles);
     html += `<div class="avis-card">
       <div class="avis-stars">${stars}</div>
-      <div class="avis-nom">${a.nom}</div>
+      <div class="avis-nom">${a.nom} <span style="font-size:.78rem;color:var(--text-light);font-family:'Lato',sans-serif;font-weight:400;">— ${formatDateAvis(a.date)}</span></div>
       <div class="avis-desc">${a.description}</div>
     </div>`;
     count++;

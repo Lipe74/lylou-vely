@@ -203,6 +203,11 @@
         </div>
 
         <div class="form-group">
+          <label>Lien Facebook (optionnel)</label>
+          <input type="text" id="marche-facebook" placeholder="https://facebook.com/...">
+        </div>
+
+        <div class="form-group">
           <label>Lien Google Maps (optionnel)</label>
           <input type="text" id="marche-maps" placeholder="https://maps.google.com/?q=...">
         </div>
@@ -242,6 +247,10 @@
               <option value="1">★☆☆☆☆ (1)</option>
             </select>
           </div>
+        </div>
+        <div class="form-group">
+          <label>Date de l'avis *</label>
+          <input type="date" id="avis-date">
         </div>
         <div class="form-group">
           <label>Description de l'avis *</label>
@@ -387,6 +396,7 @@ window.resetMarcheForm = function(){
   document.getElementById('marche-occurrence').value = '1er';
   document.getElementById('marche-jour-mensuel').value = 'Lundi';
   document.getElementById('marche-photo').value = '';
+  document.getElementById('marche-facebook').value = '';
   document.getElementById('marche-maps').value = '';
   document.getElementById('marche-form-title').textContent = 'Nouveau marché';
   document.getElementById('marche-cancel').style.display = 'none';
@@ -400,7 +410,7 @@ window.saveMarche = async function(){
   const type = document.getElementById('marche-type').value;
   if(!nom || !adresse || !heures){ alert('Nom, adresse et heures sont obligatoires.'); return; }
 
-  const data = { nom, adresse, heures, type, photo: document.getElementById('marche-photo').value.trim(), maps: document.getElementById('marche-maps').value.trim() };
+  const data = { nom, adresse, heures, type, photo: document.getElementById('marche-photo').value.trim(), facebook: document.getElementById('marche-facebook').value.trim(), maps: document.getElementById('marche-maps').value.trim() };
   if(type==='fixe'){
     if(!document.getElementById('marche-date-fixe').value){ alert('Merci de choisir une date.'); return; }
     data.dateFixe = document.getElementById('marche-date-fixe').value;
@@ -434,6 +444,7 @@ window.editMarche = function(id, m){
   document.getElementById('marche-occurrence').value = m.occurrence || '1er';
   document.getElementById('marche-jour-mensuel').value = m.jourMensuel || 'Lundi';
   document.getElementById('marche-photo').value = m.photo || '';
+  document.getElementById('marche-facebook').value = m.facebook || '';
   document.getElementById('marche-maps').value = m.maps || '';
   document.getElementById('marche-form-title').textContent = 'Modifier le marché';
   document.getElementById('marche-cancel').style.display = 'inline-block';
@@ -481,6 +492,7 @@ window.resetAvisForm = function(){
   document.getElementById('avis-nom').value = '';
   document.getElementById('avis-etoiles').value = '5';
   document.getElementById('avis-description').value = '';
+  document.getElementById('avis-date').value = new Date().toISOString().slice(0,10);
   document.getElementById('avis-form-title').textContent = 'Nouvel avis';
   document.getElementById('avis-cancel').style.display = 'none';
 };
@@ -491,7 +503,7 @@ window.saveAvis = async function(){
   const etoiles = parseInt(document.getElementById('avis-etoiles').value,10);
   if(!nom || !description){ alert('Nom et description sont obligatoires.'); return; }
 
-  const data = { nom, description, etoiles };
+  const data = { nom, description, etoiles, date: document.getElementById('avis-date').value || new Date().toISOString().slice(0,10) };
   const id = document.getElementById('avis-id').value;
   try{
     if(id){
@@ -509,6 +521,7 @@ window.editAvis = function(id, a){
   document.getElementById('avis-nom').value = a.nom || '';
   document.getElementById('avis-etoiles').value = a.etoiles || 5;
   document.getElementById('avis-description').value = a.description || '';
+  document.getElementById('avis-date').value = a.date || new Date().toISOString().slice(0,10);
   document.getElementById('avis-form-title').textContent = 'Modifier l\'avis';
   document.getElementById('avis-cancel').style.display = 'inline-block';
   window.scrollTo({top:0,behavior:'smooth'});
@@ -520,8 +533,14 @@ window.deleteAvis = async function(id){
   catch(e){ alert('Erreur : '+e.message); }
 };
 
+function formatDateAvis(iso){
+  if(!iso) return '';
+  const [y,m,d] = iso.split('-');
+  return `${d}/${m}/${y}`;
+}
+
 /* ---- Avis : liste temps réel ---- */
-onSnapshot(query(avisCol, orderBy("creeLe","desc")), snap=>{
+onSnapshot(query(avisCol, orderBy("date","desc")), snap=>{
   const list = document.getElementById('avis-list');
   if(snap.empty){ list.innerHTML = '<div class="empty-msg">Aucun avis enregistré pour le moment.</div>'; return; }
   list.innerHTML = '';
@@ -534,7 +553,7 @@ onSnapshot(query(avisCol, orderBy("creeLe","desc")), snap=>{
     el.innerHTML = `
       <div class="info">
         <div class="stars">${'★'.repeat(a.etoiles)}${'☆'.repeat(5-a.etoiles)}</div>
-        <div class="nom">${a.nom}</div>
+        <div class="nom">${a.nom} <span style="font-weight:400;color:var(--muted);font-size:12px;">— ${formatDateAvis(a.date)}</span></div>
         <div class="meta">${a.description}</div>
       </div>
       <div class="actions">
@@ -546,6 +565,7 @@ onSnapshot(query(avisCol, orderBy("creeLe","desc")), snap=>{
 });
 
 window.updateMarcheTypeFields();
+document.getElementById('avis-date').value = new Date().toISOString().slice(0,10);
 </script>
 </body>
 </html>

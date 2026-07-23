@@ -170,6 +170,9 @@ onSnapshot(query(marchesCol, orderBy("creeLe","asc")), snap=>{
     const mapsLink = m.maps
       ? `<a class="marche-map-link" href="${m.maps}" target="_blank">🗺️ Voir sur Google Maps</a>`
       : '';
+    const fbLink = m.facebook
+      ? `<a class="marche-map-link" href="${m.facebook}" target="_blank">📘 Voir sur Facebook</a>`
+      : '';
     html += `
       <div class="marche-bloc${reverse}">
         ${photoBlock}
@@ -189,7 +192,10 @@ onSnapshot(query(marchesCol, orderBy("creeLe","asc")), snap=>{
               <strong>${m.adresse}</strong>
             </div>
           </div>
-          ${mapsLink}
+          <div style="display:flex;gap:0.6rem;flex-wrap:wrap;">
+            ${mapsLink}
+            ${fbLink}
+          </div>
         </div>
       </div>`;
     i++;
