@@ -70,6 +70,7 @@ main{max-width:820px;margin:0 auto;padding:16px}
 @media (min-width:900px){
   .stats-grid{flex-direction:row;align-items:flex-start;gap:16px}
   .stats-grid > .card{flex:1;min-width:0;margin-bottom:0}
+  main:has(#tab-stats.active){max-width:1400px}
 }
 
 /* Prod grid */
@@ -505,12 +506,12 @@ nav button.on{color:var(--violet)}
           <div id="stats-mois-filter" style="text-align:right;margin-bottom:8px;display:none">
             <select id="stats-mois-select" onchange="renderStatsTable()" style="padding:6px 10px;border-radius:8px;border:1px solid #ddd;font-size:13px"></select>
           </div>
-          <div id="stats-table"></div>
+          <div id="stats-table" style="overflow-x:auto"></div>
         </div>
 
         <div class="card">
           <h3 style="font-size:19px;margin-bottom:10px">🏆 Produits les plus vendus</h3>
-          <div id="stats-products"></div>
+          <div id="stats-products" style="overflow-x:auto"></div>
         </div>
 
         <div class="card">
@@ -3081,7 +3082,7 @@ function renderStatsTableByMarche(){
     if(!dates) return;
     const sortedDates = Object.keys(dates).sort().reverse();
     html += `<div style="font-weight:600;color:var(--violet);margin:14px 0 6px;font-size:13px">🏪 ${esc(marche)}</div>
-      <table style="width:100%;border-collapse:collapse;font-size:12px">
+      <table style="width:100%;min-width:480px;border-collapse:collapse;font-size:12px">
         <thead><tr style="border-bottom:2px solid #eee;text-align:left">
           <th style="padding:4px">Date</th><th style="padding:4px;text-align:right">CA</th>
           <th style="padding:4px;text-align:right">💶 Espèces</th><th style="padding:4px;text-align:right">📱 QR</th>
@@ -3133,7 +3134,7 @@ function renderStatsTableByMonth(){
     const marches = byMonth[m];
     const marcheNames = Object.keys(marches).sort((a,b)=>marches[b].ca-marches[a].ca);
     html += `<div style="font-weight:600;color:var(--violet);margin:14px 0 6px;font-size:13px">📅 ${monthLabel(m)}</div>
-      <table style="width:100%;border-collapse:collapse;font-size:12px">
+      <table style="width:100%;min-width:480px;border-collapse:collapse;font-size:12px">
         <thead><tr style="border-bottom:2px solid #eee;text-align:left">
           <th style="padding:4px">Marché</th><th style="padding:4px;text-align:right">CA</th>
           <th style="padding:4px;text-align:right">💶 Espèces</th><th style="padding:4px;text-align:right">📱 QR</th>
@@ -3203,7 +3204,7 @@ function renderStatsProducts(){
   const products = computeProductStats();
   if(products.length===0){ box.innerHTML = '<div class="empty">Pas encore de données</div>'; return; }
 
-  let html = `<table style="width:100%;border-collapse:collapse;font-size:12px">
+  let html = `<table style="width:100%;min-width:480px;border-collapse:collapse;font-size:12px">
     <thead><tr style="border-bottom:2px solid #eee;text-align:left">
       <th style="padding:4px">#</th><th style="padding:4px">Produit</th>
       <th style="padding:4px;text-align:right">Quantité vendue</th><th style="padding:4px;text-align:right">CA généré</th>
