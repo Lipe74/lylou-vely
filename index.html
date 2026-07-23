@@ -168,8 +168,9 @@
     .marche-map-link:hover { background:var(--violet); color:#fff; }
     .marche-mini-card { background:#fff; border:1px solid var(--lavande); border-radius:18px; overflow:hidden; box-shadow:0 4px 16px rgba(107,63,160,.08); transition:transform .2s,box-shadow .2s; }
     .marche-mini-card:hover { transform:translateY(-3px); box-shadow:0 10px 28px rgba(107,63,160,.15); }
-    .marche-mini-photo { width:100%; height:140px; background:var(--lavande-pale); overflow:hidden; display:flex; align-items:center; justify-content:center; font-size:2rem; opacity:.4; }
-    .marche-mini-photo img { width:100%; height:100%; object-fit:cover; }
+    .marche-mini-photo { width:100%; height:140px; background:var(--lavande-pale); overflow:hidden; display:flex; align-items:center; justify-content:center; }
+    .marche-mini-photo.placeholder { font-size:2rem; opacity:.4; }
+    .marche-mini-photo img { width:100%; height:100%; object-fit:cover; display:block; }
     .marche-mini-body { padding:1.1rem 1.2rem 1.3rem; }
     .marche-mini-nom { font-family:'Playfair Display',serif; font-size:1.1rem; color:var(--violet); margin-bottom:.5rem; }
     .marche-mini-line { display:flex; align-items:flex-start; gap:.5rem; font-size:.86rem; color:var(--text-mid); margin-bottom:.3rem; line-height:1.5; }
@@ -640,7 +641,7 @@ onSnapshot(query(marchesCol, orderBy("creeLe","asc")), snap=>{
       ? `<img src="${m.photo}" alt="${m.nom}">`
       : `📍`;
     html += `<div class="marche-mini-card">
-      <div class="marche-mini-photo">${photoBlock}</div>
+      <div class="marche-mini-photo${m.photo ? '' : ' placeholder'}">${photoBlock}</div>
       <div class="marche-mini-body">
         <div class="marche-mini-nom">${m.nom}</div>
         <div class="marche-mini-line">🕐 ${frequenceTexte(m)} (${m.heures})</div>
