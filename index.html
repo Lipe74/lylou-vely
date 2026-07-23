@@ -444,6 +444,11 @@
         Chargement des marchés...
       </div>
 
+      <div id="marches-passes-wrap" style="display:none;margin-top:2.2rem;">
+        <p style="font-size:.8rem;letter-spacing:.15em;text-transform:uppercase;color:var(--text-light);margin-bottom:1rem;text-align:center;">— Marchés passés —</p>
+        <div id="marches-passes-liste" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1.2rem;text-align:left;opacity:.55;"></div>
+      </div>
+
       <a href="marches.html"
          class="btn-primary"
          style="margin-top:32px;display:inline-block;">
@@ -628,19 +633,14 @@ function frequenceTexte(m){
   if(m.type==='mensuel') return `${m.occurrence} ${(m.jourMensuel||'').toLowerCase()} du mois`;
   return '';
 }
-
-const marchesCol = collection(db, "lylou_vely", "marches", "items");
-onSnapshot(query(marchesCol, orderBy("creeLe","asc")), snap=>{
-  const el = document.getElementById('marches-liste');
-  if(!el) return;
-  if(snap.empty){ el.innerHTML = '<p style="grid-column:1/-1;text-align:center;color:var(--text-mid);">Aucun marché annoncé pour le moment.</p>'; return; }
-  let html = '';
-  snap.forEach(d=>{
-    const m = d.data();
-    const photoBlock = m.photo
-      ? `<img src="${m.photo}" alt="${m.nom}">`
-      : `📍`;
-    html += `<div class="marche-mini-card">
+function estPasse(m){
+  if(m.type!=='fixe' || !m.dateFixe) return false;
+  const today = new Date(); today.setHours(0,0,0,0);
+  return new Date(m.dateFixe+'T00:00:00') < today;
+}
+function carteMarche(m){
+  const photoBlock = m.photo ? `<img src="${m.photo}" alt="${m.nom}">` : `📍`;
+  return `<div class="marche-mini-card">
       <div class="marche-mini-photo${m.photo ? '' : ' placeholder'}">${photoBlock}</div>
       <div class="marche-mini-body">
         <div class="marche-mini-nom">${m.nom}</div>
@@ -648,8 +648,24 @@ onSnapshot(query(marchesCol, orderBy("creeLe","asc")), snap=>{
         <div class="marche-mini-line">📍 ${m.adresse}</div>
       </div>
     </div>`;
+}
+
+const marchesCol = collection(db, "lylou_vely", "marches", "items");
+onSnapshot(query(marchesCol, orderBy("creeLe","asc")), snap=>{
+  const el = document.getElementById('marches-liste');
+  const wrapPasses = document.getElementById('marches-passes-wrap');
+  const elPasses = document.getElementById('marches-passes-liste');
+  if(!el) return;
+  if(snap.empty){ el.innerHTML = '<p style="grid-column:1/-1;text-align:center;color:var(--text-mid);">Aucun marché annoncé pour le moment.</p>'; wrapPasses.style.display='none'; return; }
+  let htmlActifs = '', htmlPasses = '';
+  snap.forEach(d=>{
+    const m = d.data();
+    if(estPasse(m)) htmlPasses += carteMarche(m);
+    else htmlActifs += carteMarche(m);
   });
-  el.innerHTML = html;
+  el.innerHTML = htmlActifs || '<p style="grid-column:1/-1;text-align:center;color:var(--text-mid);">Aucun marché à venir pour le moment.</p>';
+  if(htmlPasses){ elPasses.innerHTML = htmlPasses; wrapPasses.style.display = 'block'; }
+  else { wrapPasses.style.display = 'none'; }
 });
 
 function formatDateAvis(iso){

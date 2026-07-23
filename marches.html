@@ -66,6 +66,9 @@
     .contact-item div strong { font-size:0.95rem; }
 
     .empty-state { text-align:center; padding:60px 20px; color:var(--text-light); font-size:1rem; }
+    .marches-passes-titre { text-align:center; font-size:.85rem; letter-spacing:.15em; text-transform:uppercase; color:var(--text-light); margin:3rem 0 1.5rem; }
+    .marches-passes-titre::before,.marches-passes-titre::after{content:'— ';}
+    #marches-passes .marche-bloc{ opacity:.55; }
 
     footer { background:var(--text-dark); color:var(--lavande-pale); text-align:center; padding:2rem; font-size:0.82rem; }
     footer a { color:var(--violet-light); text-decoration:none; }
@@ -98,6 +101,11 @@
 
     <div id="marches-container">
       <div class="empty-state">Chargement des marchés...</div>
+    </div>
+
+    <div id="marches-passes-wrap" style="display:none;">
+      <p class="marches-passes-titre">Marchés passés</p>
+      <div id="marches-passes"></div>
     </div>
 
     <!-- CONTACT -->
@@ -151,56 +159,69 @@ function freqTitre(m){
   if(m.type==='hebdo') return `Tous les ${(m.jourSemaine||'').toLowerCase()}s`;
   return `${m.occurrence} ${(m.jourMensuel||'').toLowerCase()} du mois`;
 }
+function estPasse(m){
+  if(m.type!=='fixe' || !m.dateFixe) return false;
+  const today = new Date(); today.setHours(0,0,0,0);
+  return new Date(m.dateFixe+'T00:00:00') < today;
+}
+function blocMarche(m, index){
+  const reverse = (index % 2 === 1) ? ' reverse' : '';
+  const photoBlock = m.photo
+    ? `<div class="marche-photo"><img src="${m.photo}" alt="${m.nom}"></div>`
+    : `<div class="marche-photo placeholder">📍</div>`;
+  const mapsLink = m.maps
+    ? `<a class="marche-map-link" href="${m.maps}" target="_blank">🗺️ Voir sur Google Maps</a>`
+    : '';
+  const fbLink = m.facebook
+    ? `<a class="marche-map-link" href="${m.facebook}" target="_blank">📘 Voir sur Facebook</a>`
+    : '';
+  return `
+    <div class="marche-bloc${reverse}">
+      ${photoBlock}
+      <div class="marche-info">
+        <span class="marche-badge ${m.type}">${badgeLabel(m.type)}</span>
+        <div class="marche-nom">${m.nom}</div>
+        <div class="marche-detail">
+          <div class="marche-detail-icon">🕐</div>
+          <div class="marche-detail-text">
+            <strong>${m.heures}</strong>
+            <span>${freqTitre(m)}</span>
+          </div>
+        </div>
+        <div class="marche-detail">
+          <div class="marche-detail-icon">📍</div>
+          <div class="marche-detail-text">
+            <strong>${m.adresse}</strong>
+          </div>
+        </div>
+        <div style="display:flex;gap:0.6rem;flex-wrap:wrap;">
+          ${mapsLink}
+          ${fbLink}
+        </div>
+      </div>
+    </div>`;
+}
 
 const marchesCol = collection(db, "lylou_vely", "marches", "items");
 onSnapshot(query(marchesCol, orderBy("creeLe","asc")), snap=>{
   const container = document.getElementById('marches-container');
+  const wrapPasses = document.getElementById('marches-passes-wrap');
+  const elPasses = document.getElementById('marches-passes');
   if(snap.empty){
     container.innerHTML = '<div class="empty-state">Aucun marché annoncé pour le moment. Revenez bientôt ! 💜</div>';
+    wrapPasses.style.display = 'none';
     return;
   }
-  let html = '';
-  let i = 0;
+  let htmlActifs = '', htmlPasses = '';
+  let iActifs = 0, iPasses = 0;
   snap.forEach(d=>{
     const m = d.data();
-    const reverse = (i % 2 === 1) ? ' reverse' : '';
-    const photoBlock = m.photo
-      ? `<div class="marche-photo"><img src="${m.photo}" alt="${m.nom}"></div>`
-      : `<div class="marche-photo placeholder">📍</div>`;
-    const mapsLink = m.maps
-      ? `<a class="marche-map-link" href="${m.maps}" target="_blank">🗺️ Voir sur Google Maps</a>`
-      : '';
-    const fbLink = m.facebook
-      ? `<a class="marche-map-link" href="${m.facebook}" target="_blank">📘 Voir sur Facebook</a>`
-      : '';
-    html += `
-      <div class="marche-bloc${reverse}">
-        ${photoBlock}
-        <div class="marche-info">
-          <span class="marche-badge ${m.type}">${badgeLabel(m.type)}</span>
-          <div class="marche-nom">${m.nom}</div>
-          <div class="marche-detail">
-            <div class="marche-detail-icon">🕐</div>
-            <div class="marche-detail-text">
-              <strong>${m.heures}</strong>
-              <span>${freqTitre(m)}</span>
-            </div>
-          </div>
-          <div class="marche-detail">
-            <div class="marche-detail-icon">📍</div>
-            <div class="marche-detail-text">
-              <strong>${m.adresse}</strong>
-            </div>
-          </div>
-          <div style="display:flex;gap:0.6rem;flex-wrap:wrap;">
-            ${mapsLink}
-            ${fbLink}
-          </div>
-        </div>
-      </div>`;
-    i++;
+    if(estPasse(m)){ htmlPasses += blocMarche(m, iPasses); iPasses++; }
+    else { htmlActifs += blocMarche(m, iActifs); iActifs++; }
   });
-  container.innerHTML = html;
+  container.innerHTML = htmlActifs || '<div class="empty-state">Aucun marché à venir pour le moment.</div>';
+  if(htmlPasses){ elPasses.innerHTML = htmlPasses; wrapPasses.style.display = 'block'; }
+  else { wrapPasses.style.display = 'none'; }
 });
 </script>
 </body>

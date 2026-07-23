@@ -72,6 +72,7 @@
   .badge-fixe{background:#fbf0f3;color:#8a3050}
   .badge-hebdo{background:#e8f5ef;color:#1a6b50}
   .badge-mensuel{background:#fff0e0;color:#8a5200}
+  .badge-passe{background:#efeaf5;color:#8a7fa0}
   .list-item .nom{font-weight:600;font-size:15px;color:#2c2233}
   .list-item .meta{font-size:12.5px;color:var(--muted);margin-top:2px}
   .list-item .actions{display:flex;gap:8px;flex-shrink:0}
@@ -205,11 +206,6 @@
         <div class="form-group">
           <label>Lien Facebook (optionnel)</label>
           <input type="text" id="marche-facebook" placeholder="https://facebook.com/...">
-        </div>
-
-        <div class="form-group">
-          <label>Lien Google Maps (optionnel)</label>
-          <input type="text" id="marche-maps" placeholder="https://maps.google.com/?q=...">
         </div>
 
         <div class="btn-row">
@@ -376,6 +372,11 @@ function badgeLabel(type){
   if(type==='hebdo') return 'Hebdomadaire';
   return 'Mensuel';
 }
+function estPasse(m){
+  if(m.type!=='fixe' || !m.dateFixe) return false;
+  const today = new Date(); today.setHours(0,0,0,0);
+  return new Date(m.dateFixe+'T00:00:00') < today;
+}
 
 /* ---- Marchés : formulaire ---- */
 window.updateMarcheTypeFields = function(){
@@ -397,7 +398,6 @@ window.resetMarcheForm = function(){
   document.getElementById('marche-jour-mensuel').value = 'Lundi';
   document.getElementById('marche-photo').value = 'images/marches.png';
   document.getElementById('marche-facebook').value = '';
-  document.getElementById('marche-maps').value = '';
   document.getElementById('marche-form-title').textContent = 'Nouveau marché';
   document.getElementById('marche-cancel').style.display = 'none';
   window.updateMarcheTypeFields();
@@ -410,7 +410,7 @@ window.saveMarche = async function(){
   const type = document.getElementById('marche-type').value;
   if(!nom || !adresse || !heures){ alert('Nom, adresse et heures sont obligatoires.'); return; }
 
-  const data = { nom, adresse, heures, type, photo: document.getElementById('marche-photo').value.trim(), facebook: document.getElementById('marche-facebook').value.trim(), maps: document.getElementById('marche-maps').value.trim() };
+  const data = { nom, adresse, heures, type, photo: document.getElementById('marche-photo').value.trim(), facebook: document.getElementById('marche-facebook').value.trim(), maps: 'https://maps.google.com/?q=' + encodeURIComponent(adresse) };
   if(type==='fixe'){
     if(!document.getElementById('marche-date-fixe').value){ alert('Merci de choisir une date.'); return; }
     data.dateFixe = document.getElementById('marche-date-fixe').value;
@@ -445,7 +445,6 @@ window.editMarche = function(id, m){
   document.getElementById('marche-jour-mensuel').value = m.jourMensuel || 'Lundi';
   document.getElementById('marche-photo').value = m.photo || '';
   document.getElementById('marche-facebook').value = m.facebook || '';
-  document.getElementById('marche-maps').value = m.maps || '';
   document.getElementById('marche-form-title').textContent = 'Modifier le marché';
   document.getElementById('marche-cancel').style.display = 'inline-block';
   window.updateMarcheTypeFields();
@@ -475,6 +474,7 @@ onSnapshot(query(marchesCol, orderBy("creeLe","asc")), snap=>{
       ${thumb}
       <div class="info">
         <span class="badge ${badgeClass(m.type)}">${badgeLabel(m.type)}</span>
+        ${estPasse(m) ? '<span class="badge badge-passe">Passé</span>' : ''}
         <div class="nom">${m.nom}</div>
         <div class="meta">📍 ${m.adresse} · 🕐 ${m.heures} · ${frequenceTexte(m)}</div>
       </div>
