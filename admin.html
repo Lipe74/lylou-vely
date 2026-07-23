@@ -152,9 +152,15 @@
         </div>
         <div class="form-row">
           <div class="form-group">
-            <label>Heures *</label>
-            <input type="text" id="marche-heures" placeholder="Ex. 08h00 - 13h00">
+            <label>Heure de début *</label>
+            <input type="time" id="marche-heure-debut">
           </div>
+          <div class="form-group">
+            <label>Heure de fin *</label>
+            <input type="time" id="marche-heure-fin">
+          </div>
+        </div>
+        <div class="form-row">
           <div class="form-group">
             <label>Type de date *</label>
             <select id="marche-type" onchange="window.updateMarcheTypeFields()">
@@ -351,6 +357,11 @@ window.showPanel = function(name){
 };
 
 /* ---- Helpers date texte ---- */
+function formatHeure(hhmm){
+  if(!hhmm) return '';
+  const [h,m] = hhmm.split(':');
+  return `${h}h${m}`;
+}
 function formatDateFixe(iso){
   if(!iso) return '';
   const [y,m,d] = iso.split('-');
@@ -390,7 +401,8 @@ window.resetMarcheForm = function(){
   document.getElementById('marche-id').value = '';
   document.getElementById('marche-nom').value = '';
   document.getElementById('marche-adresse').value = '';
-  document.getElementById('marche-heures').value = '';
+  document.getElementById('marche-heure-debut').value = '';
+  document.getElementById('marche-heure-fin').value = '';
   document.getElementById('marche-type').value = 'fixe';
   document.getElementById('marche-date-fixe').value = '';
   document.getElementById('marche-jour-hebdo').value = 'Lundi';
@@ -406,11 +418,13 @@ window.resetMarcheForm = function(){
 window.saveMarche = async function(){
   const nom = document.getElementById('marche-nom').value.trim();
   const adresse = document.getElementById('marche-adresse').value.trim();
-  const heures = document.getElementById('marche-heures').value.trim();
+  const heureDebut = document.getElementById('marche-heure-debut').value;
+  const heureFin = document.getElementById('marche-heure-fin').value;
   const type = document.getElementById('marche-type').value;
-  if(!nom || !adresse || !heures){ alert('Nom, adresse et heures sont obligatoires.'); return; }
+  if(!nom || !adresse || !heureDebut || !heureFin){ alert('Nom, adresse, heure de début et heure de fin sont obligatoires.'); return; }
+  const heures = `${formatHeure(heureDebut)} - ${formatHeure(heureFin)}`;
 
-  const data = { nom, adresse, heures, type, photo: document.getElementById('marche-photo').value.trim(), facebook: document.getElementById('marche-facebook').value.trim(), maps: 'https://maps.google.com/?q=' + encodeURIComponent(adresse) };
+  const data = { nom, adresse, heures, heureDebut, heureFin, type, photo: document.getElementById('marche-photo').value.trim(), facebook: document.getElementById('marche-facebook').value.trim(), maps: 'https://maps.google.com/?q=' + encodeURIComponent(adresse) };
   if(type==='fixe'){
     if(!document.getElementById('marche-date-fixe').value){ alert('Merci de choisir une date.'); return; }
     data.dateFixe = document.getElementById('marche-date-fixe').value;
@@ -437,7 +451,8 @@ window.editMarche = function(id, m){
   document.getElementById('marche-id').value = id;
   document.getElementById('marche-nom').value = m.nom || '';
   document.getElementById('marche-adresse').value = m.adresse || '';
-  document.getElementById('marche-heures').value = m.heures || '';
+  document.getElementById('marche-heure-debut').value = m.heureDebut || '';
+  document.getElementById('marche-heure-fin').value = m.heureFin || '';
   document.getElementById('marche-type').value = m.type || 'fixe';
   document.getElementById('marche-date-fixe').value = m.dateFixe || '';
   document.getElementById('marche-jour-hebdo').value = m.jourSemaine || 'Lundi';
@@ -566,6 +581,7 @@ onSnapshot(query(avisCol, orderBy("date","desc")), snap=>{
 
 window.updateMarcheTypeFields();
 document.getElementById('avis-date').value = new Date().toISOString().slice(0,10);
+document.getElementById('marche-photo').value = 'images/marches.png';
 </script>
 </body>
 </html>
