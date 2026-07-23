@@ -177,6 +177,7 @@
     .marche-mini-links { display:flex; gap:.6rem; margin-top:.7rem; flex-wrap:wrap; }
     .marche-mini-link { font-size:.78rem; font-weight:700; color:var(--violet); text-decoration:none; border:1.3px solid var(--violet); padding:.35rem .7rem; border-radius:50px; transition:all .2s; }
     .marche-mini-link:hover { background:var(--violet); color:#fff; }
+    #partenaires a:hover { transform:translateY(-4px); box-shadow:0 12px 30px rgba(107,63,160,.14); }
 
     /* AVIS GOOGLE */
     .avis-card { background:#fff; border:1px solid var(--lavande); border-radius:18px; padding:1.4rem 1.5rem; box-shadow:0 4px 16px rgba(107,63,160,.08); }
@@ -237,6 +238,7 @@
     <li><a href="#galerie">Facebook 💜</a></li>
     <li><a href="#marches">Marchés</a></li>
     <li><a href="#fidelite">💎 Fidélité</a></li>
+    <li><a href="#partenaires">Partenaires</a></li>
     <li><a href="#contact" class="nav-cta">Contact</a></li>
     <li><a href="admin.html" class="nav-cta">⚙️ Admin</a></li>
   </ul>
@@ -251,6 +253,7 @@
   <a href="#galerie" onclick="toggleMenu()">💜 Facebook</a>
   <a href="#marches" onclick="toggleMenu()">📍 Marchés</a>
   <a href="#fidelite" onclick="toggleMenu()">💎 Fidélité</a>
+  <a href="#partenaires" onclick="toggleMenu()">🤝 Partenaires</a>
   <a href="#contact" onclick="toggleMenu()">✉️ Contact</a>
   <a href="admin.html" onclick="toggleMenu()">⚙️ Admin</a>
 </div>
@@ -596,6 +599,34 @@
           <a href="mailto:infos@lylou-vely.be" style="flex:1;display:flex;align-items:center;justify-content:center;gap:8px;background:var(--violet);color:white;padding:12px;border-radius:50px;font-size:14px;font-weight:700;text-decoration:none;">✉️ Email</a>
         </div>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- PARTENAIRES -->
+<div class="section bg-creme" id="partenaires">
+  <div class="section-inner">
+    <h2 class="section-title">Nos Partenaires</h2>
+    <p class="section-sub">Ils nous accompagnent</p>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1.8rem;max-width:700px;margin:0 auto;">
+
+      <a href="https://phil-mobile.be" target="_blank" style="background:#fff;border:1px solid var(--lavande);border-radius:20px;padding:2rem 1.5rem;text-align:center;text-decoration:none;transition:transform .2s,box-shadow .2s;display:flex;flex-direction:column;align-items:center;gap:1rem;">
+        <img src="images/phil-mobile.png" alt="Phil-Mobile" style="height:70px;width:auto;object-fit:contain;">
+        <div>
+          <div style="font-family:'Playfair Display',serif;color:var(--violet);font-size:1.15rem;margin-bottom:.3rem;">Phil-Mobile</div>
+          <div style="font-size:.86rem;color:var(--text-mid);">Votre conseiller en Télécom et en Énergie</div>
+        </div>
+      </a>
+
+      <a href="https://phil-fixit.be" target="_blank" style="background:#fff;border:1px solid var(--lavande);border-radius:20px;padding:2rem 1.5rem;text-align:center;text-decoration:none;transition:transform .2s,box-shadow .2s;display:flex;flex-direction:column;align-items:center;gap:1rem;">
+        <img src="images/phil-fixit.png" alt="Phil-Fixit" style="height:70px;width:auto;object-fit:contain;">
+        <div>
+          <div style="font-family:'Playfair Display',serif;color:var(--violet);font-size:1.15rem;margin-bottom:.3rem;">Phil-Fixit</div>
+          <div style="font-size:.86rem;color:var(--text-mid);">Création de sites web</div>
+        </div>
+      </a>
+
     </div>
   </div>
 </div>
