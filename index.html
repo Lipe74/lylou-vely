@@ -166,6 +166,13 @@
     .marche-detail-text span { color:var(--text-mid); font-size:0.87rem; }
     .marche-map-link { display:inline-flex; align-items:center; gap:0.5rem; margin-top:0.5rem; color:var(--violet); font-size:0.85rem; font-weight:700; text-decoration:none; border:1.5px solid var(--violet); padding:0.5rem 1rem; border-radius:50px; width:fit-content; transition:all 0.2s; }
     .marche-map-link:hover { background:var(--violet); color:#fff; }
+    .marche-mini-card { background:#fff; border:1px solid var(--lavande); border-radius:18px; overflow:hidden; box-shadow:0 4px 16px rgba(107,63,160,.08); transition:transform .2s,box-shadow .2s; }
+    .marche-mini-card:hover { transform:translateY(-3px); box-shadow:0 10px 28px rgba(107,63,160,.15); }
+    .marche-mini-photo { width:100%; height:140px; background:var(--lavande-pale); overflow:hidden; display:flex; align-items:center; justify-content:center; font-size:2rem; opacity:.4; }
+    .marche-mini-photo img { width:100%; height:100%; object-fit:cover; }
+    .marche-mini-body { padding:1.1rem 1.2rem 1.3rem; }
+    .marche-mini-nom { font-family:'Playfair Display',serif; font-size:1.1rem; color:var(--violet); margin-bottom:.5rem; }
+    .marche-mini-line { display:flex; align-items:flex-start; gap:.5rem; font-size:.86rem; color:var(--text-mid); margin-bottom:.3rem; line-height:1.5; }
 
     /* AVIS GOOGLE */
     .avis-card { background:#fff; border:1px solid var(--lavande); border-radius:18px; padding:1.4rem 1.5rem; box-shadow:0 4px 16px rgba(107,63,160,.08); }
@@ -424,21 +431,21 @@
     <p class="section-sub">Retrouvez-nous près de chez vous</p>
 
     <div style="
-      max-width:800px;
+      max-width:1000px;
       margin:0 auto;
       text-align:center;
       background:var(--lavande-pale);
       border:1px solid var(--lavande);
       border-radius:24px;
-      padding:40px;">
+      padding:48px 40px;">
 
-      <div id="marches-liste" style="font-size:1.1rem;color:var(--text-mid);line-height:2;text-align:left;max-width:520px;margin:0 auto;">
+      <div id="marches-liste" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1.4rem;text-align:left;">
         Chargement des marchés...
       </div>
 
       <a href="marches.html"
          class="btn-primary"
-         style="margin-top:25px;display:inline-block;">
+         style="margin-top:32px;display:inline-block;">
          Voir tous les détails des marchés 📍
       </a>
 
@@ -625,11 +632,21 @@ const marchesCol = collection(db, "lylou_vely", "marches", "items");
 onSnapshot(query(marchesCol, orderBy("creeLe","asc")), snap=>{
   const el = document.getElementById('marches-liste');
   if(!el) return;
-  if(snap.empty){ el.innerHTML = 'Aucun marché annoncé pour le moment.'; return; }
+  if(snap.empty){ el.innerHTML = '<p style="grid-column:1/-1;text-align:center;color:var(--text-mid);">Aucun marché annoncé pour le moment.</p>'; return; }
   let html = '';
   snap.forEach(d=>{
     const m = d.data();
-    html += `<div class="marche-ligne">📍 <strong>${m.nom}</strong> — ${frequenceTexte(m)} (${m.heures})</div>`;
+    const photoBlock = m.photo
+      ? `<img src="${m.photo}" alt="${m.nom}">`
+      : `📍`;
+    html += `<div class="marche-mini-card">
+      <div class="marche-mini-photo">${photoBlock}</div>
+      <div class="marche-mini-body">
+        <div class="marche-mini-nom">${m.nom}</div>
+        <div class="marche-mini-line">🕐 ${frequenceTexte(m)} (${m.heures})</div>
+        <div class="marche-mini-line">📍 ${m.adresse}</div>
+      </div>
+    </div>`;
   });
   el.innerHTML = html;
 });
