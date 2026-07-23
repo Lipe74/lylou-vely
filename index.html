@@ -137,7 +137,7 @@
     .stand-hero img { width:100%; height:auto; object-fit:contain; background:#fff; }
 
     /* FACEBOOK */
-    .fb-layout { display:grid; grid-template-columns:320px 1fr; gap:2.5rem; align-items:start; }
+    .fb-layout { display:grid; grid-template-columns:320px auto; gap:2.5rem; align-items:start; justify-content:center; }
     .fb-info { background:linear-gradient(160deg, var(--violet) 0%, var(--violet-dark) 100%); border-radius:24px; padding:2.5rem 2rem; color:#fff; display:flex; flex-direction:column; gap:1.4rem; }
     .fb-info h2 { font-family:'Dancing Script',cursive; font-size:2rem; line-height:1.1; }
     .fb-info p { opacity:0.9; font-size:0.92rem; line-height:1.7; }
@@ -145,7 +145,7 @@
     .fb-highlight { display:flex; align-items:center; gap:0.7rem; background:rgba(255,255,255,0.12); border-radius:10px; padding:0.55rem 0.8rem; font-size:0.88rem; }
     .fb-btn { display:inline-flex; align-items:center; gap:0.7rem; background:#fff; color:var(--violet); padding:0.85rem 1.6rem; border-radius:50px; text-decoration:none; font-weight:700; font-size:0.92rem; transition:all 0.2s; width:fit-content; }
     .fb-btn:hover { background:var(--lavande); transform:translateY(-2px); }
-    .fb-widget-wrap { background:#fff; border:1px solid var(--lavande); border-radius:20px; overflow:hidden; box-shadow:0 8px 30px rgba(107,63,160,0.08); display:flex; flex-direction:column; align-items:center; padding:1.5rem; min-height:500px; }
+    .fb-widget-wrap { background:#fff; border:1px solid var(--lavande); border-radius:20px; overflow:hidden; box-shadow:0 8px 30px rgba(107,63,160,0.08); display:flex; flex-direction:column; align-items:center; padding:1rem; width:fit-content; margin:0 auto; }
 
     /* MARCHÉS */
     .marche-bloc { display:grid; grid-template-columns:1fr 1fr; gap:0; background:#fff; border:1px solid var(--lavande); border-radius:24px; overflow:hidden; margin-bottom:2rem; transition:box-shadow 0.25s; }
@@ -231,6 +231,7 @@
     <li><a href="#">🏠 Accueil</a></li>
     <li><a href="#creations">Créations</a></li>
     <li><a href="#galerie">Galerie</a></li>
+    <li><a href="#galerie">Facebook 💜</a></li>
     <li><a href="#marches">Marchés</a></li>
     <li><a href="#fidelite">💎 Fidélité</a></li>
     <li><a href="#contact" class="nav-cta">Contact</a></li>
@@ -244,6 +245,7 @@
   <a href="#" onclick="toggleMenu()">🏠 Accueil</a>
   <a href="#creations" onclick="toggleMenu()">💎 Créations</a>
   <a href="#galerie" onclick="toggleMenu()">📸 Galerie</a>
+  <a href="#galerie" onclick="toggleMenu()">💜 Facebook</a>
   <a href="#marches" onclick="toggleMenu()">📍 Marchés</a>
   <a href="#fidelite" onclick="toggleMenu()">💎 Fidélité</a>
   <a href="#contact" onclick="toggleMenu()">✉️ Contact</a>
@@ -286,9 +288,7 @@
           Nos marchés 📍
         </a>
 
-        <a href="https://www.facebook.com/lylouvely"
-           target="_blank"
-           class="btn-outline">
+        <a href="#galerie" class="btn-outline">
           Facebook 💜
         </a>
 
