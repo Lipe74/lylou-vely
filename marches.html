@@ -6,6 +6,7 @@
   <title>Les Marchés – Lylou-Vely</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=Dancing+Script:wght@600;700&family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/png" href="images/logo.png">
   <style>
     :root {
       --violet:#6B3FA0; --violet-dark:#4A2870; --violet-light:#C4A8E0;
@@ -31,19 +32,21 @@
 
     main { max-width:1100px; margin:0 auto; padding:60px 2rem 80px; }
 
-    /* GRILLE 2 colonnes affiche + infos */
     .marche-bloc { display:grid; grid-template-columns:1fr 1fr; gap:0; background:#fff; border:1px solid var(--lavande); border-radius:24px; overflow:hidden; margin-bottom:2.5rem; transition:box-shadow 0.25s; }
     .marche-bloc:hover { box-shadow:0 12px 36px rgba(107,63,160,0.13); }
+    .marche-bloc.reverse { direction:rtl; }
+    .marche-bloc.reverse > * { direction:ltr; }
 
     .marche-photo { min-height:320px; overflow:hidden; display:flex; align-items:center; justify-content:center; background:var(--lavande-pale); }
     .marche-photo img { width:100%; height:100%; object-fit:cover; display:block; transition:transform 0.4s; }
     .marche-bloc:hover .marche-photo img { transform:scale(1.03); }
+    .marche-photo.placeholder { font-size:3rem; opacity:.35; }
 
     .marche-info { padding:2.2rem 2.2rem; display:flex; flex-direction:column; justify-content:center; gap:1rem; }
     .marche-badge { display:inline-block; font-size:0.72rem; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; padding:0.28rem 0.8rem; border-radius:50px; width:fit-content; }
-    .marche-badge.hebdo { background:#E8F5EF; color:#1A6B50; }
-    .marche-badge.bi { background:var(--lavande); color:var(--violet-dark); }
-    .marche-badge.mensuel { background:#FFF0E0; color:#8A5200; }
+    .marche-badge.fixe{background:#FBF0F3;color:#8A3050;}
+    .marche-badge.hebdo{background:#E8F5EF;color:#1A6B50;}
+    .marche-badge.mensuel{background:#FFF0E0;color:#8A5200;}
     .marche-nom { font-family:'Dancing Script',cursive; font-size:2rem; color:var(--violet); line-height:1.15; }
     .marche-detail { display:flex; align-items:flex-start; gap:0.8rem; font-size:0.92rem; color:var(--text-mid); }
     .marche-detail-icon { width:34px; height:34px; flex-shrink:0; background:var(--lavande-pale); border:1px solid var(--lavande); border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:0.95rem; }
@@ -52,7 +55,6 @@
     .marche-map-link { display:inline-flex; align-items:center; gap:0.5rem; margin-top:0.5rem; color:var(--violet); font-size:0.85rem; font-weight:700; text-decoration:none; border:1.5px solid var(--violet); padding:0.5rem 1rem; border-radius:50px; width:fit-content; transition:all 0.2s; }
     .marche-map-link:hover { background:var(--violet); color:#fff; }
 
-    /* CONTACT BAS */
     .info-pratique { margin-top:3.5rem; background:linear-gradient(135deg, var(--violet) 0%, var(--violet-dark) 100%); border-radius:24px; padding:2.5rem; color:#fff; display:grid; grid-template-columns:1fr 1fr; gap:2rem; align-items:center; }
     .info-pratique h3 { font-family:'Dancing Script',cursive; font-size:2rem; margin-bottom:0.5rem; }
     .info-pratique p { opacity:0.88; font-size:0.95rem; line-height:1.7; }
@@ -63,11 +65,13 @@
     .contact-item div small { display:block; font-size:0.72rem; opacity:0.7; text-transform:uppercase; letter-spacing:0.08em; }
     .contact-item div strong { font-size:0.95rem; }
 
+    .empty-state { text-align:center; padding:60px 20px; color:var(--text-light); font-size:1rem; }
+
     footer { background:var(--text-dark); color:var(--lavande-pale); text-align:center; padding:2rem; font-size:0.82rem; }
     footer a { color:var(--violet-light); text-decoration:none; }
 
     @media(max-width:700px) {
-      .marche-bloc { grid-template-columns:1fr; }
+      .marche-bloc, .marche-bloc.reverse { grid-template-columns:1fr; direction:ltr; }
       .marche-photo { min-height:220px; }
       .info-pratique { grid-template-columns:1fr; }
     }
@@ -79,7 +83,7 @@
     <a href="index.html" class="nav-logo"><img src="images/logo.png" alt="Lylou-vely"></a>
     <ul class="nav-links">
       <li><a href="index.html">Accueil</a></li>
-      <li><a href="creations.html">Créations</a></li>
+      <li><a href="index.html#creations">Créations</a></li>
       <li><a href="marches.html" class="active">Les Marchés</a></li>
       <li><a href="mailto:infos@lylou-vely.be" class="nav-cta">Contact</a></li>
     </ul>
@@ -92,136 +96,8 @@
 
   <main>
 
-    
-    <!-- COMBLAIN -->
-    <div class="marche-bloc">
-      <div class="marche-photo">
-        <img src="images/marche-comblain.png" alt="Marché de Comblain-au-Pont">
-      </div>
-      <div class="marche-info">
-        <span class="marche-badge hebdo">Hebdomadaire</span>
-        <div class="marche-nom">Marché de<br>Comblain-au-Pont</div>
-        <div class="marche-detail">
-          <div class="marche-detail-icon">🕐</div>
-          <div class="marche-detail-text">
-            <strong>08h00 – 13h00</strong>
-            <span>Tous les jeudis matin</span>
-          </div>
-        </div>
-        <div class="marche-detail">
-          <div class="marche-detail-icon">📍</div>
-          <div class="marche-detail-text">
-            <strong>Place Leblanc</strong>
-            <span>4170 Comblain-au-Pont</span>
-          </div>
-        </div>
-        <a class="marche-map-link" href="https://maps.google.com/?q=Place+Leblanc+4170+Comblain-au-Pont" target="_blank">🗺️ Voir sur Google Maps</a>
-      </div>
-    </div>
-
-<!-- ROUVREUX -->
-    <div class="marche-bloc">
-      <div class="marche-photo">
-        <img src="images/marche-rouvreux.png" alt="Marché de Rouvreux">
-      </div>
-      <div class="marche-info">
-        <span class="marche-badge mensuel">1× par mois</span>
-        <div class="marche-nom">Marché<br>de Rouvreux</div>
-        <div class="marche-detail">
-          <div class="marche-detail-icon">🕐</div>
-          <div class="marche-detail-text">
-            <strong>10h00 – 14h00</strong>
-            <span>1<sup>er</sup> dimanche du mois</span>
-          </div>
-        </div>
-        <div class="marche-detail">
-          <div class="marche-detail-icon">📍</div>
-          <div class="marche-detail-text">
-            <strong>Cour de la Rouvre</strong>
-            <span>Rue Victor Forthomme, 4140 Sprimont</span>
-          </div>
-        </div>
-        <a class="marche-map-link" href="https://maps.google.com/?q=Rouvreux+marche" target="_blank">🗺️ Voir sur Google Maps</a>
-      </div>
-    </div>
-
-    <!-- BONCELLES -->
-    <div class="marche-bloc">
-      <div class="marche-info">
-        <span class="marche-badge mensuel">1× par mois</span>
-        <div class="marche-nom">Marché<br>de Boncelles</div>
-        <div class="marche-detail">
-          <div class="marche-detail-icon">🕐</div>
-          <div class="marche-detail-text">
-            <strong>10h00 – 15h00</strong>
-            <span>2<sup>ème</sup> dimanche du mois</span>
-          </div>
-        </div>
-        <div class="marche-detail">
-          <div class="marche-detail-icon">📍</div>
-          <div class="marche-detail-text">
-            <strong>Place de l'Église</strong>
-            <span>4100 Boncelles</span>
-          </div>
-        </div>
-        <a class="marche-map-link" href="https://maps.google.com/?q=Boncelles+marche" target="_blank">🗺️ Voir sur Google Maps</a>
-      </div>
-      <div class="marche-photo">
-        <img src="images/marche-boncelles.png" alt="Marché de Boncelles">
-      </div>
-    </div>
-
-
-    <!-- TILFF -->
-    <div class="marche-bloc">
-      <div class="marche-photo">
-        <img src="images/marche-tilff.png" alt="Marché de Tilff">
-      </div>
-      <div class="marche-info">
-        <span class="marche-badge hebdo">Hebdomadaire</span>
-        <div class="marche-nom">Marché<br>de Tilff</div>
-        <div class="marche-detail">
-          <div class="marche-detail-icon">🕐</div>
-          <div class="marche-detail-text">
-            <strong>8h30 – 13h00</strong>
-            <span>Tous les mardis</span>
-          </div>
-        </div>
-        <div class="marche-detail">
-          <div class="marche-detail-icon">📍</div>
-          <div class="marche-detail-text">
-            <strong>Place du Poray, Tilff</strong>
-            <span>Liège, Belgique</span>
-          </div>
-        </div>
-        <a class="marche-map-link" href="https://maps.google.com/?q=Place+du+Poray+Tilff" target="_blank">🗺️ Voir sur Google Maps</a>
-      </div>
-    </div>
-
-    <!-- THEUX -->
-    <div class="marche-bloc">
-      <div class="marche-info">
-        <span class="marche-badge mensuel">Saisonnier</span>
-        <div class="marche-nom">Marché artisanal<br>à Theux</div>
-        <div class="marche-detail">
-          <div class="marche-detail-icon">🕐</div>
-          <div class="marche-detail-text">
-            <strong>16h00 – 20h00</strong>
-            <span>2<sup>ème</sup> jeudi du mois — mai à septembre</span>
-          </div>
-        </div>
-        <div class="marche-detail">
-          <div class="marche-detail-icon">📍</div>
-          <div class="marche-detail-text">
-            <strong>Place de l'Église (Place du Monument)</strong>
-            <span>En face de l'église, le long de la Rue de la Chaussée<br>4910 Theux</span>
-          </div>
-        </div>
-        <a class="marche-map-link" href="https://maps.google.com/?q=Theux+marche+artisanal" target="_blank">🗺️ Voir sur Google Maps</a>
-      </div>
-      <div class="marche-photo">
-        <img src="images/marche-theux.png" alt="Marché artisanal de Theux">
-      </div>
+    <div id="marches-container">
+      <div class="empty-state">Chargement des marchés...</div>
     </div>
 
     <!-- CONTACT -->
@@ -245,5 +121,81 @@
     <p style="margin-top:0.4rem;"><a href="https://lylou-vely.be">lylou-vely.be</a></p>
   </footer>
 
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
+import { getFirestore, collection, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDagghvP8ujE0fdUcYsOfmLaXps2ZSUexo",
+  authDomain: "phil-mobile.firebaseapp.com",
+  projectId: "phil-mobile",
+  storageBucket: "phil-mobile.firebasestorage.app",
+  messagingSenderId: "193213939481",
+  appId: "1:193213939481:web:f8a750e89f0e645b62cf88"
+};
+const fbApp = initializeApp(firebaseConfig);
+const db = getFirestore(fbApp);
+
+function formatDateFixe(iso){
+  if(!iso) return '';
+  const [y,m,d] = iso.split('-');
+  return `${d}/${m}/${y}`;
+}
+function badgeLabel(type){
+  if(type==='fixe') return 'Date fixe';
+  if(type==='hebdo') return 'Hebdomadaire';
+  return 'Mensuel';
+}
+function freqTitre(m){
+  if(m.type==='fixe') return `Le ${formatDateFixe(m.dateFixe)}`;
+  if(m.type==='hebdo') return `Tous les ${(m.jourSemaine||'').toLowerCase()}s`;
+  return `${m.occurrence} ${(m.jourMensuel||'').toLowerCase()} du mois`;
+}
+
+const marchesCol = collection(db, "lylou_vely", "marches", "items");
+onSnapshot(query(marchesCol, orderBy("creeLe","asc")), snap=>{
+  const container = document.getElementById('marches-container');
+  if(snap.empty){
+    container.innerHTML = '<div class="empty-state">Aucun marché annoncé pour le moment. Revenez bientôt ! 💜</div>';
+    return;
+  }
+  let html = '';
+  let i = 0;
+  snap.forEach(d=>{
+    const m = d.data();
+    const reverse = (i % 2 === 1) ? ' reverse' : '';
+    const photoBlock = m.photo
+      ? `<div class="marche-photo"><img src="${m.photo}" alt="${m.nom}"></div>`
+      : `<div class="marche-photo placeholder">📍</div>`;
+    const mapsLink = m.maps
+      ? `<a class="marche-map-link" href="${m.maps}" target="_blank">🗺️ Voir sur Google Maps</a>`
+      : '';
+    html += `
+      <div class="marche-bloc${reverse}">
+        ${photoBlock}
+        <div class="marche-info">
+          <span class="marche-badge ${m.type}">${badgeLabel(m.type)}</span>
+          <div class="marche-nom">${m.nom}</div>
+          <div class="marche-detail">
+            <div class="marche-detail-icon">🕐</div>
+            <div class="marche-detail-text">
+              <strong>${m.heures}</strong>
+              <span>${freqTitre(m)}</span>
+            </div>
+          </div>
+          <div class="marche-detail">
+            <div class="marche-detail-icon">📍</div>
+            <div class="marche-detail-text">
+              <strong>${m.adresse}</strong>
+            </div>
+          </div>
+          ${mapsLink}
+        </div>
+      </div>`;
+    i++;
+  });
+  container.innerHTML = html;
+});
+</script>
 </body>
 </html>
