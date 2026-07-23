@@ -486,6 +486,7 @@ nav button.on{color:var(--violet)}
       <p class="section-sub">Évolution mensuelle de tes ventes</p>
       <div style="text-align:right;margin-bottom:10px">
         <button class="btn btn-outline" style="width:auto;padding:8px 16px;font-size:13px" onclick="downloadStatsPDF()">📄 Exporter en PDF</button>
+        <button class="btn btn-outline" style="width:auto;padding:8px 16px;font-size:13px" onclick="printStats()">🖨 A4</button>
       </div>
 
       <div class="card">
@@ -500,10 +501,19 @@ nav button.on{color:var(--violet)}
 
       <div class="card">
         <div class="row-btns" style="margin-bottom:10px">
-          <h3 style="font-size:19px;flex:1">Par marché</h3>
+          <h3 style="font-size:19px;flex:1" id="stats-table-title">Par marché</h3>
+          <button class="btn btn-outline btn-primary" id="stats-view-marche" style="width:auto;padding:6px 12px;font-size:12px" onclick="setStatsTableMode('marche')">Par marché</button>
+          <button class="btn btn-outline" id="stats-view-mois" style="width:auto;padding:6px 12px;font-size:12px" onclick="setStatsTableMode('mois')">Par mois</button>
+        </div>
+        <div id="stats-marche-filter" style="text-align:right;margin-bottom:8px">
           <select id="stats-marche-select" onchange="renderStatsTable()" style="padding:6px 10px;border-radius:8px;border:1px solid #ddd;font-size:13px"></select>
         </div>
         <div id="stats-table"></div>
+      </div>
+
+      <div class="card">
+        <h3 style="font-size:19px;margin-bottom:10px">🏆 Produits les plus vendus</h3>
+        <div id="stats-products"></div>
       </div>
     </section>
   </main>
@@ -2861,6 +2871,28 @@ function renderHeaderKPIs(){
   if(hm) hm.textContent = state.marche ? '🏪 '+state.marche : '';
 }
 
+/* Ouvre une fenêtre d'impression A4 pour la vue Statistiques (capture identique au PDF) */
+window.printStats = async function(){
+  if(!window.html2canvas){ toast("Impression indisponible"); return; }
+  toast("Préparation de l'impression…");
+  try{
+    const node = document.getElementById('tab-stats');
+    const canvas = await html2canvas(node, { scale:2, backgroundColor:'#ffffff' });
+    const imgData = canvas.toDataURL('image/png');
+    const w = window.open('','_blank','width=900,height=700');
+    if(!w){ toast("Popup bloqué — autorise les popups"); return; }
+    w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><style>
+      @page{margin:10mm;size:A4 portrait}
+      body{margin:0;padding:0}
+      img{width:100%;display:block}
+    </style></head><body><img src="${imgData}"></body></html>`);
+    w.document.close();
+    setTimeout(()=>w.print(), 500);
+  }catch(e){
+    toast("Erreur lors de la préparation de l'impression");
+  }
+};
+
 /* Télécharge la vue Statistiques (graphique + tableau) en PDF, tel qu'affiché à l'écran */
 window.downloadStatsPDF = async function(){
   if(!window.html2canvas || !window.jspdf){ toast("PDF indisponible"); return; }
@@ -2934,7 +2966,8 @@ function renderStats(){
     marches.map(m=>`<option value="${esc(m)}">${esc(m)}</option>`).join('');
   if(marches.includes(prevVal) || prevVal==='__all__') sel.value = prevVal;
   renderStatsChart();
-  renderStatsTable();
+  window.renderStatsTable();
+  renderStatsProducts();
 }
 
 function renderStatsChart(){
@@ -2996,7 +3029,7 @@ function renderStatsChart(){
   box.innerHTML = svg;
 }
 
-function renderStatsTable(){
+function renderStatsTableByMarche(){
   const sel = document.getElementById('stats-marche-select');
   const chosen = sel.value || '__all__';
   const byMarche = computeMarcheMonthlyStats();
@@ -3034,6 +3067,120 @@ function renderStatsTable(){
     html += '</tbody></table>';
   });
   box.innerHTML = html || '<div class="empty">Pas encore de données</div>';
+}
+
+/* Vue "Par mois" : pour chaque mois, tous les marchés côte à côte (comparaison) */
+function computeMonthMarcheStats(){
+  const byMonth = {};
+  state.sales.filter(s=>!s.cancelled).forEach(s=>{
+    const m = s.date.slice(0,7);
+    const marche = s.marche || '(sans marché)';
+    if(!byMonth[m]) byMonth[m] = {};
+    if(!byMonth[m][marche]) byMonth[m][marche] = {esp:0, qr:0, carte:0, ca:0, count:0};
+    byMonth[m][marche].esp += methodAmount(s,'especes');
+    byMonth[m][marche].qr += methodAmount(s,'qr');
+    byMonth[m][marche].carte += methodAmount(s,'carte');
+    byMonth[m][marche].ca += s.total;
+    byMonth[m][marche].count += 1;
+  });
+  return byMonth;
+}
+
+function renderStatsTableByMonth(){
+  const byMonth = computeMonthMarcheStats();
+  const box = document.getElementById('stats-table');
+  const months = Object.keys(byMonth).sort().reverse();
+  if(months.length===0){ box.innerHTML = '<div class="empty">Pas encore de données</div>'; return; }
+
+  let html = '';
+  months.forEach(m=>{
+    const marches = byMonth[m];
+    const marcheNames = Object.keys(marches).sort((a,b)=>marches[b].ca-marches[a].ca);
+    html += `<div style="font-weight:600;color:var(--violet);margin:14px 0 6px;font-size:13px">📅 ${monthLabel(m)}</div>
+      <table style="width:100%;border-collapse:collapse;font-size:12px">
+        <thead><tr style="border-bottom:2px solid #eee;text-align:left">
+          <th style="padding:4px">Marché</th><th style="padding:4px;text-align:right">CA</th>
+          <th style="padding:4px;text-align:right">💶 Espèces</th><th style="padding:4px;text-align:right">📱 QR</th>
+          <th style="padding:4px;text-align:right">💳 Carte</th><th style="padding:4px;text-align:right">Ventes</th>
+        </tr></thead><tbody>`;
+    marcheNames.forEach(marche=>{
+      const d = marches[marche];
+      html += `<tr style="border-bottom:1px solid #f2f2f2">
+        <td style="padding:4px">🏪 ${esc(marche)}</td>
+        <td style="padding:4px;text-align:right;font-weight:600">${euro(d.ca)}</td>
+        <td style="padding:4px;text-align:right">${euro(d.esp)}</td>
+        <td style="padding:4px;text-align:right">${euro(d.qr)}</td>
+        <td style="padding:4px;text-align:right">${euro(d.carte)}</td>
+        <td style="padding:4px;text-align:right">${d.count}</td>
+      </tr>`;
+    });
+    // Ligne total du mois (somme de tous les marchés)
+    const tot = marcheNames.reduce((a,marche)=>{
+      const d = marches[marche];
+      a.ca+=d.ca; a.esp+=d.esp; a.qr+=d.qr; a.carte+=d.carte; a.count+=d.count;
+      return a;
+    }, {ca:0,esp:0,qr:0,carte:0,count:0});
+    html += `<tr style="border-top:2px solid var(--violet);background:var(--violet-wash,#f5f0fa)">
+      <td style="padding:5px;font-weight:700">Total du mois</td>
+      <td style="padding:5px;text-align:right;font-weight:700">${euro(tot.ca)}</td>
+      <td style="padding:5px;text-align:right;font-weight:600">${euro(tot.esp)}</td>
+      <td style="padding:5px;text-align:right;font-weight:600">${euro(tot.qr)}</td>
+      <td style="padding:5px;text-align:right;font-weight:600">${euro(tot.carte)}</td>
+      <td style="padding:5px;text-align:right;font-weight:700">${tot.count}</td>
+    </tr>`;
+    html += '</tbody></table>';
+  });
+  box.innerHTML = html;
+}
+
+/* Dispatcher : bascule entre vue par marché et vue par mois */
+let statsTableMode = 'marche';
+window.setStatsTableMode = function(mode){
+  statsTableMode = mode;
+  document.getElementById('stats-view-marche').classList.toggle('btn-primary', mode==='marche');
+  document.getElementById('stats-view-mois').classList.toggle('btn-primary', mode==='mois');
+  document.getElementById('stats-table-title').textContent = mode==='marche' ? 'Par marché' : 'Par mois';
+  document.getElementById('stats-marche-filter').style.display = mode==='marche' ? 'block' : 'none';
+  window.renderStatsTable();
+};
+window.renderStatsTable = function(){
+  if(statsTableMode==='mois') renderStatsTableByMonth();
+  else renderStatsTableByMarche();
+};
+
+/* Produits les plus vendus (quantité + CA généré) */
+function computeProductStats(){
+  const byProduct = {};
+  state.sales.filter(s=>!s.cancelled).forEach(s=>{
+    (s.items||[]).forEach(it=>{
+      if(!byProduct[it.name]) byProduct[it.name] = {qty:0, revenue:0};
+      byProduct[it.name].qty += it.qty;
+      byProduct[it.name].revenue += it.price*it.qty;
+    });
+  });
+  return Object.keys(byProduct).map(name=>({name, ...byProduct[name]})).sort((a,b)=>b.revenue-a.revenue);
+}
+
+function renderStatsProducts(){
+  const box = document.getElementById('stats-products');
+  const products = computeProductStats();
+  if(products.length===0){ box.innerHTML = '<div class="empty">Pas encore de données</div>'; return; }
+
+  let html = `<table style="width:100%;border-collapse:collapse;font-size:12px">
+    <thead><tr style="border-bottom:2px solid #eee;text-align:left">
+      <th style="padding:4px">#</th><th style="padding:4px">Produit</th>
+      <th style="padding:4px;text-align:right">Quantité vendue</th><th style="padding:4px;text-align:right">CA généré</th>
+    </tr></thead><tbody>`;
+  products.forEach((p,i)=>{
+    html += `<tr style="border-bottom:1px solid #f2f2f2">
+      <td style="padding:4px;color:var(--muted)">${i+1}</td>
+      <td style="padding:4px;font-weight:${i<3?'600':'400'}">${i===0?'🥇 ':i===1?'🥈 ':i===2?'🥉 ':''}${esc(p.name)}</td>
+      <td style="padding:4px;text-align:right">${p.qty}</td>
+      <td style="padding:4px;text-align:right;font-weight:600">${euro(p.revenue)}</td>
+    </tr>`;
+  });
+  html += '</tbody></table>';
+  box.innerHTML = html;
 }
 
 
