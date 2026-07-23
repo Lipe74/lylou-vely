@@ -167,6 +167,13 @@
     .marche-map-link { display:inline-flex; align-items:center; gap:0.5rem; margin-top:0.5rem; color:var(--violet); font-size:0.85rem; font-weight:700; text-decoration:none; border:1.5px solid var(--violet); padding:0.5rem 1rem; border-radius:50px; width:fit-content; transition:all 0.2s; }
     .marche-map-link:hover { background:var(--violet); color:#fff; }
 
+    /* AVIS GOOGLE */
+    .avis-card { background:#fff; border:1px solid var(--lavande); border-radius:18px; padding:1.4rem 1.5rem; box-shadow:0 4px 16px rgba(107,63,160,.08); }
+    .avis-stars { color:#c99a2e; font-size:1rem; letter-spacing:1px; margin-bottom:.5rem; }
+    .avis-nom { font-family:'Playfair Display',serif; color:var(--violet); font-size:1.02rem; margin-bottom:.4rem; }
+    .avis-desc { font-size:.9rem; color:var(--text-mid); line-height:1.6; }
+    .marche-ligne { margin-bottom:.3rem; }
+
     /* CONTACT */
     .contact-band { background:linear-gradient(135deg, var(--violet) 0%, var(--violet-dark) 100%); padding:70px 2rem; text-align:center; color:#fff; }
     .contact-band h2 { font-family:'Dancing Script',cursive; font-size:clamp(2rem,5vw,3rem); margin-bottom:0.5rem; }
@@ -425,18 +432,9 @@
       border-radius:24px;
       padding:40px;">
 
-      <p style="
-        font-size:1.1rem;
-        color:var(--text-mid);
-        line-height:2;">
-
-        📍 <strong>Tilff</strong> — Tous les mardis matin<br>
-        📍 <strong>Comblain-au-Pont</strong> — Tous les jeudis matin<br>
-        📍 <strong>Theux</strong> — 2ème jeudi du mois (mai à septembre)<br>
-        📍 <strong>Boncelles</strong> — 2ème dimanche du mois<br>
-        📍 <strong>Rouvreux</strong> — 1er dimanche du mois
-
-      </p>
+      <div id="marches-liste" style="font-size:1.1rem;color:var(--text-mid);line-height:2;text-align:left;max-width:520px;margin:0 auto;">
+        Chargement des marchés...
+      </div>
 
       <a href="marches.html"
          class="btn-primary"
@@ -444,6 +442,24 @@
          Voir tous les détails des marchés 📍
       </a>
 
+    </div>
+
+  </div>
+</div>
+
+<!-- AVIS GOOGLE -->
+<div class="section bg-lavande" id="avis">
+  <div class="section-inner">
+
+    <h2 class="section-title">Ce qu'elles en pensent 💜</h2>
+    <p class="section-sub">Les avis de nos clientes</p>
+
+    <div id="avis-liste" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1.4rem;max-width:1000px;margin:0 auto;">
+      Chargement des avis...
+    </div>
+
+    <div style="text-align:center;margin-top:2.2rem;">
+      <a href="https://www.google.com/search?q=lylou-vely+avis" target="_blank" class="btn-outline">⭐ Laisser un avis Google</a>
     </div>
 
   </div>
@@ -578,6 +594,67 @@
 </footer>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
+import { getFirestore, collection, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDagghvP8ujE0fdUcYsOfmLaXps2ZSUexo",
+  authDomain: "phil-mobile.firebaseapp.com",
+  projectId: "phil-mobile",
+  storageBucket: "phil-mobile.firebasestorage.app",
+  messagingSenderId: "193213939481",
+  appId: "1:193213939481:web:f8a750e89f0e645b62cf88"
+};
+const fbApp = initializeApp(firebaseConfig);
+const db = getFirestore(fbApp);
+
+function formatDateFixe(iso){
+  if(!iso) return '';
+  const [y,m,d] = iso.split('-');
+  return `${d}/${m}/${y}`;
+}
+function frequenceTexte(m){
+  if(m.type==='fixe') return `le ${formatDateFixe(m.dateFixe)}`;
+  if(m.type==='hebdo') return `tous les ${(m.jourSemaine||'').toLowerCase()}s`;
+  if(m.type==='mensuel') return `${m.occurrence} ${(m.jourMensuel||'').toLowerCase()} du mois`;
+  return '';
+}
+
+const marchesCol = collection(db, "lylou_vely", "marches", "items");
+onSnapshot(query(marchesCol, orderBy("creeLe","asc")), snap=>{
+  const el = document.getElementById('marches-liste');
+  if(!el) return;
+  if(snap.empty){ el.innerHTML = 'Aucun marché annoncé pour le moment.'; return; }
+  let html = '';
+  snap.forEach(d=>{
+    const m = d.data();
+    html += `<div class="marche-ligne">📍 <strong>${m.nom}</strong> — ${frequenceTexte(m)} (${m.heures})</div>`;
+  });
+  el.innerHTML = html;
+});
+
+const avisCol = collection(db, "lylou_vely", "avis", "items");
+onSnapshot(query(avisCol, orderBy("creeLe","desc")), snap=>{
+  const el = document.getElementById('avis-liste');
+  if(!el) return;
+  if(snap.empty){ el.innerHTML = '<p style="text-align:center;color:var(--text-mid);grid-column:1/-1;">Aucun avis pour le moment.</p>'; return; }
+  let html = '';
+  let count = 0;
+  snap.forEach(d=>{
+    if(count >= 6) return;
+    const a = d.data();
+    const stars = '★'.repeat(a.etoiles) + '☆'.repeat(5-a.etoiles);
+    html += `<div class="avis-card">
+      <div class="avis-stars">${stars}</div>
+      <div class="avis-nom">${a.nom}</div>
+      <div class="avis-desc">${a.description}</div>
+    </div>`;
+    count++;
+  });
+  el.innerHTML = html;
+});
+</script>
 <style>
   .update-banner {
     display:none; position:fixed; bottom:20px; left:50%; transform:translateX(-50%);

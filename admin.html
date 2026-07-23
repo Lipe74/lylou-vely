@@ -8,36 +8,94 @@
 <meta name="theme-color" content="#6B3FA0">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
-  :root{--violet:#6B3FA0;--violet-d:#512e7a;--violet-wash:#f3eeff;--card:#ffffff;--muted:#7a7086;--line:#e7dff0;--red:#c0475e}
+  :root{--violet:#6B3FA0;--violet-d:#512e7a;--violet-wash:#f3eeff;--card:#ffffff;--muted:#7a7086;--line:#e7dff0;--red:#c0475e;--green:#1a8f5e;--gold:#c99a2e}
   *{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:'Jost',sans-serif;background:var(--violet-wash);min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px}
-  
+  body{font-family:'Jost',sans-serif;background:var(--violet-wash);min-height:100vh;color:#2c2233}
+
   /* Gate */
   #gate{position:fixed;inset:0;z-index:200;background:linear-gradient(160deg,var(--violet) 0%,var(--violet-d) 100%);display:flex;align-items:center;justify-content:center;padding:24px}
   #gate .box{background:var(--card);border-radius:20px;padding:34px 26px;width:100%;max-width:360px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.3)}
   #gate .mark{font-family:'Cormorant Garamond',serif;font-size:34px;color:var(--violet);letter-spacing:.5px}
   #gate .sub{color:var(--muted);font-size:13px;letter-spacing:3px;text-transform:uppercase;margin:2px 0 22px}
-  #gate input{width:100%;padding:14px;border:1.5px solid var(--line);border-radius:12px;text-align:center;letter-spacing:2px;margin-bottom:12px}
+  #gate input{width:100%;padding:14px;border:1.5px solid var(--line);border-radius:12px;text-align:center;letter-spacing:2px;margin-bottom:12px;font-family:'Jost',sans-serif}
   #gate input:focus{outline:none;border-color:var(--violet)}
-  #gate button{width:100%;padding:14px;background:var(--violet);color:#fff;border-radius:12px;font-weight:500;letter-spacing:1px}
+  #gate button{width:100%;padding:14px;background:var(--violet);color:#fff;border:none;border-radius:12px;font-weight:500;letter-spacing:1px;cursor:pointer;font-family:'Jost',sans-serif;font-size:14px}
   #gate .err{color:var(--red);font-size:13px;height:16px;margin-top:8px}
-  
-  /* App content */
-  #app{display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%;min-height:100vh;padding:20px}
-  #app.hidden{display:none}
-  
-  .logo{width:80px;height:80px;object-fit:contain;margin-bottom:16px}
-  .brand{font-family:'Cormorant Garamond',serif;font-size:36px;color:var(--violet);font-weight:600;text-align:center;margin-bottom:4px}
-  .sub{font-size:13px;color:#888;text-align:center;margin-bottom:48px;letter-spacing:2px;text-transform:uppercase}
-  .cards{display:flex;gap:20px;flex-wrap:wrap;justify-content:center;width:100%;max-width:500px}
-  .card{flex:1;min-width:200px;background:#fff;border-radius:20px;padding:32px 24px;text-align:center;text-decoration:none;box-shadow:0 4px 20px rgba(107,63,160,.12);transition:transform .2s,box-shadow .2s;border:2px solid transparent}
-  .card:hover{transform:translateY(-4px);box-shadow:0 8px 30px rgba(107,63,160,.2);border-color:var(--violet)}
-  .card .icon{font-size:40px;margin-bottom:12px}
-  .card .title{font-family:'Cormorant Garamond',serif;font-size:24px;color:var(--violet);font-weight:600;margin-bottom:6px}
-  .card .desc{font-size:13px;color:#888;line-height:1.5}
-  .foot{margin-top:40px;font-size:11px;color:#bbb;text-align:center}
-  
-  .hidden{display:none !important}
+
+  /* Layout */
+  #app{display:none;min-height:100vh}
+  #app.visible{display:flex}
+
+  /* Sidebar */
+  .sidebar{width:230px;flex-shrink:0;background:linear-gradient(180deg,var(--violet) 0%,var(--violet-d) 100%);color:#fff;display:flex;flex-direction:column;padding:22px 14px;position:sticky;top:0;height:100vh}
+  .sidebar .brand{font-family:'Cormorant Garamond',serif;font-size:26px;text-align:center;margin-bottom:2px}
+  .sidebar .brand-sub{font-size:10px;letter-spacing:2px;text-transform:uppercase;text-align:center;opacity:.7;margin-bottom:28px}
+  .nav-item{display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:12px;color:#fff;text-decoration:none;font-size:14px;font-weight:500;cursor:pointer;margin-bottom:4px;background:none;border:none;width:100%;text-align:left;font-family:'Jost',sans-serif;opacity:.85;transition:background .15s,opacity .15s}
+  .nav-item:hover{background:rgba(255,255,255,.1);opacity:1}
+  .nav-item.active{background:rgba(255,255,255,.18);opacity:1}
+  .nav-item .ic{font-size:17px;width:20px;text-align:center}
+  .sidebar-foot{margin-top:auto;padding-top:16px;border-top:1px solid rgba(255,255,255,.15)}
+  .logout-btn{width:100%;padding:11px;background:rgba(255,255,255,.12);color:#fff;border:none;border-radius:10px;font-size:13px;cursor:pointer;font-family:'Jost',sans-serif}
+  .logout-btn:hover{background:rgba(255,255,255,.2)}
+
+  /* Main content */
+  .main{flex:1;padding:32px 36px;max-width:1100px}
+  .panel{display:none}
+  .panel.active{display:block}
+  .panel-title{font-family:'Cormorant Garamond',serif;font-size:32px;color:var(--violet-d);margin-bottom:2px}
+  .panel-sub{color:var(--muted);font-size:13px;margin-bottom:26px}
+
+  .card{background:#fff;border-radius:16px;padding:24px;box-shadow:0 4px 20px rgba(107,63,160,.08);margin-bottom:24px}
+  .card h3{font-family:'Cormorant Garamond',serif;font-size:20px;color:var(--violet-d);margin-bottom:16px}
+
+  .form-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+  .form-group{margin-bottom:14px}
+  .form-group label{display:block;font-size:12.5px;font-weight:600;color:var(--muted);margin-bottom:5px;letter-spacing:.3px}
+  .form-group input,.form-group select,.form-group textarea{width:100%;padding:10px 12px;border:1.5px solid var(--line);border-radius:10px;font-family:'Jost',sans-serif;font-size:14px;background:#fbf9fe;color:#2c2233}
+  .form-group input:focus,.form-group select:focus,.form-group textarea:focus{outline:none;border-color:var(--violet)}
+  .form-group textarea{resize:vertical;min-height:70px}
+
+  .btn{padding:11px 22px;border:none;border-radius:10px;font-weight:600;font-size:13.5px;cursor:pointer;font-family:'Jost',sans-serif;letter-spacing:.3px}
+  .btn-primary{background:var(--violet);color:#fff}
+  .btn-primary:hover{background:var(--violet-d)}
+  .btn-ghost{background:#f1ecf9;color:var(--violet-d)}
+  .btn-ghost:hover{background:#e4d9f5}
+  .btn-danger{background:#fbe9ec;color:var(--red)}
+  .btn-danger:hover{background:#f6d3d9}
+  .btn-row{display:flex;gap:10px;margin-top:6px}
+
+  /* List items */
+  .list-item{display:flex;align-items:center;gap:14px;padding:14px 16px;border:1.5px solid var(--line);border-radius:12px;margin-bottom:10px;background:#fff}
+  .list-item .info{flex:1}
+  .list-item .badge{display:inline-block;font-size:10.5px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;padding:3px 9px;border-radius:20px;margin-bottom:5px}
+  .badge-fixe{background:#fbf0f3;color:#8a3050}
+  .badge-hebdo{background:#e8f5ef;color:#1a6b50}
+  .badge-mensuel{background:#fff0e0;color:#8a5200}
+  .list-item .nom{font-weight:600;font-size:15px;color:#2c2233}
+  .list-item .meta{font-size:12.5px;color:var(--muted);margin-top:2px}
+  .list-item .actions{display:flex;gap:8px;flex-shrink:0}
+  .icon-btn{width:34px;height:34px;border-radius:9px;border:none;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center}
+  .icon-btn.edit{background:#f1ecf9;color:var(--violet-d)}
+  .icon-btn.del{background:#fbe9ec;color:var(--red)}
+  .stars{color:var(--gold);letter-spacing:1px}
+  .empty-msg{color:var(--muted);font-size:13.5px;text-align:center;padding:20px}
+
+  .iframe-wrap{background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 20px rgba(107,63,160,.08);height:calc(100vh - 130px)}
+  .iframe-wrap iframe{width:100%;height:100%;border:none}
+
+  /* Mobile */
+  .burger-admin{display:none}
+  @media(max-width:860px){
+    #app.visible{flex-direction:column}
+    .sidebar{width:100%;height:auto;position:relative;flex-direction:row;align-items:center;flex-wrap:wrap;padding:14px}
+    .sidebar .brand,.sidebar .brand-sub{display:none}
+    .nav-item{width:auto;flex:1;justify-content:center;text-align:center;font-size:12px;padding:9px 6px}
+    .sidebar-foot{margin-top:0;padding-top:0;border-top:none;order:99}
+    .logout-btn{width:auto;padding:9px 14px}
+    .main{padding:18px}
+    .form-row{grid-template-columns:1fr}
+    .iframe-wrap{height:calc(100vh - 210px)}
+  }
 </style>
 </head>
 <body>
@@ -45,7 +103,7 @@
 <!-- GATE (Login) -->
 <div id="gate">
   <div class="box">
-    <div class="mark">🔐 Admin Phil-Mobile</div>
+    <div class="mark">🔐 Admin Lylou-Vely</div>
     <div class="sub">Connexion requise</div>
     <input type="email" id="gate-email" placeholder="Email" autocomplete="email" value="infos@lylou-vely.be" style="letter-spacing:0">
     <input type="password" id="gate-pw" placeholder="Mot de passe" autocomplete="current-password">
@@ -54,29 +112,171 @@
   </div>
 </div>
 
-<!-- APP (Content après login) -->
-<div id="app" class="hidden">
-  <img src="images/logo.png" alt="Lylou-Vely" class="logo" onerror="this.style.display='none'">
-  <div class="brand">Lylou-Vely</div>
-  <div class="sub">Espace Administration</div>
-  <div class="cards">
-    <a href="caisse.html" class="card">
-      <div class="icon">🛒</div>
-      <div class="title">Caisse</div>
-      <div class="desc">Ventes, paiements, journal, clôture Z</div>
-    </a>
-    <a href="admin-fidelite.html" class="card">
-      <div class="icon">💜</div>
-      <div class="title">Fidélité</div>
-      <div class="desc">Gestion des cartes et points clients</div>
-    </a>
+<!-- APP -->
+<div id="app">
+  <div class="sidebar">
+    <div class="brand">Lylou-Vely</div>
+    <div class="brand-sub">Espace Admin</div>
+
+    <button class="nav-item active" data-panel="marches" onclick="window.showPanel('marches')"><span class="ic">📍</span> Marchés</button>
+    <button class="nav-item" data-panel="avis" onclick="window.showPanel('avis')"><span class="ic">⭐</span> Avis Google</button>
+    <button class="nav-item" data-panel="fidelite" onclick="window.showPanel('fidelite')"><span class="ic">💎</span> Fidélité</button>
+    <button class="nav-item" data-panel="caisse" onclick="window.showPanel('caisse')"><span class="ic">🛒</span> Caisse</button>
+
+    <div class="sidebar-foot">
+      <button class="logout-btn" onclick="window.doLogout()">↩ Déconnexion</button>
+    </div>
   </div>
-  <div class="foot">Lylou-Vely By Zen-Connect · TVA BE1035199737</div>
+
+  <div class="main">
+
+    <!-- PANEL MARCHÉS -->
+    <div class="panel active" id="panel-marches">
+      <div class="panel-title">Gérer les marchés</div>
+      <div class="panel-sub">Ajoutez, modifiez ou supprimez les marchés affichés sur le site</div>
+
+      <div class="card">
+        <h3 id="marche-form-title">Nouveau marché</h3>
+        <input type="hidden" id="marche-id">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Nom du marché *</label>
+            <input type="text" id="marche-nom" placeholder="Ex. Marché de Tilff">
+          </div>
+          <div class="form-group">
+            <label>Adresse *</label>
+            <input type="text" id="marche-adresse" placeholder="Ex. Place du Poray, 4130 Tilff">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Heures *</label>
+            <input type="text" id="marche-heures" placeholder="Ex. 08h00 - 13h00">
+          </div>
+          <div class="form-group">
+            <label>Type de date *</label>
+            <select id="marche-type" onchange="window.updateMarcheTypeFields()">
+              <option value="fixe">📅 Date fixe</option>
+              <option value="hebdo">🔁 Hebdomadaire</option>
+              <option value="mensuel">🗓️ Mensuel</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row" id="champ-fixe">
+          <div class="form-group">
+            <label>Date *</label>
+            <input type="date" id="marche-date-fixe">
+          </div>
+        </div>
+
+        <div class="form-row" id="champ-hebdo" style="display:none">
+          <div class="form-group">
+            <label>Jour de la semaine *</label>
+            <select id="marche-jour-hebdo">
+              <option>Lundi</option><option>Mardi</option><option>Mercredi</option>
+              <option>Jeudi</option><option>Vendredi</option><option>Samedi</option><option>Dimanche</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row" id="champ-mensuel" style="display:none">
+          <div class="form-group">
+            <label>Occurrence *</label>
+            <select id="marche-occurrence">
+              <option>1er</option><option>2ème</option><option>3ème</option><option>4ème</option><option>Dernier</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Jour *</label>
+            <select id="marche-jour-mensuel">
+              <option>Lundi</option><option>Mardi</option><option>Mercredi</option>
+              <option>Jeudi</option><option>Vendredi</option><option>Samedi</option><option>Dimanche</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Lien Google Maps (optionnel)</label>
+          <input type="text" id="marche-maps" placeholder="https://maps.google.com/?q=...">
+        </div>
+
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="window.saveMarche()">💾 Enregistrer</button>
+          <button class="btn btn-ghost" id="marche-cancel" onclick="window.resetMarcheForm()" style="display:none">Annuler</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Marchés enregistrés</h3>
+        <div id="marches-list"><div class="empty-msg">Chargement...</div></div>
+      </div>
+    </div>
+
+    <!-- PANEL AVIS GOOGLE -->
+    <div class="panel" id="panel-avis">
+      <div class="panel-title">Avis Google</div>
+      <div class="panel-sub">Encodez les avis affichés sur le site</div>
+
+      <div class="card">
+        <h3 id="avis-form-title">Nouvel avis</h3>
+        <input type="hidden" id="avis-id">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Nom de la personne *</label>
+            <input type="text" id="avis-nom" placeholder="Ex. Sophie D.">
+          </div>
+          <div class="form-group">
+            <label>Nombre d'étoiles *</label>
+            <select id="avis-etoiles">
+              <option value="5">★★★★★ (5)</option>
+              <option value="4">★★★★☆ (4)</option>
+              <option value="3">★★★☆☆ (3)</option>
+              <option value="2">★★☆☆☆ (2)</option>
+              <option value="1">★☆☆☆☆ (1)</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Description de l'avis *</label>
+          <textarea id="avis-description" placeholder="Texte de l'avis..."></textarea>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="window.saveAvis()">💾 Enregistrer</button>
+          <button class="btn btn-ghost" id="avis-cancel" onclick="window.resetAvisForm()" style="display:none">Annuler</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Avis enregistrés</h3>
+        <div id="avis-list"><div class="empty-msg">Chargement...</div></div>
+      </div>
+    </div>
+
+    <!-- PANEL FIDÉLITÉ -->
+    <div class="panel" id="panel-fidelite">
+      <div class="panel-title">Fidélité</div>
+      <div class="panel-sub">Gestion des cartes et points clients</div>
+      <div class="iframe-wrap"><iframe id="iframe-fidelite" src="" loading="lazy"></iframe></div>
+    </div>
+
+    <!-- PANEL CAISSE -->
+    <div class="panel" id="panel-caisse">
+      <div class="panel-title">Caisse</div>
+      <div class="panel-sub">Ventes, paiements, journal, clôture Z</div>
+      <div class="iframe-wrap"><iframe id="iframe-caisse" src="" loading="lazy"></iframe></div>
+    </div>
+
+  </div>
 </div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
-import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
+import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
+import {
+  getFirestore, collection, addDoc, updateDoc, deleteDoc, doc,
+  onSnapshot, query, orderBy, serverTimestamp
+} from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDagghvP8ujE0fdUcYsOfmLaXps2ZSUexo",
@@ -89,8 +289,12 @@ const firebaseConfig = {
 
 const fbApp = initializeApp(firebaseConfig);
 const auth = getAuth(fbApp);
+const db = getFirestore(fbApp);
 
-/* ---- Firebase Auth ---- */
+const marchesCol = collection(db, "lylou_vely", "marches", "items");
+const avisCol = collection(db, "lylou_vely", "avis", "items");
+
+/* ---- Auth ---- */
 window.doLogin = async function(){
   const email = document.getElementById('gate-email').value.trim();
   const pw = document.getElementById('gate-pw').value;
@@ -109,18 +313,229 @@ window.doLogin = async function(){
     err.textContent = msgs[e.code] || ('Erreur : '+e.message);
   }
 };
+window.doLogout = function(){ signOut(auth); };
 
 document.getElementById('gate-pw').addEventListener('keydown',e=>{ if(e.key==='Enter') window.doLogin(); });
 
 onAuthStateChanged(auth, user=>{
   if(user){
     document.getElementById('gate').classList.add('hidden');
-    document.getElementById('app').classList.remove('hidden');
+    document.getElementById('app').classList.add('visible');
+    document.getElementById('iframe-caisse').src = 'caisse.html';
+    document.getElementById('iframe-fidelite').src = 'admin-fidelite.html';
   } else {
     document.getElementById('gate').classList.remove('hidden');
-    document.getElementById('app').classList.add('hidden');
+    document.getElementById('app').classList.remove('visible');
+    document.getElementById('iframe-caisse').src = '';
+    document.getElementById('iframe-fidelite').src = '';
   }
 });
+
+/* ---- Navigation panneaux ---- */
+window.showPanel = function(name){
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('panel-'+name).classList.add('active');
+  document.querySelector('.nav-item[data-panel="'+name+'"]').classList.add('active');
+};
+
+/* ---- Helpers date texte ---- */
+function formatDateFixe(iso){
+  if(!iso) return '';
+  const [y,m,d] = iso.split('-');
+  return `${d}/${m}/${y}`;
+}
+function frequenceTexte(m){
+  if(m.type==='fixe') return `Le ${formatDateFixe(m.dateFixe)}`;
+  if(m.type==='hebdo') return `Tous les ${m.jourSemaine.toLowerCase()}s`;
+  if(m.type==='mensuel') return `${m.occurrence} ${m.jourMensuel.toLowerCase()} du mois`;
+  return '';
+}
+function badgeClass(type){
+  if(type==='fixe') return 'badge-fixe';
+  if(type==='hebdo') return 'badge-hebdo';
+  return 'badge-mensuel';
+}
+function badgeLabel(type){
+  if(type==='fixe') return 'Date fixe';
+  if(type==='hebdo') return 'Hebdomadaire';
+  return 'Mensuel';
+}
+
+/* ---- Marchés : formulaire ---- */
+window.updateMarcheTypeFields = function(){
+  const t = document.getElementById('marche-type').value;
+  document.getElementById('champ-fixe').style.display = t==='fixe' ? 'grid' : 'none';
+  document.getElementById('champ-hebdo').style.display = t==='hebdo' ? 'grid' : 'none';
+  document.getElementById('champ-mensuel').style.display = t==='mensuel' ? 'grid' : 'none';
+};
+
+window.resetMarcheForm = function(){
+  document.getElementById('marche-id').value = '';
+  document.getElementById('marche-nom').value = '';
+  document.getElementById('marche-adresse').value = '';
+  document.getElementById('marche-heures').value = '';
+  document.getElementById('marche-type').value = 'fixe';
+  document.getElementById('marche-date-fixe').value = '';
+  document.getElementById('marche-jour-hebdo').value = 'Lundi';
+  document.getElementById('marche-occurrence').value = '1er';
+  document.getElementById('marche-jour-mensuel').value = 'Lundi';
+  document.getElementById('marche-maps').value = '';
+  document.getElementById('marche-form-title').textContent = 'Nouveau marché';
+  document.getElementById('marche-cancel').style.display = 'none';
+  window.updateMarcheTypeFields();
+};
+
+window.saveMarche = async function(){
+  const nom = document.getElementById('marche-nom').value.trim();
+  const adresse = document.getElementById('marche-adresse').value.trim();
+  const heures = document.getElementById('marche-heures').value.trim();
+  const type = document.getElementById('marche-type').value;
+  if(!nom || !adresse || !heures){ alert('Nom, adresse et heures sont obligatoires.'); return; }
+
+  const data = { nom, adresse, heures, type, maps: document.getElementById('marche-maps').value.trim() };
+  if(type==='fixe'){
+    if(!document.getElementById('marche-date-fixe').value){ alert('Merci de choisir une date.'); return; }
+    data.dateFixe = document.getElementById('marche-date-fixe').value;
+  } else if(type==='hebdo'){
+    data.jourSemaine = document.getElementById('marche-jour-hebdo').value;
+  } else {
+    data.occurrence = document.getElementById('marche-occurrence').value;
+    data.jourMensuel = document.getElementById('marche-jour-mensuel').value;
+  }
+
+  const id = document.getElementById('marche-id').value;
+  try{
+    if(id){
+      await updateDoc(doc(db,"lylou_vely","marches","items",id), data);
+    } else {
+      data.creeLe = serverTimestamp();
+      await addDoc(marchesCol, data);
+    }
+    window.resetMarcheForm();
+  }catch(e){ alert('Erreur : '+e.message); }
+};
+
+window.editMarche = function(id, m){
+  document.getElementById('marche-id').value = id;
+  document.getElementById('marche-nom').value = m.nom || '';
+  document.getElementById('marche-adresse').value = m.adresse || '';
+  document.getElementById('marche-heures').value = m.heures || '';
+  document.getElementById('marche-type').value = m.type || 'fixe';
+  document.getElementById('marche-date-fixe').value = m.dateFixe || '';
+  document.getElementById('marche-jour-hebdo').value = m.jourSemaine || 'Lundi';
+  document.getElementById('marche-occurrence').value = m.occurrence || '1er';
+  document.getElementById('marche-jour-mensuel').value = m.jourMensuel || 'Lundi';
+  document.getElementById('marche-maps').value = m.maps || '';
+  document.getElementById('marche-form-title').textContent = 'Modifier le marché';
+  document.getElementById('marche-cancel').style.display = 'inline-block';
+  window.updateMarcheTypeFields();
+  window.scrollTo({top:0,behavior:'smooth'});
+};
+
+window.deleteMarche = async function(id){
+  if(!confirm('Supprimer ce marché ?')) return;
+  try{ await deleteDoc(doc(db,"lylou_vely","marches","items",id)); }
+  catch(e){ alert('Erreur : '+e.message); }
+};
+
+/* ---- Marchés : liste temps réel ---- */
+onSnapshot(query(marchesCol, orderBy("creeLe","asc")), snap=>{
+  const list = document.getElementById('marches-list');
+  if(snap.empty){ list.innerHTML = '<div class="empty-msg">Aucun marché enregistré pour le moment.</div>'; return; }
+  list.innerHTML = '';
+  const items = [];
+  snap.forEach(d=>items.push({id:d.id, ...d.data()}));
+  window._marchesCache = {};
+  items.forEach(m=>{
+    window._marchesCache[m.id] = m;
+    const el = document.createElement('div');
+    el.className = 'list-item';
+    el.innerHTML = `
+      <div class="info">
+        <span class="badge ${badgeClass(m.type)}">${badgeLabel(m.type)}</span>
+        <div class="nom">${m.nom}</div>
+        <div class="meta">📍 ${m.adresse} · 🕐 ${m.heures} · ${frequenceTexte(m)}</div>
+      </div>
+      <div class="actions">
+        <button class="icon-btn edit" onclick='window.editMarche("${m.id}", window._marchesCache["${m.id}"])'>✏️</button>
+        <button class="icon-btn del" onclick="window.deleteMarche('${m.id}')">🗑️</button>
+      </div>`;
+    list.appendChild(el);
+  });
+});
+
+/* ---- Avis : formulaire ---- */
+window.resetAvisForm = function(){
+  document.getElementById('avis-id').value = '';
+  document.getElementById('avis-nom').value = '';
+  document.getElementById('avis-etoiles').value = '5';
+  document.getElementById('avis-description').value = '';
+  document.getElementById('avis-form-title').textContent = 'Nouvel avis';
+  document.getElementById('avis-cancel').style.display = 'none';
+};
+
+window.saveAvis = async function(){
+  const nom = document.getElementById('avis-nom').value.trim();
+  const description = document.getElementById('avis-description').value.trim();
+  const etoiles = parseInt(document.getElementById('avis-etoiles').value,10);
+  if(!nom || !description){ alert('Nom et description sont obligatoires.'); return; }
+
+  const data = { nom, description, etoiles };
+  const id = document.getElementById('avis-id').value;
+  try{
+    if(id){
+      await updateDoc(doc(db,"lylou_vely","avis","items",id), data);
+    } else {
+      data.creeLe = serverTimestamp();
+      await addDoc(avisCol, data);
+    }
+    window.resetAvisForm();
+  }catch(e){ alert('Erreur : '+e.message); }
+};
+
+window.editAvis = function(id, a){
+  document.getElementById('avis-id').value = id;
+  document.getElementById('avis-nom').value = a.nom || '';
+  document.getElementById('avis-etoiles').value = a.etoiles || 5;
+  document.getElementById('avis-description').value = a.description || '';
+  document.getElementById('avis-form-title').textContent = 'Modifier l\'avis';
+  document.getElementById('avis-cancel').style.display = 'inline-block';
+  window.scrollTo({top:0,behavior:'smooth'});
+};
+
+window.deleteAvis = async function(id){
+  if(!confirm('Supprimer cet avis ?')) return;
+  try{ await deleteDoc(doc(db,"lylou_vely","avis","items",id)); }
+  catch(e){ alert('Erreur : '+e.message); }
+};
+
+/* ---- Avis : liste temps réel ---- */
+onSnapshot(query(avisCol, orderBy("creeLe","desc")), snap=>{
+  const list = document.getElementById('avis-list');
+  if(snap.empty){ list.innerHTML = '<div class="empty-msg">Aucun avis enregistré pour le moment.</div>'; return; }
+  list.innerHTML = '';
+  window._avisCache = {};
+  snap.forEach(d=>{
+    const a = {id:d.id, ...d.data()};
+    window._avisCache[a.id] = a;
+    const el = document.createElement('div');
+    el.className = 'list-item';
+    el.innerHTML = `
+      <div class="info">
+        <div class="stars">${'★'.repeat(a.etoiles)}${'☆'.repeat(5-a.etoiles)}</div>
+        <div class="nom">${a.nom}</div>
+        <div class="meta">${a.description}</div>
+      </div>
+      <div class="actions">
+        <button class="icon-btn edit" onclick='window.editAvis("${a.id}", window._avisCache["${a.id}"])'>✏️</button>
+        <button class="icon-btn del" onclick="window.deleteAvis('${a.id}')">🗑️</button>
+      </div>`;
+    list.appendChild(el);
+  });
+});
+
+window.updateMarcheTypeFields();
 </script>
 </body>
 </html>
