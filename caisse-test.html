@@ -465,8 +465,9 @@ nav button.on{color:var(--violet)}
       <div class="card">
         <div class="row-btns" style="margin-bottom:10px">
           <h3 style="font-size:19px;flex:1">Mouvements du jour</h3>
-          <button class="btn btn-outline" style="width:auto;padding:8px 14px;font-size:13px" onclick="printMovements('58mm')">🖨 58mm</button>
-          <button class="btn btn-outline" style="width:auto;padding:8px 14px;font-size:13px" onclick="printMovements('a4')">🖨 A4</button>
+          <button class="btn btn-outline" style="width:auto;padding:8px 14px;font-size:13px" onclick="downloadDayMovementsPDF()">📄 PDF</button>
+          <button class="btn btn-outline" style="width:auto;padding:8px 14px;font-size:13px" onclick="printDayMovements('58mm')">🖨 58mm</button>
+          <button class="btn btn-outline" style="width:auto;padding:8px 14px;font-size:13px" onclick="printDayMovements('a4')">🖨 A4</button>
           <button class="btn btn-primary" style="width:auto;padding:8px 14px;font-size:13px" onclick="openVirement()">💰 Versement</button>
         </div>
         <div id="mv-list"></div>
@@ -809,7 +810,11 @@ nav button.on{color:var(--violet)}
       <span style="font-size:14px;color:var(--muted)">Total</span>
       <span style="font-family:'Cormorant Garamond',serif;font-size:28px;color:var(--violet);font-weight:600" id="virement-total">0,00 €</span>
     </div>
-    <button class="btn btn-primary" onclick="printVirement()">Générer le document</button>
+    <button class="btn btn-primary" onclick="downloadVirementPDF()">📄 Générer en PDF</button>
+    <div class="row-btns" style="margin-top:8px">
+      <button class="btn btn-outline" style="flex:1" onclick="printVirement('58mm')">🖨 58mm</button>
+      <button class="btn btn-outline" style="flex:1" onclick="printVirement('a4')">🖨 A4</button>
+    </div>
     <button class="btn btn-outline" style="margin-top:8px" onclick="closeVirement()">Fermer</button>
   </div>
 </div>
@@ -1971,8 +1976,18 @@ window.printMovements = function(){
 };
 window.exportMovementsPDF = function(mode){
   const w = openPrintWindow(buildMvPrintWindowHTML(), mode||'a4');
-  if(w) setTimeout(()=>w.print(), 400);
+  // impression auto retirée : la fenêtre reste ouverte, impression manuelle
 };
+/* Impression directe (un clic) des mouvements du jour, sans overlay de prévisualisation */
+window.printDayMovements = function(mode){
+  const w = openPrintWindow(buildMvPrintWindowHTML(), mode||'a4');
+  // impression auto retirée : la fenêtre reste ouverte, impression manuelle
+};
+/* Téléchargement PDF direct des mouvements du jour, sans ouvrir la boîte d'impression */
+window.downloadDayMovementsPDF = function(){
+  htmlStringToPDF(buildMvPrintWindowHTML(), `mouvements-${state.day}.pdf`);
+};
+
 function buildMvPrintWindowHTML(){
   const mvs = dayMovements(state.day);
   const totalIn = mvs.filter(m=>m.type==='in').reduce((a,m)=>a+m.amount,0);
@@ -2320,12 +2335,12 @@ window.printSingleMv = function(id){
     <div class="foot">Justificatif généré le ${new Date().toLocaleString('fr-BE')}<br>${esc(SELLER.brand)}</div>
     </body></html>`;
   const w = openPrintWindow(html);
-  if(w) setTimeout(()=>w.print(), 400);
+  // impression auto retirée : la fenêtre reste ouverte, impression manuelle
 };
 
 window.printJournalMv = function(mode){
   const w = openPrintWindow(buildJournalMvHTML(), mode||'a4');
-  if(w) setTimeout(()=>w.print(), 400);
+  // impression auto retirée : la fenêtre reste ouverte, impression manuelle
 };
 window.downloadJournalMvPDF = function(mode){
   htmlStringToPDF(buildJournalMvHTML(), `mouvements-${(journalDate||todayStr())}.pdf`);
@@ -2338,7 +2353,7 @@ function getMovementsByCat(cat){
 }
 window.printMvCat = function(cat, mode){
   const w = openPrintWindow(buildJournalMvHTML(getMovementsByCat(cat), MV_CAT_LABEL[cat]), mode||'a4');
-  if(w) setTimeout(()=>w.print(), 400);
+  // impression auto retirée : la fenêtre reste ouverte, impression manuelle
 };
 window.downloadMvCatPDF = function(cat){
   htmlStringToPDF(buildJournalMvHTML(getMovementsByCat(cat), MV_CAT_LABEL[cat]), `mouvements-${cat}-${(journalDate||todayStr())}.pdf`);
@@ -2406,7 +2421,7 @@ function canvasToPDFPages(canvas, filename){
 
 async function htmlStringToPDF(fullHtml, filename){
   if(!window.html2canvas || !window.jspdf){
-    toast("PDF indisponible → impression"); const w=openPrintWindow(fullHtml); if(w) setTimeout(()=>w.print(),400); return;
+    toast("PDF indisponible → impression"); const w=openPrintWindow(fullHtml);  return;
   }
   toast("Génération du PDF…");
   const iframe = document.createElement('iframe');
@@ -2425,7 +2440,7 @@ async function htmlStringToPDF(fullHtml, filename){
     canvasToPDFPages(canvas, filename);
     toast("PDF téléchargé");
   }catch(e){
-    toast("Erreur PDF → impression"); const w=openPrintWindow(fullHtml); if(w) setTimeout(()=>w.print(),400);
+    toast("Erreur PDF → impression"); const w=openPrintWindow(fullHtml); 
   }finally{
     setTimeout(()=>{ if(iframe.parentNode) iframe.parentNode.removeChild(iframe); }, 500);
   }
@@ -2561,7 +2576,7 @@ function openPrintWindow(bodyHtml, mode){
 }
 window.printJournal = function(){
   const w = openPrintWindow(buildJournalHTML());
-  if(w) setTimeout(()=>{ w.print(); }, 400);
+  // impression auto retirée : la fenêtre reste ouverte, impression manuelle
 };
 window.downloadJournalPDF = function(){
   htmlStringToPDF(buildJournalHTML(), `journal-${(journalDate||todayStr())}.pdf`);
@@ -2571,7 +2586,7 @@ window.downloadJournalPDF = function(){
 function slug(s){ return (s||'sans-marche').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'') || 'marche'; }
 window.printMarche = function(marche, mode){
   const w = openPrintWindow(buildJournalHTML(marche), mode||'a4');
-  if(w) setTimeout(()=>w.print(), 400);
+  // impression auto retirée : la fenêtre reste ouverte, impression manuelle
 };
 window.downloadMarchePDF = function(marche){
   htmlStringToPDF(buildJournalHTML(marche), `journal-${slug(marche)}-${(journalDate||todayStr())}.pdf`);
@@ -2771,7 +2786,9 @@ window.updateVirementTotal = function(){
   document.getElementById('virement-total').textContent=euro(total);
 };
 
-window.printVirement = function(){
+/* Construit le document de versement (HTML complet) + marque les mouvements comme bancés.
+   Retourne le HTML, ou null si rien à générer (toast déjà affiché). */
+function buildVirementDoc(){
   let dateV, rows='', total=0;
   if(virementMode==='auto'){
     dateV = document.getElementById('virement-date').value;
@@ -2781,12 +2798,12 @@ window.printVirement = function(){
       const mv=state.movements.find(x=>x.id===id);
       if(mv) selectedMvs.push(mv);
     });
-    if(selectedMvs.length===0){ toast("Aucun versement sélectionné"); return; }
+    if(selectedMvs.length===0){ toast("Aucun versement sélectionné"); return null; }
     total=selectedMvs.reduce((a,m)=>a+m.amount,0);
     selectedMvs.forEach(mv=>{
       rows+=`<tr><td>—</td><td>${mv.date.split('-').reverse().join('/')} ${mv.time}</td><td>—</td><td>${esc(mv.reason)}</td><td class="r"><b>${euro(mv.amount)}</b></td></tr>`;
     });
-    // Marquer comme bancés après impression
+    // Marquer comme bancés après génération
     selectedMvs.forEach(async mv=>{
       mv.banked = true;
       await saveMovement(mv);
@@ -2795,7 +2812,7 @@ window.printVirement = function(){
   } else {
     dateV = document.getElementById('virement-date-manual').value;
     const lines = document.querySelectorAll('#virt-manual-lines .mv-line');
-    if(lines.length===0){ toast("Aucune ligne saisie"); return; }
+    if(lines.length===0){ toast("Aucune ligne saisie"); return null; }
     lines.forEach(line=>{
       const date=line.querySelector('.ml-date').value;
       const desc=line.querySelector('.ml-desc').value.trim()||'Vente espèces';
@@ -2805,7 +2822,7 @@ window.printVirement = function(){
         rows+=`<tr><td>—</td><td>${date?date.split('-').reverse().join('/'):'—'}</td><td>—</td><td>${esc(desc)}</td><td class="r"><b>${euro(amt)}</b></td></tr>`;
       }
     });
-    if(total===0){ toast("Aucun montant saisi"); return; }
+    if(total===0){ toast("Aucun montant saisi"); return null; }
   }
   const dateLabel = dateV ? dateV.split('-').reverse().join('/') : todayStr().split('-').reverse().join('/');
   const html=`<!DOCTYPE html><html><head><meta charset="UTF-8">
@@ -2846,8 +2863,21 @@ window.printVirement = function(){
     </div>
     <div class="foot">Document généré le ${new Date().toLocaleString('fr-BE')} — ${esc(SELLER.brand)}</div>
     </body></html>`;
-  const w=openPrintWindow(html);
-  if(w) setTimeout(()=>w.print(),400);
+  return html;
+}
+/* Télécharge directement le document de versement en PDF, sans ouvrir de boîte d'impression */
+window.downloadVirementPDF = function(){
+  const html = buildVirementDoc();
+  if(!html) return;
+  htmlStringToPDF(html, `versement-banque-${todayStr()}.pdf`);
+  closeVirement();
+};
+/* Ouvre la fenêtre d'impression (58mm ou A4) pour le document de versement */
+window.printVirement = function(mode){
+  const html = buildVirementDoc();
+  if(!html) return;
+  const w=openPrintWindow(html, mode||'a4');
+  // impression auto retirée : la fenêtre reste ouverte, impression manuelle
   closeVirement();
 };
 window.newDay = function(){
@@ -2908,7 +2938,7 @@ window.printStatsTable = async function(){
       img{width:100%;display:block}
     </style></head><body><img src="${imgData}"></body></html>`);
     w.document.close();
-    setTimeout(()=>w.print(), 500);
+    // impression auto retirée : la fenêtre reste ouverte, impression manuelle
   }catch(e){
     toast("Erreur lors de la préparation de l'impression");
   }
