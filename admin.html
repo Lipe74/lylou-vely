@@ -264,6 +264,18 @@
           </div>
         </div>
         <div class="form-group">
+          <label>Déclinaisons (séparées par une virgule — même prix pour toutes)</label>
+          <input type="text" id="article-variants" placeholder="Ex. Vanille, Lavande, Rose">
+        </div>
+        <div class="form-group" style="display:flex;align-items:center;gap:8px">
+          <input type="checkbox" id="article-track-stock" onchange="window.toggleStockField()" style="width:auto">
+          <label style="margin:0">Suivre le stock ?</label>
+        </div>
+        <div class="form-group" id="article-stock-row" style="display:none">
+          <label>Quantité en stock</label>
+          <input type="number" step="1" min="0" id="article-stock" placeholder="Ex. 10">
+        </div>
+        <div class="form-group">
           <label>Description</label>
           <textarea id="article-description" rows="3" placeholder="Description de l'article (pourra être réutilisée sur le site)" style="width:100%;padding:11px;border:1.5px solid #ddd;border-radius:10px;font-family:inherit;font-size:14px;resize:vertical"></textarea>
         </div>
@@ -279,6 +291,15 @@
           <button class="btn btn-ghost" id="article-cancel" onclick="window.resetArticleForm()" style="display:none">Annuler</button>
         </div>
         <div id="article-save-status" style="font-size:13px;color:#888;margin-top:8px"></div>
+      </div>
+
+      <div class="card">
+        <h3>Catégories</h3>
+        <div style="display:flex;gap:8px;margin-bottom:12px">
+          <input type="text" id="new-cat-input" placeholder="Nouvelle catégorie…" style="flex:1;padding:10px;border:1.5px solid #ddd;border-radius:10px">
+          <button class="btn btn-primary" style="width:auto;padding:10px 16px" onclick="window.addCategory()">＋ Ajouter</button>
+        </div>
+        <div id="categories-list"></div>
       </div>
 
       <div class="card">
@@ -587,6 +608,11 @@ window.handleArticleCategoryChange = function(sel){
   renderArticleCategorySelect(name);
 };
 
+window.toggleStockField = function(){
+  const checked = document.getElementById('article-track-stock').checked;
+  document.getElementById('article-stock-row').style.display = checked ? '' : 'none';
+};
+
 window.previewArticlePhoto = function(ev){
   const file = ev.target.files[0];
   if(!file) return;
@@ -609,6 +635,10 @@ window.resetArticleForm = function(){
   document.getElementById('article-photo-url').value = '';
   document.getElementById('article-photo-input').value = '';
   document.getElementById('article-photo-preview').innerHTML = '';
+  document.getElementById('article-variants').value = '';
+  document.getElementById('article-track-stock').checked = false;
+  document.getElementById('article-stock').value = '';
+  document.getElementById('article-stock-row').style.display = 'none';
   document.getElementById('article-form-title').textContent = 'Nouvel article';
   document.getElementById('article-cancel').style.display = 'none';
   document.getElementById('article-save-status').textContent = '';
@@ -645,6 +675,11 @@ window.saveArticle = async function(){
     }
   }
 
+  const trackStock = document.getElementById('article-track-stock').checked;
+  const variantsRaw = document.getElementById('article-variants').value.trim();
+  const variants = variantsRaw ? variantsRaw.split(',').map(v=>v.trim()).filter(Boolean) : [];
+  const stockVal = parseInt(document.getElementById('article-stock').value, 10);
+
   const item = {
     id,
     name: nom,
@@ -654,6 +689,9 @@ window.saveArticle = async function(){
     ean: document.getElementById('article-ean').value.trim(),
     description: document.getElementById('article-description').value.trim(),
     photo: photoUrl,
+    variants,
+    trackStock,
+    stock: trackStock ? (isNaN(stockVal) ? (existing.stock||0) : stockVal) : null,
   };
 
   const idx = articlesCache.items.findIndex(it=>it.id===id);
@@ -681,6 +719,10 @@ window.editArticle = function(id){
   document.getElementById('article-description').value = it.description || '';
   document.getElementById('article-photo-url').value = it.photo || '';
   document.getElementById('article-photo-preview').innerHTML = it.photo ? `<img src="${it.photo}" style="width:90px;height:90px;object-fit:cover;border-radius:10px">` : '';
+  document.getElementById('article-variants').value = (it.variants && it.variants.length) ? it.variants.join(', ') : '';
+  document.getElementById('article-track-stock').checked = !!it.trackStock;
+  document.getElementById('article-stock').value = (it.trackStock && it.stock!=null) ? it.stock : '';
+  document.getElementById('article-stock-row').style.display = it.trackStock ? '' : 'none';
   pendingPhotoFile = null;
   renderArticleCategorySelect(it.category || '');
   document.getElementById('article-form-title').textContent = 'Modifier l\'article';
@@ -698,6 +740,69 @@ window.deleteArticle = async function(id){
   }catch(e){ alert('Erreur : '+e.message); }
 };
 
+/* Sauvegarde le doc articles complet (items + categories) */
+async function persistArticlesDoc(){
+  await setDoc(articlesDocRef, { items: articlesCache.items, categories: articlesCache.categories, updatedAt: new Date().toISOString() });
+}
+
+window.addCategory = async function(){
+  const input = document.getElementById('new-cat-input');
+  const name = input.value.trim();
+  if(!name) return;
+  if(articlesCache.categories.includes(name)){ alert('Cette catégorie existe déjà.'); return; }
+  articlesCache.categories.push(name);
+  try{
+    await persistArticlesDoc();
+    input.value = '';
+  }catch(e){ alert('Erreur : '+e.message); }
+};
+
+window.renameCategory = async function(oldName){
+  const newName = (prompt('Renommer la catégorie :', oldName)||'').trim();
+  if(!newName || newName===oldName) return;
+  if(articlesCache.categories.includes(newName)){ alert('Une catégorie porte déjà ce nom.'); return; }
+  const idx = articlesCache.categories.indexOf(oldName);
+  if(idx>=0) articlesCache.categories[idx] = newName;
+  // Met à jour tous les articles qui utilisaient l'ancien nom
+  articlesCache.items.forEach(it=>{ if(it.category===oldName) it.category = newName; });
+  try{ await persistArticlesDoc(); }
+  catch(e){ alert('Erreur : '+e.message); }
+};
+
+window.deleteCategory = async function(name){
+  const count = articlesCache.items.filter(it=>it.category===name).length;
+  const msg = count>0
+    ? `Supprimer "${name}" ? ${count} article(s) repasseront en "sans catégorie".`
+    : `Supprimer la catégorie "${name}" ?`;
+  if(!confirm(msg)) return;
+  articlesCache.categories = articlesCache.categories.filter(c=>c!==name);
+  articlesCache.items.forEach(it=>{ if(it.category===name) it.category=''; });
+  try{ await persistArticlesDoc(); }
+  catch(e){ alert('Erreur : '+e.message); }
+};
+
+function renderCategoriesList(){
+  const box = document.getElementById('categories-list');
+  if(!box) return;
+  if(!articlesCache.categories.length){ box.innerHTML = '<div class="empty-msg">Aucune catégorie pour le moment.</div>'; return; }
+  box.innerHTML = '';
+  articlesCache.categories.forEach(cat=>{
+    const count = articlesCache.items.filter(it=>it.category===cat).length;
+    const el = document.createElement('div');
+    el.className = 'list-item';
+    el.innerHTML = `
+      <div class="info">
+        <div class="nom">${cat}</div>
+        <div class="meta">${count} article${count>1?'s':''}</div>
+      </div>
+      <div class="actions">
+        <button class="icon-btn edit" onclick="window.renameCategory('${cat.replace(/'/g,"\\'")}')">✏️</button>
+        <button class="icon-btn del" onclick="window.deleteCategory('${cat.replace(/'/g,"\\'")}')">🗑️</button>
+      </div>`;
+    box.appendChild(el);
+  });
+}
+
 function renderArticlesList(){
   const list = document.getElementById('articles-list');
   if(!articlesCache.items.length){ list.innerHTML = '<div class="empty-msg">Aucun article enregistré pour le moment.</div>'; return; }
@@ -707,12 +812,21 @@ function renderArticlesList(){
     el.className = 'list-item';
     const thumb = it.photo ? `<img src="${it.photo}" alt="" style="width:52px;height:52px;object-fit:cover;border-radius:10px;flex-shrink:0;">` : `<div style="width:52px;height:52px;border-radius:10px;background:var(--violet-wash);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">🏷️</div>`;
     const prixTxt = it.price ? `${it.price.toFixed(2).replace('.',',')} €` : 'Prix libre';
+    let stockTxt = '';
+    if(it.trackStock){
+      const s = it.stock!=null ? it.stock : 0;
+      if(s<=0) stockTxt = ` · <span style="color:var(--red);font-weight:600">❌ Rupture de stock</span>`;
+      else if(s===1) stockTxt = ` · <span style="color:var(--gold);font-weight:600">⚠️ Stock bas (1) — à recommander</span>`;
+      else stockTxt = ` · 📦 Stock : ${s}`;
+    }
+    const variantsTxt = (it.variants && it.variants.length) ? `<div class="meta">🎨 Déclinaisons : ${it.variants.join(', ')}</div>` : '';
     el.innerHTML = `
       ${thumb}
       <div class="info">
         ${it.category ? `<span class="badge" style="background:var(--violet-wash);color:var(--violet)">${it.category}</span>` : ''}
         <div class="nom">${it.name}</div>
-        <div class="meta">${prixTxt}${it.fournisseur ? ' · 🏭 '+it.fournisseur : ''}${it.ean ? ' · '+it.ean : ''}</div>
+        <div class="meta">${prixTxt}${it.fournisseur ? ' · 🏭 '+it.fournisseur : ''}${it.ean ? ' · '+it.ean : ''}${stockTxt}</div>
+        ${variantsTxt}
       </div>
       <div class="actions">
         <button class="icon-btn edit" onclick="window.editArticle('${it.id}')">✏️</button>
@@ -740,6 +854,7 @@ onSnapshot(articlesDocRef, snap=>{
     setDoc(articlesDocRef, { items: articlesCache.items, categories: articlesCache.categories, updatedAt: new Date().toISOString() }).catch(()=>{});
   }
   renderArticlesList();
+  renderCategoriesList();
   // Ne pas écraser la sélection en cours si le formulaire est en cours d'édition
   if(!document.getElementById('article-id').value){
     renderArticleCategorySelect(document.getElementById('article-categorie').value);

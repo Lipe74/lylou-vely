@@ -678,6 +678,15 @@ nav button.on{color:var(--violet)}
 </div>
 
 <!-- ===== MODALE GESTION ARTICLES ===== -->
+<div class="overlay hidden" id="variant-overlay">
+  <div class="sheet">
+    <div class="grab"></div>
+    <h2 id="variant-title">Choisir</h2>
+    <div id="variant-list" style="display:flex;flex-direction:column;gap:8px;margin-top:10px"></div>
+    <button class="btn btn-outline" style="margin-top:14px" onclick="closeVariantPicker()">Annuler</button>
+  </div>
+</div>
+
 <div class="overlay hidden" id="article-info-overlay">
   <div class="sheet">
     <div class="grab"></div>
@@ -1248,12 +1257,17 @@ function renderProdGrid(){
   });
   filtered.forEach((p,i)=>{
     const hasInfo = p.photo || p.fournisseur || p.ean || p.description;
+    const outOfStock = p.trackStock && (p.stock==null || p.stock<=0);
     const wrap = document.createElement('div');
     wrap.style.cssText = 'position:relative';
     const b = document.createElement('button'); b.className = 'prod-btn';
     b.style.width = '100%';
-    b.innerHTML = `<span class="n">${esc(p.name)}</span><span class="p">${p.price?euro(p.price):'Libre'}</span>`;
-    b.onclick = ()=> p.price ? addToCart(p.name,p.price) : addFreeItem(p.name);
+    b.innerHTML = `<span class="n">${esc(p.name)}</span><span class="p">${p.price?euro(p.price):'Libre'}</span>${outOfStock?'<span style="color:var(--red);font-size:10px;font-weight:700">RUPTURE</span>':''}`;
+    b.onclick = ()=>{
+      if(!p.price){ addFreeItem(p.name); return; }
+      if(p.variants && p.variants.length){ window.openVariantPicker(p); }
+      else addToCart(p.name, p.price, p.name);
+    };
     wrap.appendChild(b);
     if(hasInfo){
       const info = document.createElement('button');
@@ -1292,11 +1306,29 @@ window.closeArticleInfo = function(){ document.getElementById('article-info-over
 
 
 /* ============ PANIER ============ */
-function addToCart(name,price){
+function addToCart(name,price,baseName){
   const line = cart.find(l=>l.name===name && l.price===price);
-  if(line) line.qty++; else cart.push({name,price,qty:1});
+  if(line) line.qty++; else cart.push({name,price,qty:1,baseName:baseName||name});
   renderCart();
 }
+/* Ouvre le choix de déclinaison (ex: senteurs, tailles) pour un article */
+window.openVariantPicker = function(p){
+  document.getElementById('variant-title').textContent = `${p.name} — choisis une déclinaison`;
+  const box = document.getElementById('variant-list');
+  box.innerHTML = '';
+  p.variants.forEach(v=>{
+    const btn = document.createElement('button');
+    btn.className = 'btn btn-outline';
+    btn.textContent = v;
+    btn.onclick = ()=>{
+      addToCart(`${p.name} (${v})`, p.price, p.name);
+      closeVariantPicker();
+    };
+    box.appendChild(btn);
+  });
+  document.getElementById('variant-overlay').classList.remove('hidden');
+};
+window.closeVariantPicker = function(){ document.getElementById('variant-overlay').classList.add('hidden'); };
 function addFreeItem(name){
   const nm = name || prompt("Nom de l'article :","Article");
   if(nm===null) return;
@@ -1650,6 +1682,33 @@ window.confirmExternal = function(method, provider){
   finalizeSale();
 };
 
+/* Ajuste le stock des articles suivis après une vente (delta=-1) ou une annulation (delta=+1).
+   Non bloquant : si ça échoue (offline...), la vente elle-même n'est jamais impactée. */
+async function adjustStockForSale(items, delta){
+  if(mode==='test'){ console.log("Mode test : stock réel non modifié"); return; }
+  try{
+    const snap = await getDoc(doc(db, "lylou_vely", "articles"));
+    if(!snap.exists()) return;
+    const data = snap.data();
+    const list = data.items || [];
+    let changed = false;
+    items.forEach(it=>{
+      const baseName = it.baseName || it.name;
+      const prod = list.find(p=>p.name===baseName);
+      if(prod && prod.trackStock){
+        prod.stock = (prod.stock||0) + delta*it.qty;
+        changed = true;
+      }
+    });
+    if(changed){
+      await setDoc(doc(db, "lylou_vely", "articles"), { items: list, categories: data.categories||[], updatedAt: new Date().toISOString() });
+      state.products = list; save(); renderProdGrid();
+    }
+  }catch(e){
+    console.warn("Ajustement stock impossible (hors-ligne ?):", e.message);
+  }
+}
+
 async function finalizeSale(){
   const total = cartTotal();
   state.ticketCounter += 1;
@@ -1659,7 +1718,7 @@ async function finalizeSale(){
   const sale = {
     id: Date.now(), num: state.ticketCounter, ref,
     time: nowTime(), date: state.day, marche: state.marche || '',
-    items: cart.map(l=>({name:l.name,price:l.price,qty:l.qty})),
+    items: cart.map(l=>({name:l.name,price:l.price,qty:l.qty,baseName:l.baseName||l.name})),
     subtotal: cartSubtotal(),
     discount: cartDiscount ? {type:cartDiscount.type, value:cartDiscount.value, motif:cartDiscount.motif, amount:cartDiscount.amount} : null,
     total, method: saleMethod,
@@ -1670,6 +1729,7 @@ async function finalizeSale(){
   save();
   saveSale(sale);      // Firestore async (non bloquant)
   saveConfig();        // met à jour ticketCounter
+  adjustStockForSale(sale.items, -1); // décompte le stock (non bloquant)
   closePay();
   showTicket(sale);
   cart=[]; payParts=[]; cartDiscount=null;
@@ -2314,6 +2374,7 @@ window.cancelSale = async function(id){
   if(!confirm(msg)) return;
   sale.cancelled = true; sale.cancelledAt = nowTime();
   save(); saveSale(sale);
+  adjustStockForSale(sale.items, +1); // restaure le stock (non bloquant)
   renderJournal(); renderCaisse(); renderHeaderKPIs();
   toast("Ticket "+sale.ref+" annulé");
 };
