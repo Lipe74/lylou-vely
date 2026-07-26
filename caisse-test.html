@@ -1173,11 +1173,11 @@ window.switchMode = async function(target){
   await loadSales();
   await loadMovements();
   save();
-  checkNewDay();
   initDenoms(); updateModeUI(); renderAll();
   loadArticlesFromFirebase();
   toast(mode==='test' ? "Mode Test activé" : "Mode Production activé");
   window.go('vente');
+  if(state.day !== todayStr()){ showFondConfirmation(); }
 };
 window.toggleMode = function(){
   const target = mode==='prod' ? 'test' : 'prod';
