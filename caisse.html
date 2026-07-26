@@ -1257,7 +1257,8 @@ function renderProdGrid(){
   });
   filtered.forEach((p,i)=>{
     const hasInfo = p.photo || p.fournisseur || p.ean || p.description;
-    const outOfStock = p.trackStock && (p.stock==null || p.stock<=0);
+    const hasVariants = p.variants && p.variants.length;
+    const outOfStock = p.trackStock && !hasVariants && (p.stock==null || p.stock<=0);
     const wrap = document.createElement('div');
     wrap.style.cssText = 'position:relative';
     const b = document.createElement('button'); b.className = 'prod-btn';
@@ -1306,9 +1307,9 @@ window.closeArticleInfo = function(){ document.getElementById('article-info-over
 
 
 /* ============ PANIER ============ */
-function addToCart(name,price,baseName){
+function addToCart(name,price,baseName,variant){
   const line = cart.find(l=>l.name===name && l.price===price);
-  if(line) line.qty++; else cart.push({name,price,qty:1,baseName:baseName||name});
+  if(line) line.qty++; else cart.push({name,price,qty:1,baseName:baseName||name,variant:variant||null});
   renderCart();
 }
 /* Ouvre le choix de déclinaison (ex: senteurs, tailles) pour un article */
@@ -1317,11 +1318,14 @@ window.openVariantPicker = function(p){
   const box = document.getElementById('variant-list');
   box.innerHTML = '';
   p.variants.forEach(v=>{
+    const vName = typeof v === 'string' ? v : v.name;
+    const vStock = typeof v === 'string' ? null : v.stock;
+    const outOfStock = p.trackStock && vStock!=null && vStock<=0;
     const btn = document.createElement('button');
     btn.className = 'btn btn-outline';
-    btn.textContent = v;
+    btn.innerHTML = `${esc(vName)}${outOfStock?' <span style="color:var(--red);font-size:11px;font-weight:700">(RUPTURE)</span>':''}`;
     btn.onclick = ()=>{
-      addToCart(`${p.name} (${v})`, p.price, p.name);
+      addToCart(`${p.name} (${vName})`, p.price, p.name, vName);
       closeVariantPicker();
     };
     box.appendChild(btn);
@@ -1695,7 +1699,11 @@ async function adjustStockForSale(items, delta){
     items.forEach(it=>{
       const baseName = it.baseName || it.name;
       const prod = list.find(p=>p.name===baseName);
-      if(prod && prod.trackStock){
+      if(!prod || !prod.trackStock) return;
+      if(it.variant && prod.variants && prod.variants.length && typeof prod.variants[0]==='object'){
+        const v = prod.variants.find(x=>x.name===it.variant);
+        if(v){ v.stock = (v.stock||0) + delta*it.qty; changed = true; }
+      } else if(!prod.variants || !prod.variants.length){
         prod.stock = (prod.stock||0) + delta*it.qty;
         changed = true;
       }
@@ -1718,7 +1726,7 @@ async function finalizeSale(){
   const sale = {
     id: Date.now(), num: state.ticketCounter, ref,
     time: nowTime(), date: state.day, marche: state.marche || '',
-    items: cart.map(l=>({name:l.name,price:l.price,qty:l.qty,baseName:l.baseName||l.name})),
+    items: cart.map(l=>({name:l.name,price:l.price,qty:l.qty,baseName:l.baseName||l.name,variant:l.variant||null})),
     subtotal: cartSubtotal(),
     discount: cartDiscount ? {type:cartDiscount.type, value:cartDiscount.value, motif:cartDiscount.motif, amount:cartDiscount.amount} : null,
     total, method: saleMethod,
