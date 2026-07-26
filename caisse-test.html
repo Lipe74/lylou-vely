@@ -244,6 +244,7 @@ nav button.on{color:var(--violet)}
 .edit-line{display:flex;gap:8px;align-items:center;margin-bottom:8px}
 .edit-line input.enm{flex:1;padding:11px;border:1.5px solid var(--line);border-radius:10px}
 .edit-line input.epr{width:88px;padding:11px;border:1.5px solid var(--line);border-radius:10px;text-align:right}
+.edit-line select.ecat{width:130px;padding:10px 6px;border:1.5px solid var(--line);border-radius:10px;font-size:12px;background:#fff}
 .edit-line input:focus{outline:none;border-color:var(--violet)}
 .edit-line .rm{color:var(--red);font-size:20px;padding:6px}
 .firebase-status{font-size:11px;text-align:center;color:var(--muted);margin-top:8px}
@@ -336,6 +337,7 @@ nav button.on{color:var(--violet)}
       <h1 class="section-title">Nouvelle vente</h1>
       <p class="section-sub">Touche un article pour l'ajouter au panier.</p>
       <div class="card">
+        <div id="cat-tabs" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px"></div>
         <div class="prod-grid" id="prod-grid"></div>
       </div>
       <div class="card">
@@ -676,18 +678,19 @@ nav button.on{color:var(--violet)}
 </div>
 
 <!-- ===== MODALE GESTION ARTICLES ===== -->
-<div class="overlay hidden" id="prod-overlay">
+<div class="overlay hidden" id="article-info-overlay">
   <div class="sheet">
     <div class="grab"></div>
-    <h2>Gérer les articles</h2>
-    <p style="text-align:center;color:var(--muted);font-size:13px;margin-bottom:16px">Nom et prix TVAC. Laisse le prix vide pour un article à saisie libre.</p>
-    <div id="prod-editor"></div>
-    <button class="btn btn-ghost" style="margin-top:6px" onclick="addProductRow()">＋ Ajouter un article</button>
-    <div class="row-btns" style="margin-top:14px">
-      <button class="btn btn-outline" onclick="closeProducts()">Annuler</button>
-      <button class="btn btn-primary" onclick="saveProducts()">Enregistrer</button>
+    <h2 id="ai-nom">Article</h2>
+    <div id="ai-photo" style="text-align:center;margin-bottom:12px"></div>
+    <div style="font-size:14px;line-height:2">
+      <div><b>Prix :</b> <span id="ai-prix"></span></div>
+      <div id="ai-cat-row"><b>Catégorie :</b> <span id="ai-cat"></span></div>
+      <div id="ai-fourn-row"><b>Fournisseur :</b> <span id="ai-fourn"></span></div>
+      <div id="ai-ean-row"><b>EAN :</b> <span id="ai-ean"></span></div>
+      <div id="ai-desc-row" style="margin-top:8px;line-height:1.5"><b>Description :</b><br><span id="ai-desc"></span></div>
     </div>
-    <div class="firebase-status" id="fb-status"></div>
+    <button class="btn btn-outline" style="margin-top:16px" onclick="closeArticleInfo()">Fermer</button>
   </div>
 </div>
 
@@ -697,11 +700,7 @@ nav button.on{color:var(--violet)}
     <div class="grab"></div>
     <h2>Réglages</h2>
 
-    <button class="pay-btn" style="margin-bottom:10px" onclick="closeSettings();openProducts()">
-      <div class="ic" style="background:var(--violet-wash);color:var(--violet)">📦</div>
-      <div class="tx"><b>Gérer les articles</b><span>Ajouter, modifier, supprimer des produits</span></div>
-      <div class="arr">›</div>
-    </button>
+    <p style="text-align:center;color:var(--muted);font-size:12px;margin-bottom:10px">📦 La gestion des articles (ajout, modification, photos) se fait désormais depuis l'espace Admin.</p>
 
     <button class="pay-btn" style="margin-bottom:10px" onclick="closeSettings();doRefresh()">
       <div class="ic" style="background:var(--green-wash);color:var(--green)">🔄</div>
@@ -870,10 +869,11 @@ const TICKET_FOOTER = [
 const TICKET_PREFIX = "LV-";
 const TICKET_START = 1;
 
+const DEFAULT_CATEGORIES = ["Bijoux", "Sacs & Crochet", "Bougies", "Divers"];
 const DEFAULT_PRODUCTS = [
-  {name:"Bracelet", price:12},{name:"Collier", price:18},{name:"Boucles d'oreilles", price:15},
-  {name:"Bague", price:10},{name:"Sac crochet", price:35},{name:"Bougie", price:8},
-  {name:"Porte-clés", price:6},{name:"Marque-page", price:5},
+  {name:"Bracelet", price:12, category:"Bijoux"},{name:"Collier", price:18, category:"Bijoux"},{name:"Boucles d'oreilles", price:15, category:"Bijoux"},
+  {name:"Bague", price:10, category:"Bijoux"},{name:"Sac crochet", price:35, category:"Sacs & Crochet"},{name:"Bougie", price:8, category:"Bougies"},
+  {name:"Porte-clés", price:6, category:"Divers"},{name:"Marque-page", price:5, category:"Divers"},
 ];
 const COINS = [0.01,0.02,0.05,0.10,0.20,0.50,1,2];
 const BILLS = [5,10,20,50,100,200,500];
@@ -964,6 +964,7 @@ function normalise(s){
     fond: s.fond || 0,
     marche: s.marche || '',
     products: (s.products && s.products.length) ? s.products : DEFAULT_PRODUCTS.slice(),
+    categories: (s.categories && s.categories.length) ? s.categories : DEFAULT_CATEGORIES.slice(),
     sales: s.sales || [],
     movements: s.movements || [],
     lastCount: s.lastCount || null,
@@ -1209,6 +1210,7 @@ async function loadArticlesFromFirebase(){
       const data = snap.data();
       if(data.items && data.items.length){
         state.products = data.items;
+        state.categories = (data.categories && data.categories.length) ? data.categories : DEFAULT_CATEGORIES.slice();
         save();
         renderProdGrid();
         console.log("Articles Firebase chargés:", data.items.length);
@@ -1218,67 +1220,75 @@ async function loadArticlesFromFirebase(){
     console.warn("Firebase articles indisponible, mode local:", e.message);
   }
 }
-async function saveArticlesToFirebase(items){
-  try{
-    await setDoc(doc(db, "lylou_vely", "articles"), { items, updatedAt: new Date().toISOString() });
-    const el = document.getElementById('fb-status');
-    el.textContent = "✓ Synchronisé avec Firebase";
-    el.className = "firebase-status ok";
-    return true;
-  }catch(e){
-    console.warn("Firebase write error:", e.message);
-    const el = document.getElementById('fb-status');
-    el.textContent = "⚠ Sauvegardé localement (Firebase indisponible)";
-    el.className = "firebase-status err";
-    return false;
-  }
-}
 
 /* ============ ARTICLES ============ */
+let selectedCategory = 'Tous';
 function initProducts(){ renderProdGrid(); }
+
+function renderCatTabs(){
+  const tabsBox = document.getElementById('cat-tabs');
+  // Catégories réellement utilisées par au moins un article (+ "Autres" si des articles sans catégorie existent)
+  const usedCats = [...new Set(state.products.map(p=>p.category).filter(Boolean))];
+  const hasUncat = state.products.some(p=>!p.category);
+  const cats = ['Tous', ...usedCats, ...(hasUncat ? ['Autres'] : [])];
+  if(!cats.includes(selectedCategory)) selectedCategory = 'Tous';
+  tabsBox.innerHTML = cats.map(c=>
+    `<button class="btn ${c===selectedCategory?'btn-primary':'btn-outline'}" style="width:auto;padding:6px 14px;font-size:13px" onclick="setCategory('${esc(c).replace(/'/g,"\\'")}')">${esc(c)}</button>`
+  ).join('');
+}
+window.setCategory = function(cat){ selectedCategory = cat; renderProdGrid(); };
+
 function renderProdGrid(){
+  renderCatTabs();
   const g = document.getElementById('prod-grid'); g.innerHTML = '';
-  state.products.forEach((p,i)=>{
+  const filtered = state.products.filter(p=>{
+    if(selectedCategory==='Tous') return true;
+    if(selectedCategory==='Autres') return !p.category;
+    return p.category===selectedCategory;
+  });
+  filtered.forEach((p,i)=>{
+    const hasInfo = p.photo || p.fournisseur || p.ean || p.description;
+    const wrap = document.createElement('div');
+    wrap.style.cssText = 'position:relative';
     const b = document.createElement('button'); b.className = 'prod-btn';
+    b.style.width = '100%';
     b.innerHTML = `<span class="n">${esc(p.name)}</span><span class="p">${p.price?euro(p.price):'Libre'}</span>`;
     b.onclick = ()=> p.price ? addToCart(p.name,p.price) : addFreeItem(p.name);
-    g.appendChild(b);
+    wrap.appendChild(b);
+    if(hasInfo){
+      const info = document.createElement('button');
+      info.textContent = 'ℹ️';
+      info.title = 'Voir la fiche article';
+      info.style.cssText = 'position:absolute;top:2px;right:2px;width:22px;height:22px;border:none;background:rgba(255,255,255,.9);border-radius:50%;font-size:12px;line-height:1;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.15)';
+      info.onclick = (e)=>{ e.stopPropagation(); window.showArticleInfo(p.name); };
+      wrap.appendChild(info);
+    }
+    g.appendChild(wrap);
   });
   const free = document.createElement('button'); free.className='prod-btn free';
   free.innerHTML = `<span class="n">＋ Article libre</span><span class="p">Prix au choix</span>`;
   free.onclick = ()=> addFreeItem();
   g.appendChild(free);
 }
-window.openProducts = function(){
-  const ed = document.getElementById('prod-editor'); ed.innerHTML='';
-  state.products.forEach(p=>addProductRow(p.name,p.price));
-  document.getElementById('fb-status').textContent = '';
-  document.getElementById('prod-overlay').classList.remove('hidden');
+/* Affiche la fiche d'un article en lecture seule (photo, fournisseur, EAN, description) */
+window.showArticleInfo = function(name){
+  const p = state.products.find(x=>x.name===name);
+  if(!p) return;
+  document.getElementById('ai-nom').textContent = p.name;
+  document.getElementById('ai-photo').innerHTML = p.photo ? `<img src="${p.photo}" style="width:140px;height:140px;object-fit:cover;border-radius:12px">` : '';
+  document.getElementById('ai-prix').textContent = p.price ? euro(p.price) : 'Prix libre';
+  const setRow = (rowId, valId, val)=>{
+    const row = document.getElementById(rowId);
+    if(val){ row.style.display=''; document.getElementById(valId).textContent = val; }
+    else { row.style.display='none'; }
+  };
+  setRow('ai-cat-row','ai-cat', p.category);
+  setRow('ai-fourn-row','ai-fourn', p.fournisseur);
+  setRow('ai-ean-row','ai-ean', p.ean);
+  setRow('ai-desc-row','ai-desc', p.description);
+  document.getElementById('article-info-overlay').classList.remove('hidden');
 };
-window.addProductRow = function(name='',price=''){
-  const ed = document.getElementById('prod-editor');
-  const row = document.createElement('div'); row.className='edit-line';
-  row.innerHTML = `<input class="enm" placeholder="Nom de l'article" value="${esc(name)}">
-    <input class="epr" type="number" step="0.01" placeholder="€ TVAC" value="${price!==''&&price!=null&&price!==0?price:''}">
-    <button class="rm" onclick="this.parentNode.remove()">✕</button>`;
-  ed.appendChild(row);
-};
-window.saveProducts = async function(){
-  const rows = document.querySelectorAll('#prod-editor .edit-line');
-  const list = [];
-  rows.forEach(r=>{
-    const nm = r.querySelector('.enm').value.trim();
-    const pr = parseNum(r.querySelector('.epr').value);
-    if(nm) list.push({name:nm, price:pr||0});
-  });
-  state.products = list;
-  save(); renderProdGrid();
-  await saveArticlesToFirebase(list);
-  setTimeout(()=>closeProducts(), 600);
-  toast("Articles enregistrés");
-};
-function closeProducts(){ document.getElementById('prod-overlay').classList.add('hidden'); }
-window.closeProducts = closeProducts;
+window.closeArticleInfo = function(){ document.getElementById('article-info-overlay').classList.add('hidden'); };
 
 
 /* ============ PANIER ============ */
