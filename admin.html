@@ -731,6 +731,14 @@ onSnapshot(articlesDocRef, snap=>{
   } else {
     articlesCache = { items: [], categories: DEFAULT_ARTICLE_CATEGORIES.slice() };
   }
+  // Migration : attribue un id stable aux articles créés avant l'ajout de ce panneau
+  let needsMigration = false;
+  articlesCache.items.forEach(it=>{
+    if(!it.id){ it.id = (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()+Math.random())); needsMigration = true; }
+  });
+  if(needsMigration){
+    setDoc(articlesDocRef, { items: articlesCache.items, categories: articlesCache.categories, updatedAt: new Date().toISOString() }).catch(()=>{});
+  }
   renderArticlesList();
   // Ne pas écraser la sélection en cours si le formulaire est en cours d'édition
   if(!document.getElementById('article-id').value){
