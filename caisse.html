@@ -1158,7 +1158,7 @@ window.doRefresh = async function(){
 
 
 /* ============ MODE PROD/TEST ============ */
-window.switchMode = function(target){
+window.switchMode = async function(target){
   if(target===mode) return;
   const msg = target==='test'
     ? "Passer en MODE TEST ?\nTu bascules sur une caisse d'essai séparée."
@@ -1167,8 +1167,13 @@ window.switchMode = function(target){
   mode = target;
   localStorage.setItem(MODE_KEY, mode);
   state = load();
-  checkNewDay();
   cart = []; countQty = {}; payParts = [];
+  toast("Chargement des données "+(mode==='test'?'de test':'réelles')+"…");
+  await loadConfig();
+  await loadSales();
+  await loadMovements();
+  save();
+  checkNewDay();
   initDenoms(); updateModeUI(); renderAll();
   loadArticlesFromFirebase();
   toast(mode==='test' ? "Mode Test activé" : "Mode Production activé");
