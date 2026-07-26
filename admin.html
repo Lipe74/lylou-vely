@@ -126,8 +126,9 @@
     <div class="brand">Lylou-Vely</div>
     <div class="brand-sub">Espace Admin</div>
 
-    <button class="nav-item active" data-panel="marches" onclick="window.showPanel('marches')"><span class="ic">📍</span> Marchés</button>
-    <button class="nav-item" data-panel="articles" onclick="window.showPanel('articles')"><span class="ic">🏷️</span> Articles</button>
+    <button class="nav-item active" data-panel="articles" onclick="window.showPanel('articles')"><span class="ic">🏷️</span> Articles</button>
+    <button class="nav-item" data-panel="categories" onclick="window.showPanel('categories')"><span class="ic">🗂️</span> Catégories</button>
+    <button class="nav-item" data-panel="marches" onclick="window.showPanel('marches')"><span class="ic">📍</span> Marchés</button>
     <button class="nav-item" data-panel="avis" onclick="window.showPanel('avis')"><span class="ic">⭐</span> Avis Google</button>
     <button class="nav-item" data-panel="fidelite" onclick="window.showPanel('fidelite')"><span class="ic">💎</span> Fidélité</button>
     <button class="nav-item" data-panel="caisse" onclick="window.showPanel('caisse')"><span class="ic">🛒</span> Caisse</button>
@@ -140,7 +141,7 @@
   <div class="main">
 
     <!-- PANEL MARCHÉS -->
-    <div class="panel active" id="panel-marches">
+    <div class="panel" id="panel-marches">
       <div class="panel-title">Gérer les marchés</div>
       <div class="panel-sub">Ajoutez, modifiez ou supprimez les marchés affichés sur le site</div>
 
@@ -302,17 +303,23 @@
       </div>
 
       <div class="card">
+        <h3>Articles enregistrés</h3>
+        <div id="articles-list"><div class="empty-msg">Chargement...</div></div>
+      </div>
+    </div>
+
+    <!-- PANEL CATÉGORIES -->
+    <div class="panel" id="panel-categories">
+      <div class="panel-title">Gérer les catégories</div>
+      <div class="panel-sub">Crée, renomme ou supprime les catégories utilisées par tes articles</div>
+
+      <div class="card">
         <h3>Catégories</h3>
         <div style="display:flex;gap:8px;margin-bottom:12px">
           <input type="text" id="new-cat-input" placeholder="Nouvelle catégorie…" style="flex:1;padding:10px;border:1.5px solid #ddd;border-radius:10px">
           <button class="btn btn-primary" style="width:auto;padding:10px 16px" onclick="window.addCategory()">＋ Ajouter</button>
         </div>
         <div id="categories-list"></div>
-      </div>
-
-      <div class="card">
-        <h3>Articles enregistrés</h3>
-        <div id="articles-list"><div class="empty-msg">Chargement...</div></div>
       </div>
     </div>
 
