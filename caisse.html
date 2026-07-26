@@ -574,12 +574,7 @@ nav button.on{color:var(--violet)}
         </button>
         <button class="pay-btn" onclick="startExternal('carte-sumup')">
           <div class="ic carte">💳</div>
-          <div class="tx"><b>Carte (SumUp)</b><span>Tap to Pay ou terminal</span></div>
-          <div class="arr">›</div>
-        </button>
-        <button class="pay-btn" onclick="startExternal('carte-viva')">
-          <div class="ic carte">💳</div>
-          <div class="tx"><b>Carte (Viva Wallet)</b><span>Bancontact, moins cher</span></div>
+          <div class="tx"><b>Carte (SumUp)</b><span>Terminal ou Tap to Pay</span></div>
           <div class="arr">›</div>
         </button>
       </div>
@@ -618,32 +613,18 @@ nav button.on{color:var(--violet)}
     <!-- SumUp -->
     <div id="pay-sumup" class="hidden">
       <h2>Paiement par carte — SumUp</h2>
-      <div class="qr-amount-lbl">Montant à encaisser</div>
+      <div class="qr-amount-lbl">Montant à encaisser sur le terminal</div>
       <div class="pay-amt" id="sumup-amount">0,00 €</div>
-      <button class="btn btn-primary" onclick="copySumUpAmount()" style="width:auto;padding:8px 18px;font-size:14px;margin-bottom:6px">📋 Copier le montant</button>
       <div class="confirm-icon">💳</div>
-      <p class="confirm-steps" id="sumup-steps">Ouvre l'app SumUp depuis ton téléphone (pas ce bouton) → Facturer → Tap to Pay → colle le montant.<br>Clique ci-dessous une fois le paiement accepté.</p>
-      <button class="btn btn-primary" onclick="confirmExternal('carte','sumup')" style="margin-bottom:10px">Paiement accepté ✓</button>
+      <p class="confirm-steps" id="sumup-steps">Lance le paiement sur ton terminal SumUp.<br>Clique ci-dessous une fois le paiement accepté.</p>
+      <button class="btn btn-primary" onclick="launchSumUpApp()" style="margin-bottom:10px">📲 Ouvrir SumUp</button>
+      <button class="btn btn-primary" onclick="confirmExternal('carte','sumup')">Paiement accepté ✓</button>
       <div class="confirm-refused">
         <button class="btn btn-outline" onclick="backToChoice()">Retour</button>
         <button class="btn btn-danger" onclick="backToChoice()">Refusé / Annulé</button>
       </div>
-      <button onclick="launchSumUpApp()" style="background:none;border:none;color:var(--muted);font-size:11px;text-decoration:underline;margin-top:14px;cursor:pointer">Terminal réparé ? Lancer via terminal SumUp →</button>
-    </div>
-
-    <!-- Viva Wallet -->
-    <div id="pay-viva" class="hidden">
-      <h2>Paiement par carte — Viva Wallet</h2>
-      <div class="qr-amount-lbl">Montant à encaisser</div>
-      <div class="pay-amt" id="viva-amount">0,00 €</div>
-      <button class="btn btn-primary" onclick="copyVivaAmount()" style="width:auto;padding:8px 18px;font-size:14px;margin-bottom:6px">📋 Copier le montant</button>
-      <div class="confirm-icon">💳</div>
-      <p class="confirm-steps">Ouvre l'app "Viva.com Terminal" sur ton téléphone → colle le montant → fais tapper la carte.<br>Clique ci-dessous une fois le paiement accepté.</p>
-      <button class="btn btn-primary" onclick="confirmExternal('carte','viva')" style="margin-bottom:10px">Paiement accepté ✓</button>
-      <div class="confirm-refused">
-        <button class="btn btn-outline" onclick="backToChoice()">Retour</button>
-        <button class="btn btn-danger" onclick="backToChoice()">Refusé / Annulé</button>
-      </div>
+      <p style="font-size:11px;color:var(--muted);margin-top:14px">Terminal indisponible ? Utilise Tap to Pay :</p>
+      <button class="btn btn-outline" onclick="copySumUpAmount()" style="width:auto;padding:6px 14px;font-size:12px">📋 Copier le montant</button>
     </div>
   </div>
 </div>
@@ -1476,7 +1457,7 @@ window.openPay = function(){
 window.closePay = function(){ document.getElementById('pay-overlay').classList.add('hidden'); payParts=[]; };
 
 function showPayChoice(){
-  ['pay-cash','pay-qr','pay-sumup','pay-viva'].forEach(id=>document.getElementById(id).classList.add('hidden'));
+  ['pay-cash','pay-qr','pay-sumup'].forEach(id=>document.getElementById(id).classList.add('hidden'));
   document.getElementById('pay-choice').classList.remove('hidden');
   const rem = payRemaining();
   document.getElementById('pay-amt').textContent = euro(rem);
@@ -1589,14 +1570,10 @@ window.startExternal = function(method){
         correctLevel: QRCode.CorrectLevel.M
       });
     }catch(e){ qrBox.innerHTML='<p>QR indisponible</p>'; }
-  } else if(method==='carte-viva'){
-    document.getElementById('pay-viva').classList.remove('hidden');
-    document.getElementById('viva-amount').textContent = euro(payRemaining());
   } else {
     document.getElementById('pay-sumup').classList.remove('hidden');
     document.getElementById('sumup-amount').textContent = euro(payRemaining());
-    // Lancement auto désactivé temporairement (terminal HS → SumUp force le flux Terminal
-    // et exclut Tap to Pay). Le bouton "Ouvrir SumUp" reste dispo pour un lancement manuel.
+    setTimeout(()=>launchSumUpApp(), 250);
   }
 };
 
@@ -1674,17 +1651,7 @@ function checkSumUpCallback(){
     window.go('vente');
   }
 }
-/* Copie le montant à encaisser pour Viva Wallet */
-window.copyVivaAmount = function(){
-  const amt = payRemaining().toFixed(2);
-  try{
-    navigator.clipboard.writeText(amt);
-    toast('📋 Montant copié : '+amt+' €');
-  }catch(e){
-    toast('Montant : '+amt+' €');
-  }
-};
-
+/* Copie le montant à encaisser (pratique pour saisie manuelle Tap to Pay) */
 window.confirmExternal = function(method, provider){
   const rem = payRemaining();
   const part = {method, amount:rem};
