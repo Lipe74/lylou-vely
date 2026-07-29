@@ -857,6 +857,7 @@ const TICKET_FOOTER = [
 
 const TICKET_PREFIX = "LV-";
 const TICKET_START = 1;
+const FOND_CIBLE = 100; // objectif de fond de caisse — les versements visent à revenir vers ce montant
 
 const DEFAULT_CATEGORIES = ["Bijoux", "Sacs & Crochet", "Bougies", "Divers"];
 const DEFAULT_PRODUCTS = [
@@ -1915,11 +1916,15 @@ function renderCaisse(){
   document.getElementById('kpi-out').textContent = euro(sumOut(d));
   document.getElementById('kpi-theo').textContent = euro(theoreticalCash());
   updateEcart();
-  // rappel versement
-  const surplus = theoreticalCash() - state.fond;
+  // rappel versement (basé sur l'objectif de fond fixe, pas le dernier fond connu)
+  const theoNow = theoreticalCash();
+  const gap = theoNow - FOND_CIBLE;
   const rem = document.getElementById('cash-reminder');
-  if(surplus > 0.01 && state.fond > 0){
-    rem.textContent = `💡 N'oubliez pas de retirer ${euro(surplus)} (espèces au-dessus du fond de caisse).`;
+  if(gap > 0.01 && state.fond > 0){
+    rem.textContent = `💡 N'oubliez pas de retirer ${euro(gap)} (au-dessus du fond cible de ${euro(FOND_CIBLE)}).`;
+    rem.style.display = 'block';
+  } else if(gap < -0.01 && state.fond > 0){
+    rem.textContent = `ℹ️ Il manque ${euro(Math.abs(gap))} pour atteindre le fond cible de ${euro(FOND_CIBLE)}.`;
     rem.style.display = 'block';
   } else { rem.style.display = 'none'; }
 }
@@ -2714,16 +2719,17 @@ function buildZTicketHTML(day, marche, ca, esp, qr, carte, cancelledN, theo, inT
     <div class="t-item"><span>Sorties totales</span><span>${euro(outTotal)}</span></div>
     ${(cashOut>0||cardOut>0)?`<div class="t-sub"><span>dont Liquide</span><span>-${euro(cashOut)}</span></div><div class="t-sub"><span>dont Carte</span><span>-${euro(cardOut)}</span></div>`:''}
     <div class="t-tot"><span>Espèces en caisse</span><span>${euro(theo)}</span></div>
-    ${theo > state.fond + 0.01 ? `<div class="t-sep"></div>
+    ${theo > FOND_CIBLE + 0.01 ? `<div class="t-sep"></div>
       <div style="font-size:11px;font-weight:600;color:#555;margin-bottom:4px">Détail du versement :</div>
       <div class="t-sub"><span>Ventes espèces</span><span>+${euro(esp)}</span></div>
       ${inTotal > 0 ? `<div class="t-sub"><span>Entrées</span><span>+${euro(inTotal)}</span></div>` : ''}
       ${cashOut > 0 ? `<div class="t-sub"><span>Sorties liquide</span><span>−${euro(cashOut)}</span></div>` : ''}
+      ${state.fond < FOND_CIBLE ? `<div class="t-sub" style="color:#2e7d32"><span>Reconstitution du fond de caisse</span><span>−${euro(FOND_CIBLE - state.fond)}</span></div>` : ''}
       <div class="t-sep"></div>
       <div style="text-align:center;border:2px solid #000;border-radius:6px;padding:8px 4px;margin:6px 0;white-space:nowrap;overflow:hidden">
         <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:1px;margin-bottom:2px">A retirer (versement)</div>
-        <div style="font-size:18px;font-weight:900;letter-spacing:1px">${euro(theo - state.fond)}</div>
-        <div style="font-size:9px;margin-top:2px">Fond conservé : ${euro(state.fond)}</div>
+        <div style="font-size:18px;font-weight:900;letter-spacing:1px">${euro(theo - FOND_CIBLE)}</div>
+        <div style="font-size:9px;margin-top:2px">Fond conservé : ${euro(FOND_CIBLE)}${state.fond < FOND_CIBLE ? ' (dont '+euro(FOND_CIBLE-state.fond)+' de reconstitution)' : ''}</div>
       </div>` : ''}
     <div class="t-foot">Clôture générée le ${new Date().toLocaleString('fr-BE')}</div>`;
 }
@@ -2744,7 +2750,7 @@ window.printZ = function(){
   document.getElementById('ticket-overlay').classList.remove('hidden');
   // Proposer versement banque si surplus
   const VERSEMENT_MIN = 5; // en dessous de ce montant, pas de quoi se déplacer à la banque
-  const surplus = theo - state.fond;
+  const surplus = theo - FOND_CIBLE;
   if(surplus > 0.01){
     const suggestion = Math.floor(surplus/VERSEMENT_MIN)*VERSEMENT_MIN; // arrondi au multiple de 5 (billets réels)
     if(suggestion < VERSEMENT_MIN){
