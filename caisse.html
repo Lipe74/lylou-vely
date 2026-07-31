@@ -659,6 +659,20 @@ nav button.on{color:var(--violet)}
 </div>
 
 <!-- ===== MODALE GESTION ARTICLES ===== -->
+<div class="overlay center hidden" id="mv-single-overlay">
+  <div class="sheet">
+    <div id="mv-single-area"></div>
+    <div class="no-print" style="margin-top:16px">
+      <div class="row-btns">
+        <button class="btn btn-outline" onclick="closeMvSingleOverlay()">Fermer</button>
+        <button class="btn btn-ghost" onclick="downloadSingleMvPDF()">PDF</button>
+        <button class="btn btn-ghost" onclick="printSingleMv('58mm')">🖨 58mm</button>
+        <button class="btn btn-primary" onclick="printSingleMv('a4')">🖨 A4</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="overlay center hidden" id="variant-overlay">
   <div class="sheet">
     <h2 id="variant-title">Choisir</h2>
@@ -2315,7 +2329,7 @@ function mvLineHTML(m){
     <div class="pill ${m.type}">${m.type==='in'?'＋':'－'}</div>
     <div class="m-info"><div class="t">${esc(m.reason)}${payBadge}${bancedBadge}</div><div class="d">${m.date.split('-').reverse().join('/')} ${m.time}</div></div>
     <div class="amt ${m.type==='in'?'plus':'minus'}">${m.type==='in'?'+':'−'}${euro(m.amount)}</div>
-    <button class="del" onclick="printSingleMv(${m.id})" style="color:var(--violet);font-size:15px" title="Imprimer">⎙</button>${reprZ}`;
+    <button class="del" onclick="openMvSingleChoice(${m.id})" style="color:var(--violet);font-size:15px" title="Justificatif">⎙</button>${reprZ}`;
 }
 
 /* Rendu d'un bloc-catégorie de mouvements (titre + total + boutons + liste) */
@@ -2366,13 +2380,36 @@ window.cancelSale = async function(id){
   toast("Ticket "+sale.ref+" annulé");
 };
 
-window.printSingleMv = function(id){
+let currentSingleMvId = null;
+window.openMvSingleChoice = function(id){
+  currentSingleMvId = id;
   const m = state.movements.find(x=>x.id===id);
   if(!m) return;
   const sign = m.type==='in'?'+':'−';
   const pm = m.payMode==='card'?'Carte':m.payMode==='cash'?'Liquide':'—';
   const typeLabel = m.type==='in'?'Entrée':'Sortie';
-  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+  document.getElementById('mv-single-area').innerHTML = `
+    <h2 style="text-align:center;font-size:20px;color:var(--violet);margin:0 0 4px">${esc(SELLER.brand)}</h2>
+    <div style="text-align:center;font-size:11px;color:var(--muted);margin-bottom:14px">${esc(SELLER.legal)} · TVA ${esc(SELLER.vat)}</div>
+    <div style="border-top:1px dashed #ccc;margin:8px 0"></div>
+    <div style="display:flex;justify-content:space-between;padding:3px 0;font-size:13px"><span>Type</span><span>${typeLabel}</span></div>
+    <div style="display:flex;justify-content:space-between;padding:3px 0;font-size:13px"><span>Motif</span><span>${esc(m.reason)}</span></div>
+    <div style="display:flex;justify-content:space-between;padding:3px 0;font-size:13px"><span>Date</span><span>${m.date.split('-').reverse().join('/')} ${m.time}</span></div>
+    <div style="display:flex;justify-content:space-between;padding:3px 0;font-size:13px"><span>Mode</span><span>${pm}</span></div>
+    <div style="border-top:1px dashed #ccc;margin:8px 0"></div>
+    <div style="text-align:center;font-size:26px;font-weight:600;margin:14px 0;color:${m.type==='in'?'var(--green,#2e9e6b)':'var(--red)'}">${sign}${euro(m.amount)}</div>`;
+  document.getElementById('mv-single-overlay').classList.remove('hidden');
+};
+window.closeMvSingleOverlay = function(){
+  document.getElementById('mv-single-overlay').classList.add('hidden');
+};
+function buildSingleMvHTML(id){
+  const m = state.movements.find(x=>x.id===id);
+  if(!m) return null;
+  const sign = m.type==='in'?'+':'−';
+  const pm = m.payMode==='card'?'Carte':m.payMode==='cash'?'Liquide':'—';
+  const typeLabel = m.type==='in'?'Entrée':'Sortie';
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8">
     <title>${esc(SELLER.brand)} — Justificatif</title>
     <style>body{font-family:Arial,sans-serif;font-size:13px;color:#000;padding:20px;background:#fff;max-width:400px;margin:0 auto}
     h1{color:#6B3FA0;font-size:20px;text-align:center;margin:0 0 4px}
@@ -2392,8 +2429,18 @@ window.printSingleMv = function(id){
     <div class="amt">${sign}${euro(m.amount)}</div>
     <div class="foot">Justificatif généré le ${new Date().toLocaleString('fr-BE')}<br>${esc(SELLER.brand)}</div>
     </body></html>`;
-  const w = openPrintWindow(html);
-  // impression auto retirée : la fenêtre reste ouverte, impression manuelle
+}
+window.downloadSingleMvPDF = function(){
+  const html = buildSingleMvHTML(currentSingleMvId);
+  if(!html) return;
+  htmlStringToPDF(html, `justificatif-${currentSingleMvId}.pdf`);
+  closeMvSingleOverlay();
+};
+window.printSingleMv = function(mode){
+  const html = buildSingleMvHTML(currentSingleMvId);
+  if(!html) return;
+  const w = openPrintWindow(html, mode||'a4');
+  closeMvSingleOverlay();
 };
 
 window.printJournalMv = function(mode){
