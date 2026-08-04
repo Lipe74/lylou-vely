@@ -1326,14 +1326,15 @@ window.openVariantPicker = function(p){
     const vName = typeof v === 'string' ? v : v.name;
     const vStock = typeof v === 'string' ? null : v.stock;
     const vPhoto = (typeof v === 'object' && v.photo) ? v.photo : (p.photo || '');
+    const vPrice = (typeof v === 'object' && v.price!=null) ? v.price : p.price;
     const outOfStock = p.trackStock && vStock!=null && vStock<=0;
     const btn = document.createElement('button');
     btn.className = 'btn btn-outline';
     btn.style.cssText = 'display:flex;align-items:center;gap:10px;text-align:left';
     const thumb = vPhoto ? `<img src="${vPhoto}" style="width:36px;height:36px;object-fit:cover;border-radius:8px;flex-shrink:0">` : '';
-    btn.innerHTML = `${thumb}<span>${esc(vName)}${outOfStock?' <span style="color:var(--red);font-size:11px;font-weight:700">(RUPTURE)</span>':''}</span>`;
+    btn.innerHTML = `${thumb}<span style="flex:1">${esc(vName)}${outOfStock?' <span style="color:var(--red);font-size:11px;font-weight:700">(RUPTURE)</span>':''}</span><b>${euro(vPrice)}</b>`;
     btn.onclick = ()=>{
-      addToCart(`${p.name} (${vName})`, p.price, p.name, vName);
+      addToCart(`${p.name} (${vName})`, vPrice, p.name, vName);
       closeVariantPicker();
     };
     box.appendChild(btn);

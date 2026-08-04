@@ -56,6 +56,7 @@
   .variant-row .vr-name{flex:2}
   .variant-row .vr-ean{flex:2}
   .variant-row .vr-stock{flex:1;text-align:right}
+  .variant-row .vr-price{flex:1;text-align:right}
   .variant-row .vr-rm{color:var(--red);font-size:18px;padding:4px 8px;cursor:pointer;border:none;background:none}
   .variant-row-block{border:1px solid #eee;border-radius:10px;padding:8px;margin-bottom:8px;background:#fafafa}
   .variant-photo-row{display:flex;align-items:center;gap:8px}
@@ -626,7 +627,7 @@ window.handleArticleCategoryChange = function(sel){
   renderArticleCategorySelect(name);
 };
 
-window.addVariantRow = function(name='', ean='', stock='', photoUrl=''){
+window.addVariantRow = function(name='', ean='', stock='', photoUrl='', price=''){
   const ed = document.getElementById('variants-editor');
   const row = document.createElement('div'); row.className = 'variant-row-block';
   row._existingPhoto = photoUrl || '';
@@ -635,12 +636,14 @@ window.addVariantRow = function(name='', ean='', stock='', photoUrl=''){
       <input class="vr-name" placeholder="Nom (ex. Vanille)" value="${name.replace(/"/g,'&quot;')}">
       <input class="vr-ean" placeholder="EAN" value="${ean.replace(/"/g,'&quot;')}">
       <input class="vr-stock" type="number" step="1" min="0" placeholder="Qté" value="${stock!==''&&stock!=null?stock:''}">
+      <input class="vr-price" type="number" step="0.01" min="0" placeholder="Prix (€)" value="${price!==''&&price!=null?price:''}">
       <button type="button" class="vr-rm" onclick="this.closest('.variant-row-block').remove()">✕</button>
     </div>
     <div class="variant-photo-row">
       <input type="file" class="vr-photo-input" accept="image/*" onchange="window.previewVariantPhoto(event)">
       <div class="vr-photo-preview">${photoUrl?`<img src="${photoUrl}" style="width:36px;height:36px;object-fit:cover;border-radius:6px">`:''}</div>
-    </div>`;
+    </div>
+    <p style="font-size:11px;color:#999;margin:2px 0 0">Laisse "Prix" vide pour utiliser le prix général de l'article.</p>`;
   ed.appendChild(row);
 };
 window.previewVariantPhoto = function(ev){
@@ -663,6 +666,7 @@ async function readVariantRows(articleId){
     if(!name) continue;
     const ean = row.querySelector('.vr-ean').value.trim();
     const stockVal = parseInt(row.querySelector('.vr-stock').value, 10);
+    const priceVal = parseFloat(row.querySelector('.vr-price').value);
     let photo = row._existingPhoto || '';
     if(row._pendingPhotoFile){
       const file = row._pendingPhotoFile;
@@ -673,7 +677,7 @@ async function readVariantRows(articleId){
       await uploadBytes(sRef, file);
       photo = await getDownloadURL(sRef);
     }
-    list.push({ name, ean, stock: isNaN(stockVal) ? 0 : stockVal, photo });
+    list.push({ name, ean, stock: isNaN(stockVal) ? 0 : stockVal, photo, price: isNaN(priceVal) ? null : priceVal });
   }
   return list;
 }
@@ -799,7 +803,7 @@ window.editArticle = function(id){
   document.getElementById('variants-editor').innerHTML = '';
   (it.variants||[]).forEach(v=>{
     if(typeof v === 'string') window.addVariantRow(v, '', ''); // migration ancien format (texte simple)
-    else window.addVariantRow(v.name||'', v.ean||'', v.stock!=null?v.stock:'', v.photo||'');
+    else window.addVariantRow(v.name||'', v.ean||'', v.stock!=null?v.stock:'', v.photo||'', v.price!=null?v.price:'');
   });
   document.getElementById('article-track-stock').checked = !!it.trackStock;
   document.getElementById('article-stock').value = (it.trackStock && it.stock!=null) ? it.stock : '';
@@ -905,7 +909,8 @@ function renderArticlesList(){
           else if(s===1) tag = ` <span style="color:var(--gold);font-weight:600">⚠️ 1 — à recommander</span>`;
           else tag = ` (${s})`;
         }
-        return `🎨 ${v.name}${v.ean?' · '+v.ean:''}${it.trackStock?tag:''}`;
+        const priceTag = (v.price!=null) ? ` · <b>${v.price.toFixed(2).replace('.',',')} €</b>` : '';
+        return `🎨 ${v.name}${v.ean?' · '+v.ean:''}${priceTag}${it.trackStock?tag:''}`;
       }).join('<br>') + `</div>`;
     } else if(it.variants && it.variants.length){
       // Ancien format (texte simple), pas encore migré
