@@ -275,6 +275,10 @@
           </div>
         </div>
         <div class="form-group" style="display:flex;align-items:center;gap:8px">
+          <input type="checkbox" id="article-online" style="width:auto">
+          <label style="margin:0">🌐 Visible en ligne (futur site boutique)</label>
+        </div>
+        <div class="form-group" style="display:flex;align-items:center;gap:8px">
           <input type="checkbox" id="article-track-stock" onchange="window.toggleStockField()" style="width:auto">
           <label style="margin:0">Suivre le stock ?</label>
         </div>
@@ -710,6 +714,7 @@ window.resetArticleForm = function(){
   document.getElementById('article-photo-input').value = '';
   document.getElementById('article-photo-preview').innerHTML = '';
   document.getElementById('variants-editor').innerHTML = '';
+  document.getElementById('article-online').checked = false;
   document.getElementById('article-track-stock').checked = false;
   document.getElementById('article-stock').value = '';
   document.getElementById('article-stock-row').style.display = 'none';
@@ -770,6 +775,7 @@ window.saveArticle = async function(){
     ean: document.getElementById('article-ean').value.trim(),
     description: document.getElementById('article-description').value.trim(),
     photo: photoUrl,
+    online: document.getElementById('article-online').checked,
     variants,
     trackStock,
     stock: (trackStock && variants.length===0) ? (isNaN(stockVal) ? (existing.stock||0) : stockVal) : null,
@@ -805,6 +811,7 @@ window.editArticle = function(id){
     if(typeof v === 'string') window.addVariantRow(v, '', ''); // migration ancien format (texte simple)
     else window.addVariantRow(v.name||'', v.ean||'', v.stock!=null?v.stock:'', v.photo||'', v.price!=null?v.price:'');
   });
+  document.getElementById('article-online').checked = !!it.online;
   document.getElementById('article-track-stock').checked = !!it.trackStock;
   document.getElementById('article-stock').value = (it.trackStock && it.stock!=null) ? it.stock : '';
   document.getElementById('article-stock-row').style.display = it.trackStock ? '' : 'none';
@@ -813,6 +820,19 @@ window.editArticle = function(id){
   document.getElementById('article-form-title').textContent = 'Modifier l\'article';
   document.getElementById('article-cancel').style.display = 'inline-block';
   window.scrollTo({top:0,behavior:'smooth'});
+};
+
+/* Bascule rapide Visible en ligne / Masqué, sans passer par le formulaire complet */
+window.toggleArticleOnline = async function(id){
+  const it = articlesCache.items.find(x=>x.id===id);
+  if(!it) return;
+  it.online = !it.online;
+  try{
+    await setDoc(articlesDocRef, { items: articlesCache.items, categories: articlesCache.categories, updatedAt: new Date().toISOString() });
+  }catch(e){
+    it.online = !it.online; // annule le changement local si l'enregistrement échoue
+    alert('Erreur : '+e.message);
+  }
 };
 
 window.deleteArticle = async function(id){
@@ -925,11 +945,13 @@ function renderArticlesList(){
       ${thumb}
       <div class="info">
         ${it.category ? `<span class="badge" style="background:var(--violet-wash);color:var(--violet)">${it.category}</span>` : ''}
+        ${it.online ? `<span class="badge" style="background:#e6f4ea;color:#2e9e6b">🌐 En ligne</span>` : `<span class="badge" style="background:#eee;color:#888">Masqué</span>`}
         <div class="nom">${it.name}</div>
         <div class="meta">${prixTxt}${it.fournisseur ? ' · 🏭 '+it.fournisseur : ''}${it.ean ? ' · '+it.ean : ''}${stockTxt}</div>
         ${variantsTxt}
       </div>
       <div class="actions">
+        <button class="icon-btn" onclick="window.toggleArticleOnline('${it.id}')" title="${it.online?'Masquer en ligne':'Afficher en ligne'}">${it.online?'🌐':'🚫'}</button>
         <button class="icon-btn edit" onclick="window.editArticle('${it.id}')">✏️</button>
         <button class="icon-btn del" onclick="window.deleteArticle('${it.id}')">🗑️</button>
       </div>`;
