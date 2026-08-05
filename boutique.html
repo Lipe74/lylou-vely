@@ -315,8 +315,8 @@ const firebaseConfig = {
 const fbApp = initializeApp(firebaseConfig);
 const db = getFirestore(fbApp);
 
-/* À METTRE À JOUR une fois la Cloud Function déployée (voir avec Claude) */
-const MOLLIE_FUNCTION_URL = "";
+/* Cloud Function de paiement Mollie, déployée */
+const MOLLIE_FUNCTION_URL = "https://us-central1-phil-mobile.cloudfunctions.net/createMolliePayment";
 
 const euro = n => (Math.round((n||0)*100)/100).toFixed(2).replace('.',',') + ' €';
 const esc = s => String(s??'').replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
