@@ -111,6 +111,7 @@ header.site{
 .empty-cat{padding:60px 20px;text-align:center;color:#8A7C97;font-size:15px}
 
 /* ===== MODALS / OVERLAYS ===== */
+.hidden{display:none!important}
 .overlay{position:fixed;inset:0;z-index:200;background:rgba(36,27,46,.5);display:flex;align-items:flex-end;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s ease}
 .overlay.open{opacity:1;pointer-events:auto}
 .overlay.center{align-items:center;padding:20px}
@@ -285,9 +286,31 @@ footer.site b{color:var(--violet-deep)}
       <input type="tel" id="ck-phone" placeholder="Ex. 0470 12 34 56">
     </div>
     <div class="form-group">
-      <label>Comment récupérer ta commande ?</label>
-      <textarea id="ck-note" rows="2" placeholder="Ex. Je viendrai au marché de Visé le 15/08, ou je passerai directement à l'atelier."></textarea>
+      <label>Comment souhaites-tu récupérer ta commande ? *</label>
+      <div class="pickup-row" style="flex-direction:column">
+        <button type="button" class="pickup-choice active" data-method="marche" onclick="selectPickupMethod('marche')">🏪 Je viens la récupérer au marché</button>
+        <button type="button" class="pickup-choice" data-method="depot" onclick="selectPickupMethod('depot')">🏠 Je préfère la récupérer au dépôt</button>
+        <button type="button" class="pickup-choice" data-method="livraison" onclick="selectPickupMethod('livraison')">📦 Je souhaite être livré(e) <small style="display:block;font-weight:500;margin-top:2px">Un supplément de 5,00 € sera ajouté à ta commande</small></button>
+      </div>
     </div>
+    <div class="form-group" id="ck-marche-row">
+      <label>Quel marché ?</label>
+      <select id="ck-marche">
+        <option value="Tilff">Marché de Tilff</option>
+        <option value="Visé">Marché de Visé</option>
+        <option value="Rouvreux">Marché de Rouvreux</option>
+        <option value="Boncelles">Marché de Boncelles</option>
+      </select>
+    </div>
+    <div class="form-group hidden" id="ck-address-row">
+      <label>Adresse de livraison *</label>
+      <textarea id="ck-address" rows="2" placeholder="Rue, numéro, code postal, ville"></textarea>
+    </div>
+    <div class="form-group">
+      <label>Une précision à ajouter ? (optionnel)</label>
+      <textarea id="ck-note" rows="2" placeholder="Ex. Je préfère venir le matin, merci de laisser au voisin..."></textarea>
+    </div>
+    <p id="ck-pickup-info" style="font-size:12px;color:var(--sage);background:#EEF5F0;padding:10px 12px;border-radius:10px;margin:0 0 14px">📧 Nous t'enverrons un email dès que ta commande sera prête à récupérer.</p>
     <div class="cart-total-row" style="border-top:1px solid var(--line);padding-top:14px">
       <span style="font-family:var(--sans);font-size:13px;font-weight:600;color:#5B4D68">Total à payer</span>
       <span id="ck-total">0,00 €</span>
@@ -507,10 +530,24 @@ window.changeCartQty = function(i,d){
 window.removeCartLine = function(i){ cart.splice(i,1); saveCart(); renderCart(); };
 
 /* ---- Commande / checkout ---- */
+const DELIVERY_SURCHARGE = 5;
+let pickupMethod = 'marche';
+
+function orderTotal(){ return cartTotal() + (pickupMethod==='livraison' ? DELIVERY_SURCHARGE : 0); }
+
+window.selectPickupMethod = function(method){
+  pickupMethod = method;
+  document.querySelectorAll('.pickup-choice').forEach(b=>b.classList.toggle('active', b.dataset.method===method));
+  document.getElementById('ck-marche-row').classList.toggle('hidden', method!=='marche');
+  document.getElementById('ck-address-row').classList.toggle('hidden', method!=='livraison');
+  document.getElementById('ck-pickup-info').style.display = (method==='livraison') ? 'none' : 'block';
+  document.getElementById('ck-total').textContent = euro(orderTotal());
+};
+
 window.openCheckout = function(){
   if(!cart.length) return;
   closeCart();
-  document.getElementById('ck-total').textContent = euro(cartTotal());
+  window.selectPickupMethod('marche');
   document.getElementById('ck-status').innerHTML = '';
   document.getElementById('checkout-overlay').classList.remove('hidden');
   requestAnimationFrame(()=>document.getElementById('checkout-overlay').classList.add('open'));
@@ -525,16 +562,29 @@ window.submitOrder = async function(){
   const email = document.getElementById('ck-email').value.trim();
   const phone = document.getElementById('ck-phone').value.trim();
   const note = document.getElementById('ck-note').value.trim();
+  const marche = document.getElementById('ck-marche').value;
+  const address = document.getElementById('ck-address').value.trim();
   const statusBox = document.getElementById('ck-status');
   if(!name || !email){ statusBox.innerHTML = '<p style="color:var(--red);font-size:13px;text-align:center;margin-top:10px">Merci de compléter ton nom et ton email.</p>'; return; }
+  if(pickupMethod==='livraison' && !address){ statusBox.innerHTML = '<p style="color:var(--red);font-size:13px;text-align:center;margin-top:10px">Merci d\'indiquer ton adresse de livraison.</p>'; return; }
 
   const btn = document.getElementById('ck-pay-btn');
   btn.disabled = true; btn.textContent = 'Création de la commande…';
 
+  let pickupLabel = '';
+  if(pickupMethod==='marche') pickupLabel = `Retrait au marché de ${marche}`;
+  else if(pickupMethod==='depot') pickupLabel = `Retrait au dépôt`;
+  else pickupLabel = `Livraison à : ${address}`;
+
+  const total = orderTotal();
   const orderData = {
     items: cart.map(l=>({ productId:l.productId, name:l.name, variant:l.variant, qty:l.qty, price:l.price })),
-    total: cartTotal(),
-    customerName: name, customerEmail: email, customerPhone: phone, pickupNote: note,
+    total,
+    deliverySurcharge: pickupMethod==='livraison' ? DELIVERY_SURCHARGE : 0,
+    customerName: name, customerEmail: email, customerPhone: phone,
+    pickupMethod, pickupMarche: pickupMethod==='marche' ? marche : null,
+    deliveryAddress: pickupMethod==='livraison' ? address : null,
+    pickupNote: [pickupLabel, note].filter(Boolean).join(' — '),
     status: 'pending', molliePaymentId: null,
     createdAt: serverTimestamp(),
   };
@@ -553,7 +603,7 @@ window.submitOrder = async function(){
     const res = await fetch(MOLLIE_FUNCTION_URL, {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ orderId: ref.id, amount: cartTotal(), description: `Commande Lylou-Vely ${ref.id.slice(0,6).toUpperCase()}`, redirectUrl: location.origin + location.pathname })
+      body: JSON.stringify({ orderId: ref.id, amount: total, description: `Commande Lylou-Vely ${ref.id.slice(0,6).toUpperCase()}`, redirectUrl: location.origin + location.pathname })
     });
     if(!res.ok) throw new Error('payment_creation_failed');
     const { checkoutUrl } = await res.json();
