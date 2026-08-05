@@ -1041,6 +1041,36 @@ window.markDelivered = async function(id, delivered){
   }catch(e){ alert('Erreur : '+e.message); }
 };
 
+window.cancelCommande = async function(id){
+  const c = commandesCache.find(x=>x.id===id);
+  if(!c) return;
+  const msg = c.status==='paid'
+    ? "Annuler cette commande ?\n\n⚠️ Elle est déjà payée : ceci ne rembourse PAS automatiquement le client. Il faudra faire le remboursement toi-même depuis ton compte Mollie."
+    : "Annuler cette commande ?";
+  if(!confirm(msg)) return;
+  try{
+    await updateDoc(doc(db,"lylou_vely","commandes","items",id), { status: 'canceled' });
+  }catch(e){ alert('Erreur : '+e.message); }
+};
+
+window.deleteCommande = async function(id){
+  if(!confirm("Supprimer définitivement cette commande ? Cette action est irréversible.")) return;
+  try{
+    await deleteDoc(doc(db,"lylou_vely","commandes","items",id));
+  }catch(e){ alert('Erreur : '+e.message); }
+};
+
+window.emailAnnulation = function(id){
+  const c = commandesCache.find(x=>x.id===id);
+  if(!c || !c.customerEmail) { alert("Pas d'email enregistré pour cette commande."); return; }
+  const ref = c.id.slice(0,6).toUpperCase();
+  const subject = `Annulation de ta commande Lylou-Vely (réf. ${ref})`;
+  const body = `Bonjour ${c.customerName||''},\n\nNous sommes désolés de t'informer que ta commande (réf. ${ref}) a dû être annulée.\n\n` +
+    (c.status==='paid' ? "Le remboursement sera effectué dans les prochains jours.\n\n" : "") +
+    `N'hésite pas à nous contacter pour toute question.\n\nÀ bientôt,\nLylou-Vely`;
+  window.location.href = `mailto:${c.customerEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+};
+
 function commandeDate(c){
   if(c.createdAt && c.createdAt.toDate) return c.createdAt.toDate().toLocaleString('fr-BE');
   return '';
@@ -1087,6 +1117,11 @@ function renderCommandes(){
           </label>
         </div>` : ''}
       </div>
+      ${!['canceled','delivered_done'].includes(c.status) ? `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;padding-top:10px;border-top:1px solid #f0f0f0">
+        <button class="btn btn-outline" style="width:auto;padding:6px 12px;font-size:12px;color:#c0475e;border-color:#f0d0d5" onclick="window.cancelCommande('${c.id}')">✕ Annuler</button>
+        <button class="btn btn-outline" style="width:auto;padding:6px 12px;font-size:12px" onclick="window.emailAnnulation('${c.id}')">✉️ Email d'annulation</button>
+        <button class="btn btn-outline" style="width:auto;padding:6px 12px;font-size:12px;color:#999" onclick="window.deleteCommande('${c.id}')">🗑️ Supprimer</button>
+      </div>` : ''}
     </div>`;
   }).join('');
 }
