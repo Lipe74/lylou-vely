@@ -532,7 +532,7 @@ window.submitOrder = async function(){
   btn.disabled = true; btn.textContent = 'Création de la commande…';
 
   const orderData = {
-    items: cart.map(l=>({ name:l.name, variant:l.variant, qty:l.qty, price:l.price })),
+    items: cart.map(l=>({ productId:l.productId, name:l.name, variant:l.variant, qty:l.qty, price:l.price })),
     total: cartTotal(),
     customerName: name, customerEmail: email, customerPhone: phone, pickupNote: note,
     status: 'pending', molliePaymentId: null,
