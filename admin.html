@@ -355,6 +355,7 @@
           <button class="cmd-filter" data-status="paid" onclick="window.filterCommandes('paid')">✅ Payées</button>
           <button class="cmd-filter" data-status="pending" onclick="window.filterCommandes('pending')">⏳ En attente</button>
           <button class="cmd-filter" data-status="a_preparer" onclick="window.filterCommandes('a_preparer')">📦 À préparer</button>
+          <button class="cmd-filter" data-status="terminees" onclick="window.filterCommandes('terminees')">🎉 Terminées</button>
         </div>
         <div id="commandes-list"><div class="empty-msg">Chargement...</div></div>
       </div>
@@ -1034,6 +1035,11 @@ window.markPrepared = async function(id, prepared){
     await updateDoc(doc(db,"lylou_vely","commandes","items",id), { prepared });
   }catch(e){ alert('Erreur : '+e.message); }
 };
+window.markDelivered = async function(id, delivered){
+  try{
+    await updateDoc(doc(db,"lylou_vely","commandes","items",id), { delivered });
+  }catch(e){ alert('Erreur : '+e.message); }
+};
 
 function commandeDate(c){
   if(c.createdAt && c.createdAt.toDate) return c.createdAt.toDate().toLocaleString('fr-BE');
@@ -1049,11 +1055,12 @@ function renderCommandes(){
   if(commandesFilter==='paid') list = list.filter(c=>c.status==='paid');
   else if(commandesFilter==='pending') list = list.filter(c=>c.status==='pending');
   else if(commandesFilter==='a_preparer') list = list.filter(c=>c.status==='paid' && !c.prepared);
+  else if(commandesFilter==='terminees') list = list.filter(c=>c.status==='paid' && c.delivered);
 
   if(!list.length){ box.innerHTML = '<div class="empty-msg">Aucune commande pour le moment.</div>'; return; }
 
   box.innerHTML = list.map(c=>{
-    const itemsTxt = (c.items||[]).map(it=>`${it.qty}× ${it.name}${it.variant?' — '+it.variant:''}`).join('<br>');
+    const itemsTxt = (c.items||[]).map(it=>`${it.qty}× ${it.name}`).join('<br>');
     return `<div class="cmd-card">
       <div class="cmd-head">
         <div>
@@ -1067,12 +1074,18 @@ function renderCommandes(){
         ✉️ ${c.customerEmail||''}${c.customerPhone?' · 📞 '+c.customerPhone:''}<br>
         ${c.pickupNote?'📍 '+c.pickupNote:''}
       </div>
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;gap:12px;flex-wrap:wrap">
         <span class="cmd-total">${(c.total||0).toFixed(2).replace('.',',')} €</span>
-        ${c.status==='paid' ? `<label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:#555">
-          <input type="checkbox" ${c.prepared?'checked':''} onchange="window.markPrepared('${c.id}', this.checked)">
-          Préparée / mise de côté
-        </label>` : ''}
+        ${c.status==='paid' ? `<div style="display:flex;gap:14px;flex-wrap:wrap">
+          <label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:#555">
+            <input type="checkbox" ${c.prepared?'checked':''} onchange="window.markPrepared('${c.id}', this.checked)">
+            📦 Préparée
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:#555">
+            <input type="checkbox" ${c.delivered?'checked':''} onchange="window.markDelivered('${c.id}', this.checked)">
+            ✅ Livrée / Récupérée
+          </label>
+        </div>` : ''}
       </div>
     </div>`;
   }).join('');
