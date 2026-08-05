@@ -1066,30 +1066,49 @@ window.validateCommande = async function(id){
   }
 };
 
-window.markPrepared = async function(id){
+window.markPreparing = async function(id){
   const c = commandesCache.find(x=>x.id===id);
   if(!c) return;
-  if(!confirm("Marquer cette commande comme préparée et envoyer l'email au client ?")) return;
+  if(!confirm("Marquer cette commande en préparation et prévenir le client ?")) return;
   try{
-    await updateDoc(doc(db,"lylou_vely","commandes","items",id), { prepared: true });
+    await updateDoc(doc(db,"lylou_vely","commandes","items",id), { preparing: true });
   }catch(e){ alert('Erreur : '+e.message); return; }
   if(c.customerEmail){
     const ref = c.id.slice(0,6).toUpperCase();
-    const isLivraison = c.pickupMethod==='livraison';
-    const subject = isLivraison ? `Ta commande Lylou-Vely part en livraison (réf. ${ref})` : `Ta commande Lylou-Vely est prête ! (réf. ${ref})`;
-    const body = `Bonjour ${c.customerName||''},\n\n` +
-      (isLivraison
-        ? `Ta commande (réf. ${ref}) est en cours de préparation pour livraison à l'adresse : ${c.deliveryAddress||''}.\n\n`
-        : `Bonne nouvelle, ta commande (réf. ${ref}) est prête ! Tu peux venir la récupérer ${pickupDescription(c)}.\n\n`) +
-      `À bientôt,\nLylou-Vely`;
+    const subject = `Ta commande Lylou-Vely est en préparation (réf. ${ref})`;
+    const body = `Bonjour ${c.customerName||''},\n\nTa commande (réf. ${ref}) est en cours de préparation.\n\nRappel : ${pickupDescription(c)}.\n\nÀ bientôt,\nLylou-Vely`;
     openMail(c.customerEmail, subject, body);
   }
 };
 
-window.markDelivered = async function(id, delivered){
+window.markReady = async function(id){
+  const c = commandesCache.find(x=>x.id===id);
+  if(!c) return;
+  const isLivraison = c.pickupMethod==='livraison';
+  let detail = '';
+  if(c.pickupMethod==='marche'){
+    detail = prompt(`À quelle date la commande sera-t-elle disponible au marché de ${c.pickupMarche} ?`, '');
+    if(detail===null) return;
+  } else if(c.pickupMethod==='depot'){
+    detail = prompt("Quel créneau horaire proposes-tu pour le retrait au dépôt ?", DEPOT_INFO);
+    if(detail===null) return;
+  }
+  if(!confirm("Marquer cette commande comme prête et prévenir le client ?")) return;
   try{
-    await updateDoc(doc(db,"lylou_vely","commandes","items",id), { delivered });
-  }catch(e){ alert('Erreur : '+e.message); }
+    await updateDoc(doc(db,"lylou_vely","commandes","items",id), { ready: true, readyDetail: detail||null });
+  }catch(e){ alert('Erreur : '+e.message); return; }
+  if(c.customerEmail){
+    const ref = c.id.slice(0,6).toUpperCase();
+    const subject = isLivraison ? `Ta commande Lylou-Vely va être envoyée (réf. ${ref})` : `Ta commande Lylou-Vely est prête ! (réf. ${ref})`;
+    const body = `Bonjour ${c.customerName||''},\n\n` +
+      (isLivraison
+        ? `Ta commande (réf. ${ref}) va être envoyée à l'adresse : ${c.deliveryAddress||''}.\n\n`
+        : c.pickupMethod==='marche'
+          ? `Bonne nouvelle, ta commande (réf. ${ref}) sera disponible au marché de ${c.pickupMarche}, le ${detail}.\n\n`
+          : `Bonne nouvelle, ta commande (réf. ${ref}) sera disponible au dépôt : ${detail}.\n\n`) +
+      `À bientôt,\nLylou-Vely`;
+    openMail(c.customerEmail, subject, body);
+  }
 };
 
 window.cancelCommande = async function(id){
@@ -1132,8 +1151,8 @@ function renderCommandes(){
   let list = commandesCache;
   if(commandesFilter==='paid') list = list.filter(c=>c.status==='paid');
   else if(commandesFilter==='pending') list = list.filter(c=>c.status==='pending');
-  else if(commandesFilter==='a_preparer') list = list.filter(c=>c.status==='paid' && !c.prepared);
-  else if(commandesFilter==='terminees') list = list.filter(c=>c.status==='paid' && c.delivered);
+  else if(commandesFilter==='a_preparer') list = list.filter(c=>c.status==='paid' && !c.ready);
+  else if(commandesFilter==='terminees') list = list.filter(c=>c.status==='paid' && c.ready);
 
   if(!list.length){ box.innerHTML = '<div class="empty-msg">Aucune commande pour le moment.</div>'; return; }
 
@@ -1152,20 +1171,17 @@ function renderCommandes(){
         ✉️ ${c.customerEmail||''}${c.customerPhone?' · 📞 '+c.customerPhone:''}<br>
         ${c.pickupNote?'📍 '+c.pickupNote:''}
       </div>
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;gap:12px;flex-wrap:wrap">
-        <span class="cmd-total">${(c.total||0).toFixed(2).replace('.',',')} €</span>
-        ${c.status==='paid' ? `<label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:#555">
-          <input type="checkbox" ${c.delivered?'checked':''} onchange="window.markDelivered('${c.id}', this.checked)">
-          ✅ Livrée / Récupérée
-        </label>` : ''}
-      </div>
+      <div style="margin-top:10px"><span class="cmd-total">${(c.total||0).toFixed(2).replace('.',',')} €</span></div>
       ${!['canceled'].includes(c.status) ? `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;padding-top:10px;border-top:1px solid #f0f0f0">
         ${c.status==='paid' ? (c.validated
           ? `<span class="cmd-status paid" style="background:#e6f4ea">✅ Validée</span>`
           : `<button class="btn btn-outline" style="width:auto;padding:6px 12px;font-size:12px" onclick="window.validateCommande('${c.id}')">✅ Commande validée</button>`) : ''}
-        ${c.status==='paid' ? (c.prepared
-          ? `<span class="cmd-status paid" style="background:#e6f4ea">📦 Préparée</span>`
-          : `<button class="btn btn-outline" style="width:auto;padding:6px 12px;font-size:12px" onclick="window.markPrepared('${c.id}')">📦 Commande préparée</button>`) : ''}
+        ${c.status==='paid' ? (c.preparing
+          ? `<span class="cmd-status paid" style="background:#e6f4ea">🔧 En préparation</span>`
+          : `<button class="btn btn-outline" style="width:auto;padding:6px 12px;font-size:12px" onclick="window.markPreparing('${c.id}')">🔧 Préparation en cours</button>`) : ''}
+        ${c.status==='paid' ? (c.ready
+          ? `<span class="cmd-status paid" style="background:#e6f4ea">${c.pickupMethod==='livraison'?'🚚 Va être envoyée':'🎁 Prête'}</span>`
+          : `<button class="btn btn-outline" style="width:auto;padding:6px 12px;font-size:12px" onclick="window.markReady('${c.id}')">🎁 Commande prête</button>`) : ''}
         <button class="btn btn-outline" style="width:auto;padding:6px 12px;font-size:12px;color:#c0475e;border-color:#f0d0d5" onclick="window.cancelCommande('${c.id}')">✕ Annuler</button>
         <button class="btn btn-outline" style="width:auto;padding:6px 12px;font-size:12px;color:#999" onclick="window.deleteCommande('${c.id}')">🗑️ Supprimer</button>
       </div>` : ''}
