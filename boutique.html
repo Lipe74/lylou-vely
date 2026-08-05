@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Lylou-Vely — Boutique</title>
+<meta name="description" content="Bijoux, sacs au crochet, bougies et créations artisanales faites main par Lylou-Vely. Commandez en ligne, retrait au marché ou sur rendez-vous.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,500&family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#241B2E;
+  --bg:#F7F1F6;
+  --card:#FFFFFF;
+  --violet:#6B3FA0;
+  --violet-deep:#4E2C78;
+  --violet-wash:#EFE6F7;
+  --brass:#B08D57;
+  --brass-light:#D8C39A;
+  --sage:#5C8A72;
+  --red:#B5495B;
+  --line:#E7DEE9;
+  --shadow:0 10px 30px -12px rgba(78,44,120,.25);
+  --radius:16px;
+  --serif:'Cormorant Garamond',Georgia,serif;
+  --sans:'Work Sans',Arial,sans-serif;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;font-family:var(--sans);color:var(--ink);background:var(--bg);-webkit-font-smoothing:antialiased}
+img{max-width:100%;display:block}
+a{color:inherit}
+button{font-family:inherit;cursor:pointer}
+:focus-visible{outline:2.5px solid var(--brass);outline-offset:2px}
+@media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
+
+.stitch{
+  height:1px;
+  background-image:repeating-linear-gradient(90deg, var(--brass) 0 6px, transparent 6px 14px);
+  opacity:.55;
+}
+
+/* ===== HEADER ===== */
+header.site{
+  position:sticky;top:0;z-index:60;
+  background:rgba(247,241,246,.86);backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--line);
+}
+.hd-inner{max-width:1180px;margin:0 auto;padding:14px 24px;display:flex;align-items:center;justify-content:space-between;gap:16px}
+.brand{font-family:var(--serif);font-size:26px;font-weight:600;color:var(--violet-deep);letter-spacing:.3px;text-decoration:none;display:flex;align-items:baseline;gap:8px}
+.brand small{font-family:var(--sans);font-size:10px;letter-spacing:2.5px;text-transform:uppercase;color:var(--brass);font-weight:600}
+.cart-btn{position:relative;background:var(--violet);color:#fff;border:none;border-radius:30px;padding:10px 20px 10px 18px;font-size:14px;font-weight:600;display:flex;align-items:center;gap:8px;transition:transform .15s ease,box-shadow .15s ease}
+.cart-btn:hover{transform:translateY(-1px);box-shadow:0 8px 18px -6px rgba(107,63,160,.55)}
+.cart-count{background:var(--brass);color:#2A1F10;border-radius:20px;min-width:20px;height:20px;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 5px}
+
+/* ===== HERO ===== */
+.hero{max-width:1180px;margin:0 auto;padding:56px 24px 44px;display:grid;grid-template-columns:1.1fr .9fr;gap:48px;align-items:center}
+.hero-eyebrow{font-size:11px;letter-spacing:3px;text-transform:uppercase;color:var(--brass);font-weight:700;margin-bottom:14px}
+.hero h1{font-family:var(--serif);font-size:clamp(38px,5vw,58px);line-height:1.05;margin:0 0 18px;color:var(--violet-deep);font-weight:600}
+.hero h1 em{font-style:italic;color:var(--brass)}
+.hero p.lede{font-size:16px;line-height:1.7;color:#4A3E57;max-width:44ch;margin:0 0 26px}
+.hero-cta{display:inline-flex;align-items:center;gap:10px;background:var(--violet);color:#fff;padding:13px 26px;border-radius:30px;font-weight:600;font-size:14px;text-decoration:none;border:none;transition:transform .15s ease}
+.hero-cta:hover{transform:translateY(-1px)}
+.hero-collage{position:relative;height:380px}
+.hero-collage .poly{
+  position:absolute;background:var(--card);border-radius:14px;box-shadow:var(--shadow);
+  padding:8px;overflow:hidden;
+}
+.hero-collage .poly img{border-radius:8px;width:100%;height:100%;object-fit:cover}
+.hero-collage .p1{width:56%;height:70%;left:0;top:0;transform:rotate(-4deg);z-index:2}
+.hero-collage .p2{width:44%;height:52%;right:0;bottom:6%;transform:rotate(5deg);z-index:3}
+.hero-collage .p3{width:34%;height:34%;left:30%;bottom:0;transform:rotate(-3deg);z-index:1;display:none}
+.hero-collage .badge-hand{
+  position:absolute;top:8%;right:6%;background:var(--brass);color:#2A1F10;
+  border-radius:50%;width:92px;height:92px;display:flex;align-items:center;justify-content:center;
+  text-align:center;font-family:var(--serif);font-style:italic;font-size:13px;line-height:1.25;
+  box-shadow:0 10px 22px -6px rgba(176,141,87,.6);transform:rotate(-8deg);z-index:4;padding:6px;
+}
+
+/* ===== CATEGORY TABS ===== */
+.cat-wrap{max-width:1180px;margin:0 auto;padding:0 24px 8px;position:sticky;top:66px;z-index:50}
+.cat-tabs{display:flex;gap:8px;overflow-x:auto;padding:10px 0;scrollbar-width:none}
+.cat-tabs::-webkit-scrollbar{display:none}
+.cat-tab{flex:0 0 auto;background:var(--card);border:1px solid var(--line);color:#5B4D68;padding:8px 18px;border-radius:24px;font-size:13px;font-weight:600;white-space:nowrap;transition:.15s}
+.cat-tab.active{background:var(--violet);border-color:var(--violet);color:#fff}
+.cat-tab:hover:not(.active){border-color:var(--brass)}
+
+/* ===== SECTION ===== */
+.section{max-width:1180px;margin:0 auto;padding:36px 24px}
+.section-head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:22px;gap:16px}
+.section-head h2{font-family:var(--serif);font-size:30px;font-weight:600;color:var(--violet-deep);margin:0}
+.section-head .count{font-size:13px;color:#8A7C97}
+
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:22px}
+.card{
+  background:var(--card);border-radius:var(--radius);overflow:hidden;box-shadow:0 4px 14px -8px rgba(78,44,120,.18);
+  border:1px solid var(--line);cursor:pointer;transition:transform .18s ease,box-shadow .18s ease;
+  display:flex;flex-direction:column;
+}
+.card:hover{transform:translateY(-4px);box-shadow:var(--shadow)}
+.card .thumb{aspect-ratio:1/1;background:var(--violet-wash);position:relative;overflow:hidden}
+.card .thumb img{width:100%;height:100%;object-fit:cover}
+.card .thumb .ph{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:40px;color:var(--brass-light)}
+.card .thumb .stock-flag{position:absolute;top:10px;left:10px;background:var(--red);color:#fff;font-size:10px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;padding:4px 9px;border-radius:20px}
+.card .body{padding:14px 16px 16px;display:flex;flex-direction:column;gap:6px;flex:1}
+.card .cat-tag{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--brass);font-weight:700}
+.card h3{font-family:var(--serif);font-size:19px;font-weight:600;margin:0;line-height:1.25;color:var(--ink)}
+.card .price{margin-top:auto;padding-top:6px;font-size:15px;font-weight:700;color:var(--violet-deep)}
+.card .price small{font-weight:500;color:#9B8CA8;font-size:11px}
+
+.empty-cat{padding:60px 20px;text-align:center;color:#8A7C97;font-size:15px}
+
+/* ===== MODALS / OVERLAYS ===== */
+.overlay{position:fixed;inset:0;z-index:200;background:rgba(36,27,46,.5);display:flex;align-items:flex-end;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s ease}
+.overlay.open{opacity:1;pointer-events:auto}
+.overlay.center{align-items:center;padding:20px}
+.panel{background:var(--card);width:100%;max-width:520px;max-height:92vh;overflow:auto;border-radius:22px 22px 0 0;padding:26px;transform:translateY(30px);transition:transform .25s cubic-bezier(.2,.8,.2,1)}
+.overlay.open .panel{transform:translateY(0)}
+.overlay.center .panel{border-radius:20px}
+.panel-close{position:sticky;top:0;float:right;background:none;border:none;font-size:22px;color:#9B8CA8;line-height:1;margin-bottom:8px}
+
+/* Quick view */
+.qv-photo{aspect-ratio:4/3;background:var(--violet-wash);border-radius:14px;overflow:hidden;margin-bottom:16px}
+.qv-photo img{width:100%;height:100%;object-fit:cover}
+.qv-cat{font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--brass);font-weight:700;margin-bottom:6px}
+.qv-title{font-family:var(--serif);font-size:28px;font-weight:600;margin:0 0 8px;color:var(--violet-deep)}
+.qv-price{font-size:20px;font-weight:700;color:var(--ink);margin-bottom:14px}
+.qv-desc{font-size:14px;line-height:1.7;color:#4A3E57;margin-bottom:18px}
+.qv-variants{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:18px}
+.vchip{display:flex;align-items:center;gap:8px;border:1.5px solid var(--line);border-radius:12px;padding:8px 12px;font-size:13px;font-weight:600;background:#fff;transition:.15s}
+.vchip img{width:28px;height:28px;border-radius:6px;object-fit:cover}
+.vchip.active{border-color:var(--violet);background:var(--violet-wash);color:var(--violet-deep)}
+.vchip .rupt{color:var(--red);font-size:10px;font-weight:700}
+.vchip:disabled{opacity:.45;cursor:not-allowed}
+.qty-row{display:flex;align-items:center;gap:14px;margin-bottom:18px}
+.qty-row .stepper{display:flex;align-items:center;border:1.5px solid var(--line);border-radius:12px;overflow:hidden}
+.qty-row .stepper button{width:38px;height:38px;background:#fff;border:none;font-size:18px;color:var(--violet)}
+.qty-row .stepper span{width:40px;text-align:center;font-weight:700}
+.btn{border:none;border-radius:30px;padding:14px 22px;font-weight:700;font-size:14px;width:100%;transition:.15s}
+.btn-primary{background:var(--violet);color:#fff}
+.btn-primary:hover{background:var(--violet-deep)}
+.btn-primary:disabled{background:#D8CEE0;color:#fff;cursor:not-allowed}
+.btn-outline{background:#fff;border:1.5px solid var(--line);color:var(--ink)}
+.btn-outline:hover{border-color:var(--violet)}
+
+/* Cart drawer */
+.cart-overlay .panel{max-width:420px;margin-left:auto;border-radius:22px 0 0 22px;align-self:stretch;min-height:100vh;max-height:100vh}
+.cart-overlay{justify-content:flex-end}
+.cart-line{display:flex;gap:12px;padding:14px 0;border-bottom:1px solid var(--line)}
+.cart-line img,.cart-line .ph-mini{width:58px;height:58px;border-radius:10px;object-fit:cover;background:var(--violet-wash);flex-shrink:0;display:flex;align-items:center;justify-content:center;color:var(--brass-light);font-size:18px}
+.cart-line .info{flex:1;min-width:0}
+.cart-line .nm{font-weight:600;font-size:14px;margin-bottom:2px}
+.cart-line .vr{font-size:12px;color:#8A7C97}
+.cart-line .row{display:flex;align-items:center;justify-content:space-between;margin-top:8px}
+.cart-line .stepper{display:flex;align-items:center;gap:8px}
+.cart-line .stepper button{width:26px;height:26px;border-radius:8px;border:1px solid var(--line);background:#fff;font-size:14px;color:var(--violet)}
+.cart-line .price{font-weight:700;font-size:14px}
+.cart-line .rm{background:none;border:none;color:var(--red);font-size:12px;text-decoration:underline}
+.cart-empty{text-align:center;padding:60px 10px;color:#8A7C97}
+.cart-total-row{display:flex;justify-content:space-between;align-items:baseline;padding:18px 0;font-family:var(--serif);font-size:22px;font-weight:600;color:var(--violet-deep)}
+
+/* Checkout form */
+.form-group{margin-bottom:14px}
+.form-group label{display:block;font-size:12px;font-weight:600;color:#5B4D68;margin-bottom:6px}
+.form-group input,.form-group textarea,.form-group select{width:100%;padding:11px 13px;border:1.5px solid var(--line);border-radius:10px;font-family:inherit;font-size:14px}
+.form-group input:focus,.form-group textarea:focus{outline:none;border-color:var(--violet)}
+.pickup-row{display:flex;gap:10px;margin-bottom:14px}
+.pickup-choice{flex:1;border:1.5px solid var(--line);border-radius:12px;padding:12px;font-size:13px;font-weight:600;background:#fff;text-align:left}
+.pickup-choice.active{border-color:var(--violet);background:var(--violet-wash);color:var(--violet-deep)}
+
+.toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(20px);background:var(--ink);color:#fff;padding:12px 22px;border-radius:30px;font-size:13px;font-weight:600;z-index:300;opacity:0;transition:.25s;pointer-events:none;box-shadow:0 10px 26px -8px rgba(0,0,0,.4)}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+.state-msg{text-align:center;padding:26px 10px}
+.state-msg .ic{font-size:40px;margin-bottom:10px}
+.state-msg h3{font-family:var(--serif);font-size:22px;margin:0 0 8px;color:var(--violet-deep)}
+.state-msg p{font-size:14px;color:#5B4D68;line-height:1.6}
+
+footer.site{max-width:1180px;margin:40px auto 0;padding:32px 24px 40px;border-top:1px solid var(--line);display:flex;flex-wrap:wrap;justify-content:space-between;gap:16px;font-size:13px;color:#8A7C97}
+footer.site b{color:var(--violet-deep)}
+
+@media (max-width:860px){
+  .hero{grid-template-columns:1fr;padding-top:32px}
+  .hero-collage{height:280px;order:-1}
+  .cat-wrap{top:60px}
+}
+@media (max-width:520px){
+  .cart-overlay .panel{max-width:100%;border-radius:20px 20px 0 0;margin-left:0;align-self:flex-end;min-height:0;max-height:88vh}
+  .cart-overlay{align-items:flex-end}
+}
+</style>
+</head>
+<body>
+
+<header class="site">
+  <div class="hd-inner">
+    <a href="#" class="brand">Lylou-Vely <small>Fait main</small></a>
+    <button class="cart-btn" onclick="openCart()">
+      Panier <span class="cart-count" id="cart-count">0</span>
+    </button>
+  </div>
+</header>
+
+<section class="hero">
+  <div>
+    <div class="hero-eyebrow">Créations artisanales · Belgique</div>
+    <h1>Des pièces uniques,<br><em>façonnées à la main.</em></h1>
+    <p class="lede">Bijoux, sacs au crochet, bougies parfumées et attrape-rêves — chaque création sort de l'atelier de Lylou-Vely, prête à être portée ou offerte.</p>
+    <a href="#catalogue" class="hero-cta">Découvrir la boutique →</a>
+  </div>
+  <div class="hero-collage">
+    <div class="poly p1" id="hero-p1"><div class="ph" style="width:100%;height:100%">🧶</div></div>
+    <div class="poly p2" id="hero-p2"><div class="ph" style="width:100%;height:100%">💍</div></div>
+    <div class="badge-hand">Fait à<br>la main</div>
+  </div>
+</section>
+
+<div class="cat-wrap">
+  <div class="stitch"></div>
+  <div class="cat-tabs" id="cat-tabs"></div>
+  <div class="stitch"></div>
+</div>
+
+<section class="section" id="catalogue">
+  <div class="section-head">
+    <h2 id="section-title">Toute la boutique</h2>
+    <span class="count" id="section-count"></span>
+  </div>
+  <div class="grid" id="product-grid"></div>
+</section>
+
+<footer class="site">
+  <div><b>Lylou-Vely</b> — Zen-Connect · TVA BE1035199737</div>
+  <div>infos@lylou-vely.be · Retrait au marché ou sur rendez-vous</div>
+</footer>
+
+<!-- Quick view produit -->
+<div class="overlay center hidden" id="qv-overlay">
+  <div class="panel">
+    <button class="panel-close" onclick="closeQV()">✕</button>
+    <div class="qv-photo" id="qv-photo"></div>
+    <div class="qv-cat" id="qv-cat"></div>
+    <h3 class="qv-title" id="qv-title"></h3>
+    <div class="qv-price" id="qv-price"></div>
+    <div class="qv-desc" id="qv-desc"></div>
+    <div class="qv-variants" id="qv-variants"></div>
+    <div class="qty-row">
+      <span style="font-size:13px;font-weight:600;color:#5B4D68">Quantité</span>
+      <div class="stepper">
+        <button onclick="changeQvQty(-1)">−</button>
+        <span id="qv-qty">1</span>
+        <button onclick="changeQvQty(1)">+</button>
+      </div>
+    </div>
+    <button class="btn btn-primary" id="qv-add-btn" onclick="addQvToCart()">Ajouter au panier</button>
+  </div>
+</div>
+
+<!-- Panier -->
+<div class="overlay cart-overlay hidden" id="cart-overlay">
+  <div class="panel">
+    <button class="panel-close" onclick="closeCart()">✕</button>
+    <h3 class="qv-title" style="margin-bottom:18px">Ton panier</h3>
+    <div id="cart-lines"></div>
+    <div id="cart-footer"></div>
+  </div>
+</div>
+
+<!-- Commande / paiement -->
+<div class="overlay center hidden" id="checkout-overlay">
+  <div class="panel">
+    <button class="panel-close" onclick="closeCheckout()">✕</button>
+    <h3 class="qv-title" style="margin-bottom:6px">Finaliser la commande</h3>
+    <p style="font-size:13px;color:#8A7C97;margin:0 0 18px">Retrait au marché ou sur rendez-vous — on te recontacte pour convenir du créneau.</p>
+    <div class="form-group">
+      <label>Nom et prénom *</label>
+      <input type="text" id="ck-name" placeholder="Ex. Marie Dupont">
+    </div>
+    <div class="form-group">
+      <label>Email *</label>
+      <input type="email" id="ck-email" placeholder="Ex. marie@email.be">
+    </div>
+    <div class="form-group">
+      <label>Téléphone</label>
+      <input type="tel" id="ck-phone" placeholder="Ex. 0470 12 34 56">
+    </div>
+    <div class="form-group">
+      <label>Comment récupérer ta commande ?</label>
+      <textarea id="ck-note" rows="2" placeholder="Ex. Je viendrai au marché de Visé le 15/08, ou je passerai directement à l'atelier."></textarea>
+    </div>
+    <div class="cart-total-row" style="border-top:1px solid var(--line);padding-top:14px">
+      <span style="font-family:var(--sans);font-size:13px;font-weight:600;color:#5B4D68">Total à payer</span>
+      <span id="ck-total">0,00 €</span>
+    </div>
+    <button class="btn btn-primary" id="ck-pay-btn" onclick="submitOrder()">Payer avec Mollie</button>
+    <p style="font-size:11px;color:#B0A3BC;text-align:center;margin-top:10px">Paiement sécurisé · Bancontact, carte bancaire</p>
+    <div id="ck-status"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
+import { getFirestore, doc, getDoc, onSnapshot, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDagghvP8ujE0fdUcYsOfmLaXps2ZSUexo",
+  authDomain: "phil-mobile.firebaseapp.com",
+  projectId: "phil-mobile",
+  storageBucket: "phil-mobile.firebasestorage.app",
+  messagingSenderId: "193213939481",
+  appId: "1:193213939481:web:f8a750e89f0e645b62cf88"
+};
+const fbApp = initializeApp(firebaseConfig);
+const db = getFirestore(fbApp);
+
+/* À METTRE À JOUR une fois la Cloud Function déployée (voir avec Claude) */
+const MOLLIE_FUNCTION_URL = "";
+
+const euro = n => (Math.round((n||0)*100)/100).toFixed(2).replace('.',',') + ' €';
+const esc = s => String(s??'').replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+let allProducts = [];
+let selectedCat = 'Tous';
+let cart = JSON.parse(localStorage.getItem('lv_cart')||'[]');
+let qv = { product:null, variant:null, qty:1 };
+
+function saveCart(){ localStorage.setItem('lv_cart', JSON.stringify(cart)); renderCartCount(); }
+function renderCartCount(){
+  const n = cart.reduce((a,l)=>a+l.qty,0);
+  document.getElementById('cart-count').textContent = n;
+}
+
+/* ---- Chargement du catalogue (articles marqués online) ---- */
+onSnapshot(doc(db,"lylou_vely","articles"), snap=>{
+  if(!snap.exists()) return;
+  const data = snap.data();
+  allProducts = (data.items||[]).filter(p=>p.online);
+  renderCatTabs();
+  renderGrid();
+  renderHeroCollage();
+});
+
+function renderHeroCollage(){
+  const withPhoto = allProducts.filter(p=>p.photo);
+  const p1 = document.getElementById('hero-p1');
+  const p2 = document.getElementById('hero-p2');
+  if(withPhoto[0]) p1.innerHTML = `<img src="${withPhoto[0].photo}" alt="">`;
+  if(withPhoto[1]) p2.innerHTML = `<img src="${withPhoto[1].photo}" alt="">`;
+}
+
+function renderCatTabs(){
+  const box = document.getElementById('cat-tabs');
+  const cats = ['Tous', ...new Set(allProducts.map(p=>p.category).filter(Boolean))];
+  if(!cats.includes(selectedCat)) selectedCat = 'Tous';
+  box.innerHTML = cats.map(c=>
+    `<button class="cat-tab ${c===selectedCat?'active':''}" onclick="setCat('${esc(c).replace(/'/g,"\\'")}')">${esc(c)}</button>`
+  ).join('');
+}
+window.setCat = function(c){ selectedCat = c; renderCatTabs(); renderGrid(); window.scrollTo({top:document.getElementById('catalogue').offsetTop-90,behavior:'smooth'}); };
+
+function priceLabel(p){
+  if(p.variants && p.variants.length && typeof p.variants[0]==='object'){
+    const prices = p.variants.map(v=>v.price!=null?v.price:p.price);
+    const min = Math.min(...prices), max = Math.max(...prices);
+    if(min!==max) return `<small>dès</small> ${euro(min)}`;
+  }
+  return p.price ? euro(p.price) : 'Prix sur demande';
+}
+
+function renderGrid(){
+  const grid = document.getElementById('product-grid');
+  const list = selectedCat==='Tous' ? allProducts : allProducts.filter(p=>p.category===selectedCat);
+  document.getElementById('section-title').textContent = selectedCat==='Tous' ? 'Toute la boutique' : selectedCat;
+  document.getElementById('section-count').textContent = list.length ? `${list.length} création${list.length>1?'s':''}` : '';
+  if(!list.length){ grid.innerHTML = '<div class="empty-cat">Aucune création disponible ici pour le moment.</div>'; return; }
+  grid.innerHTML = '';
+  list.forEach(p=>{
+    const hasVariants = p.variants && p.variants.length && typeof p.variants[0]==='object';
+    const outOfStock = p.trackStock && !hasVariants && (p.stock==null || p.stock<=0);
+    const el = document.createElement('div');
+    el.className = 'card';
+    el.onclick = ()=>openQV(p);
+    el.innerHTML = `
+      <div class="thumb">
+        ${p.photo ? `<img src="${p.photo}" alt="${esc(p.name)}">` : `<div class="ph">🌸</div>`}
+        ${outOfStock ? `<span class="stock-flag">Épuisé</span>`:''}
+      </div>
+      <div class="body">
+        ${p.category?`<div class="cat-tag">${esc(p.category)}</div>`:''}
+        <h3>${esc(p.name)}</h3>
+        <div class="price">${priceLabel(p)}</div>
+      </div>`;
+    grid.appendChild(el);
+  });
+}
+
+/* ---- Quick view ---- */
+window.openQV = function(p){
+  qv = { product:p, variant:null, qty:1 };
+  const hasVariants = p.variants && p.variants.length && typeof p.variants[0]==='object';
+  if(hasVariants){
+    const firstAvail = p.variants.find(v=> !(p.trackStock && v.stock!=null && v.stock<=0)) || p.variants[0];
+    qv.variant = firstAvail;
+  }
+  document.getElementById('qv-cat').textContent = p.category||'';
+  document.getElementById('qv-title').textContent = p.name;
+  document.getElementById('qv-desc').textContent = p.description || '';
+  document.getElementById('qv-qty').textContent = '1';
+  renderQVPhoto(); renderQVPrice(); renderQVVariants();
+  document.getElementById('qv-overlay').classList.remove('hidden');
+  requestAnimationFrame(()=>document.getElementById('qv-overlay').classList.add('open'));
+};
+function renderQVPhoto(){
+  const photo = (qv.variant && qv.variant.photo) ? qv.variant.photo : qv.product.photo;
+  document.getElementById('qv-photo').innerHTML = photo ? `<img src="${photo}" alt="">` : `<div class="ph" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:60px">🌸</div>`;
+}
+function renderQVPrice(){
+  const price = (qv.variant && qv.variant.price!=null) ? qv.variant.price : qv.product.price;
+  document.getElementById('qv-price').textContent = price ? euro(price) : 'Prix sur demande';
+}
+function renderQVVariants(){
+  const box = document.getElementById('qv-variants');
+  const p = qv.product;
+  const hasVariants = p.variants && p.variants.length && typeof p.variants[0]==='object';
+  if(!hasVariants){ box.innerHTML=''; return; }
+  box.innerHTML = p.variants.map(v=>{
+    const out = p.trackStock && v.stock!=null && v.stock<=0;
+    const active = qv.variant && qv.variant.name===v.name;
+    return `<button class="vchip ${active?'active':''}" ${out?'disabled':''} onclick="pickQvVariant('${v.name.replace(/'/g,"\\'")}')">
+      ${v.photo?`<img src="${v.photo}">`:''}${esc(v.name)}${out?' <span class="rupt">épuisé</span>':''}
+    </button>`;
+  }).join('');
+}
+window.pickQvVariant = function(name){
+  qv.variant = qv.product.variants.find(v=>v.name===name);
+  renderQVPhoto(); renderQVPrice(); renderQVVariants();
+};
+window.changeQvQty = function(d){
+  qv.qty = Math.max(1, qv.qty+d);
+  document.getElementById('qv-qty').textContent = qv.qty;
+};
+window.closeQV = function(){
+  document.getElementById('qv-overlay').classList.remove('open');
+  setTimeout(()=>document.getElementById('qv-overlay').classList.add('hidden'),200);
+};
+window.addQvToCart = function(){
+  const p = qv.product;
+  const v = qv.variant;
+  const price = (v && v.price!=null) ? v.price : p.price;
+  const name = v ? `${p.name} — ${v.name}` : p.name;
+  const photo = (v && v.photo) ? v.photo : p.photo;
+  const key = p.id + (v?('|'+v.name):'');
+  const existing = cart.find(l=>l.key===key);
+  if(existing) existing.qty += qv.qty;
+  else cart.push({ key, productId:p.id, name, variant:v?v.name:null, price, photo, qty:qv.qty });
+  saveCart();
+  showToast('Ajouté au panier ✓');
+  closeQV();
+};
+
+/* ---- Panier ---- */
+window.openCart = function(){
+  renderCart();
+  document.getElementById('cart-overlay').classList.remove('hidden');
+  requestAnimationFrame(()=>document.getElementById('cart-overlay').classList.add('open'));
+};
+window.closeCart = function(){
+  document.getElementById('cart-overlay').classList.remove('open');
+  setTimeout(()=>document.getElementById('cart-overlay').classList.add('hidden'),200);
+};
+function cartTotal(){ return cart.reduce((a,l)=>a+l.price*l.qty,0); }
+function renderCart(){
+  const linesBox = document.getElementById('cart-lines');
+  const footBox = document.getElementById('cart-footer');
+  if(!cart.length){
+    linesBox.innerHTML = '<div class="cart-empty">Ton panier est vide.<br>Laisse-toi tenter par une création ✨</div>';
+    footBox.innerHTML = '';
+    return;
+  }
+  linesBox.innerHTML = cart.map((l,i)=>`
+    <div class="cart-line">
+      ${l.photo?`<img src="${l.photo}">`:`<div class="ph-mini">🌸</div>`}
+      <div class="info">
+        <div class="nm">${esc(l.name)}</div>
+        <div class="row">
+          <div class="stepper">
+            <button onclick="changeCartQty(${i},-1)">−</button>
+            <span style="font-size:13px;font-weight:700;width:20px;text-align:center;display:inline-block">${l.qty}</span>
+            <button onclick="changeCartQty(${i},1)">+</button>
+          </div>
+          <div class="price">${euro(l.price*l.qty)}</div>
+        </div>
+        <button class="rm" onclick="removeCartLine(${i})">Retirer</button>
+      </div>
+    </div>`).join('');
+  footBox.innerHTML = `
+    <div class="cart-total-row"><span style="font-family:var(--sans);font-size:13px;font-weight:600;color:#5B4D68">Sous-total</span><span>${euro(cartTotal())}</span></div>
+    <button class="btn btn-primary" onclick="openCheckout()">Commander</button>`;
+}
+window.changeCartQty = function(i,d){
+  cart[i].qty += d;
+  if(cart[i].qty<=0) cart.splice(i,1);
+  saveCart(); renderCart();
+};
+window.removeCartLine = function(i){ cart.splice(i,1); saveCart(); renderCart(); };
+
+/* ---- Commande / checkout ---- */
+window.openCheckout = function(){
+  if(!cart.length) return;
+  closeCart();
+  document.getElementById('ck-total').textContent = euro(cartTotal());
+  document.getElementById('ck-status').innerHTML = '';
+  document.getElementById('checkout-overlay').classList.remove('hidden');
+  requestAnimationFrame(()=>document.getElementById('checkout-overlay').classList.add('open'));
+};
+window.closeCheckout = function(){
+  document.getElementById('checkout-overlay').classList.remove('open');
+  setTimeout(()=>document.getElementById('checkout-overlay').classList.add('hidden'),200);
+};
+
+window.submitOrder = async function(){
+  const name = document.getElementById('ck-name').value.trim();
+  const email = document.getElementById('ck-email').value.trim();
+  const phone = document.getElementById('ck-phone').value.trim();
+  const note = document.getElementById('ck-note').value.trim();
+  const statusBox = document.getElementById('ck-status');
+  if(!name || !email){ statusBox.innerHTML = '<p style="color:var(--red);font-size:13px;text-align:center;margin-top:10px">Merci de compléter ton nom et ton email.</p>'; return; }
+
+  const btn = document.getElementById('ck-pay-btn');
+  btn.disabled = true; btn.textContent = 'Création de la commande…';
+
+  const orderData = {
+    items: cart.map(l=>({ name:l.name, variant:l.variant, qty:l.qty, price:l.price })),
+    total: cartTotal(),
+    customerName: name, customerEmail: email, customerPhone: phone, pickupNote: note,
+    status: 'pending', molliePaymentId: null,
+    createdAt: serverTimestamp(),
+  };
+
+  try{
+    const ref = await addDoc(collection(db,"lylou_vely","commandes","items"), orderData);
+
+    if(!MOLLIE_FUNCTION_URL){
+      // La Cloud Function de paiement n'est pas encore branchée
+      statusBox.innerHTML = `<div class="state-msg"><div class="ic">🕊️</div><h3>Commande enregistrée</h3><p>Le paiement en ligne arrive très bientôt ! On te recontacte directement pour finaliser (réf. ${ref.id.slice(0,6).toUpperCase()}).</p></div>`;
+      cart = []; saveCart();
+      btn.style.display = 'none';
+      return;
+    }
+
+    const res = await fetch(MOLLIE_FUNCTION_URL, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ orderId: ref.id, amount: cartTotal(), description: `Commande Lylou-Vely ${ref.id.slice(0,6).toUpperCase()}`, redirectUrl: location.origin + location.pathname })
+    });
+    if(!res.ok) throw new Error('payment_creation_failed');
+    const { checkoutUrl } = await res.json();
+    cart = []; saveCart();
+    window.location.href = checkoutUrl;
+  }catch(e){
+    statusBox.innerHTML = `<p style="color:var(--red);font-size:13px;text-align:center;margin-top:10px">Une erreur est survenue (${e.message}). Réessaie, ou contacte-nous directement.</p>`;
+    btn.disabled = false; btn.textContent = 'Payer avec Mollie';
+  }
+};
+
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2200);
+}
+
+renderCartCount();
+</script>
+</body>
+</html>
