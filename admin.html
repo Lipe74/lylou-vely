@@ -1030,11 +1030,62 @@ window.filterCommandes = function(status){
   renderCommandes();
 };
 
-window.markPrepared = async function(id, prepared){
-  try{
-    await updateDoc(doc(db,"lylou_vely","commandes","items",id), { prepared });
-  }catch(e){ alert('Erreur : '+e.message); }
+/* Adresse/horaires du dépôt — à personnaliser une seule fois ici */
+const DEPOT_INFO = "notre dépôt (adresse à te communiquer), du lundi au vendredi 9h-17h";
+
+const MARKET_INFO = {
+  'Tilff': "tous les mardis, 8h-13h",
+  'Visé': "tous les mercredis, 8h-13h",
+  'Boncelles': "le 3e dimanche du mois, 10h-15h",
+  'Rouvreux': "le 1er dimanche du mois, 10h-15h",
 };
+function pickupDescription(c){
+  if(c.pickupMethod==='marche') return `au marché de ${c.pickupMarche} (${MARKET_INFO[c.pickupMarche]||'horaires habituels'})`;
+  if(c.pickupMethod==='depot') return `à ${DEPOT_INFO}`;
+  if(c.pickupMethod==='livraison') return `par livraison à l'adresse : ${c.deliveryAddress||''}`;
+  return '';
+}
+function openMail(email, subject, body){
+  window.location.href = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+}
+
+window.validateCommande = async function(id){
+  const c = commandesCache.find(x=>x.id===id);
+  if(!c) return;
+  if(!confirm("Marquer cette commande comme validée et envoyer l'email de confirmation au client ?")) return;
+  try{
+    await updateDoc(doc(db,"lylou_vely","commandes","items",id), { validated: true });
+  }catch(e){ alert('Erreur : '+e.message); return; }
+  if(c.customerEmail){
+    const ref = c.id.slice(0,6).toUpperCase();
+    const subject = `Confirmation de ta commande Lylou-Vely (réf. ${ref})`;
+    const body = `Bonjour ${c.customerName||''},\n\nTa commande (réf. ${ref}) est bien confirmée !\n\nTu pourras la récupérer ${pickupDescription(c)}.\n\n` +
+      (c.pickupMethod!=='livraison' ? "Nous t'enverrons un nouvel email dès qu'elle sera prête.\n\n" : "") +
+      `À bientôt,\nLylou-Vely`;
+    openMail(c.customerEmail, subject, body);
+  }
+};
+
+window.markPrepared = async function(id){
+  const c = commandesCache.find(x=>x.id===id);
+  if(!c) return;
+  if(!confirm("Marquer cette commande comme préparée et envoyer l'email au client ?")) return;
+  try{
+    await updateDoc(doc(db,"lylou_vely","commandes","items",id), { prepared: true });
+  }catch(e){ alert('Erreur : '+e.message); return; }
+  if(c.customerEmail){
+    const ref = c.id.slice(0,6).toUpperCase();
+    const isLivraison = c.pickupMethod==='livraison';
+    const subject = isLivraison ? `Ta commande Lylou-Vely part en livraison (réf. ${ref})` : `Ta commande Lylou-Vely est prête ! (réf. ${ref})`;
+    const body = `Bonjour ${c.customerName||''},\n\n` +
+      (isLivraison
+        ? `Ta commande (réf. ${ref}) est en cours de préparation pour livraison à l'adresse : ${c.deliveryAddress||''}.\n\n`
+        : `Bonne nouvelle, ta commande (réf. ${ref}) est prête ! Tu peux venir la récupérer ${pickupDescription(c)}.\n\n`) +
+      `À bientôt,\nLylou-Vely`;
+    openMail(c.customerEmail, subject, body);
+  }
+};
+
 window.markDelivered = async function(id, delivered){
   try{
     await updateDoc(doc(db,"lylou_vely","commandes","items",id), { delivered });
@@ -1045,12 +1096,20 @@ window.cancelCommande = async function(id){
   const c = commandesCache.find(x=>x.id===id);
   if(!c) return;
   const msg = c.status==='paid'
-    ? "Annuler cette commande ?\n\n⚠️ Elle est déjà payée : ceci ne rembourse PAS automatiquement le client. Il faudra faire le remboursement toi-même depuis ton compte Mollie."
-    : "Annuler cette commande ?";
+    ? "Annuler cette commande et envoyer l'email d'annulation ?\n\n⚠️ Elle est déjà payée : ceci ne rembourse PAS automatiquement le client. Il faudra faire le remboursement toi-même depuis ton compte Mollie."
+    : "Annuler cette commande et envoyer l'email d'annulation ?";
   if(!confirm(msg)) return;
   try{
     await updateDoc(doc(db,"lylou_vely","commandes","items",id), { status: 'canceled' });
-  }catch(e){ alert('Erreur : '+e.message); }
+  }catch(e){ alert('Erreur : '+e.message); return; }
+  if(c.customerEmail){
+    const ref = c.id.slice(0,6).toUpperCase();
+    const subject = `Annulation de ta commande Lylou-Vely (réf. ${ref})`;
+    const body = `Bonjour ${c.customerName||''},\n\nNous sommes désolés de t'informer que ta commande (réf. ${ref}) a dû être annulée.\n\n` +
+      (c.status==='paid' ? "Le remboursement sera effectué dans les prochains jours.\n\n" : "") +
+      `N'hésite pas à nous contacter pour toute question.\n\nÀ bientôt,\nLylou-Vely`;
+    openMail(c.customerEmail, subject, body);
+  }
 };
 
 window.deleteCommande = async function(id){
@@ -1058,17 +1117,6 @@ window.deleteCommande = async function(id){
   try{
     await deleteDoc(doc(db,"lylou_vely","commandes","items",id));
   }catch(e){ alert('Erreur : '+e.message); }
-};
-
-window.emailAnnulation = function(id){
-  const c = commandesCache.find(x=>x.id===id);
-  if(!c || !c.customerEmail) { alert("Pas d'email enregistré pour cette commande."); return; }
-  const ref = c.id.slice(0,6).toUpperCase();
-  const subject = `Annulation de ta commande Lylou-Vely (réf. ${ref})`;
-  const body = `Bonjour ${c.customerName||''},\n\nNous sommes désolés de t'informer que ta commande (réf. ${ref}) a dû être annulée.\n\n` +
-    (c.status==='paid' ? "Le remboursement sera effectué dans les prochains jours.\n\n" : "") +
-    `N'hésite pas à nous contacter pour toute question.\n\nÀ bientôt,\nLylou-Vely`;
-  window.location.href = `mailto:${c.customerEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 };
 
 function commandeDate(c){
@@ -1106,20 +1154,19 @@ function renderCommandes(){
       </div>
       <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;gap:12px;flex-wrap:wrap">
         <span class="cmd-total">${(c.total||0).toFixed(2).replace('.',',')} €</span>
-        ${c.status==='paid' ? `<div style="display:flex;gap:14px;flex-wrap:wrap">
-          <label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:#555">
-            <input type="checkbox" ${c.prepared?'checked':''} onchange="window.markPrepared('${c.id}', this.checked)">
-            📦 Préparée
-          </label>
-          <label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:#555">
-            <input type="checkbox" ${c.delivered?'checked':''} onchange="window.markDelivered('${c.id}', this.checked)">
-            ✅ Livrée / Récupérée
-          </label>
-        </div>` : ''}
+        ${c.status==='paid' ? `<label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:#555">
+          <input type="checkbox" ${c.delivered?'checked':''} onchange="window.markDelivered('${c.id}', this.checked)">
+          ✅ Livrée / Récupérée
+        </label>` : ''}
       </div>
-      ${!['canceled','delivered_done'].includes(c.status) ? `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;padding-top:10px;border-top:1px solid #f0f0f0">
+      ${!['canceled'].includes(c.status) ? `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;padding-top:10px;border-top:1px solid #f0f0f0">
+        ${c.status==='paid' ? (c.validated
+          ? `<span class="cmd-status paid" style="background:#e6f4ea">✅ Validée</span>`
+          : `<button class="btn btn-outline" style="width:auto;padding:6px 12px;font-size:12px" onclick="window.validateCommande('${c.id}')">✅ Commande validée</button>`) : ''}
+        ${c.status==='paid' ? (c.prepared
+          ? `<span class="cmd-status paid" style="background:#e6f4ea">📦 Préparée</span>`
+          : `<button class="btn btn-outline" style="width:auto;padding:6px 12px;font-size:12px" onclick="window.markPrepared('${c.id}')">📦 Commande préparée</button>`) : ''}
         <button class="btn btn-outline" style="width:auto;padding:6px 12px;font-size:12px;color:#c0475e;border-color:#f0d0d5" onclick="window.cancelCommande('${c.id}')">✕ Annuler</button>
-        <button class="btn btn-outline" style="width:auto;padding:6px 12px;font-size:12px" onclick="window.emailAnnulation('${c.id}')">✉️ Email d'annulation</button>
         <button class="btn btn-outline" style="width:auto;padding:6px 12px;font-size:12px;color:#999" onclick="window.deleteCommande('${c.id}')">🗑️ Supprimer</button>
       </div>` : ''}
     </div>`;
