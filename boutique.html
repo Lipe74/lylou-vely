@@ -296,10 +296,10 @@ footer.site b{color:var(--violet-deep)}
     <div class="form-group" id="ck-marche-row">
       <label>Quel marché ?</label>
       <select id="ck-marche">
-        <option value="Tilff">Marché de Tilff</option>
-        <option value="Visé">Marché de Visé</option>
-        <option value="Rouvreux">Marché de Rouvreux</option>
-        <option value="Boncelles">Marché de Boncelles</option>
+        <option value="Tilff">Marché de Tilff — tous les mardis, 8h-13h</option>
+        <option value="Visé">Marché de Visé — tous les mercredis, 8h-13h</option>
+        <option value="Boncelles">Marché de Boncelles — 3e dimanche du mois, 10h-15h</option>
+        <option value="Rouvreux">Marché de Rouvreux — 1er dimanche du mois, 10h-15h</option>
       </select>
     </div>
     <div class="form-group hidden" id="ck-address-row">
@@ -311,6 +311,7 @@ footer.site b{color:var(--violet-deep)}
       <textarea id="ck-note" rows="2" placeholder="Ex. Je préfère venir le matin, merci de laisser au voisin..."></textarea>
     </div>
     <p id="ck-pickup-info" style="font-size:12px;color:var(--sage);background:#EEF5F0;padding:10px 12px;border-radius:10px;margin:0 0 14px">📧 Nous t'enverrons un email dès que ta commande sera prête à récupérer.</p>
+    <p id="ck-delivery-min-warning" class="hidden" style="font-size:12px;color:var(--red);background:#FBEBEE;padding:10px 12px;border-radius:10px;margin:0 0 14px"></p>
     <div class="cart-total-row" style="border-top:1px solid var(--line);padding-top:14px">
       <span style="font-family:var(--sans);font-size:13px;font-weight:600;color:#5B4D68">Total à payer</span>
       <span id="ck-total">0,00 €</span>
@@ -531,6 +532,7 @@ window.removeCartLine = function(i){ cart.splice(i,1); saveCart(); renderCart();
 
 /* ---- Commande / checkout ---- */
 const DELIVERY_SURCHARGE = 5;
+const DELIVERY_MIN = 25;
 let pickupMethod = 'marche';
 
 function orderTotal(){ return cartTotal() + (pickupMethod==='livraison' ? DELIVERY_SURCHARGE : 0); }
@@ -542,6 +544,14 @@ window.selectPickupMethod = function(method){
   document.getElementById('ck-address-row').classList.toggle('hidden', method!=='livraison');
   document.getElementById('ck-pickup-info').style.display = (method==='livraison') ? 'none' : 'block';
   document.getElementById('ck-total').textContent = euro(orderTotal());
+
+  const btn = document.getElementById('ck-pay-btn');
+  const belowMin = method==='livraison' && cartTotal() < DELIVERY_MIN;
+  document.getElementById('ck-delivery-min-warning').classList.toggle('hidden', !belowMin);
+  if(belowMin){
+    document.getElementById('ck-delivery-min-warning').textContent = `Livraison disponible à partir de ${euro(DELIVERY_MIN)} de commande (il manque ${euro(DELIVERY_MIN-cartTotal())}).`;
+  }
+  btn.disabled = belowMin;
 };
 
 window.openCheckout = function(){
@@ -567,6 +577,7 @@ window.submitOrder = async function(){
   const statusBox = document.getElementById('ck-status');
   if(!name || !email){ statusBox.innerHTML = '<p style="color:var(--red);font-size:13px;text-align:center;margin-top:10px">Merci de compléter ton nom et ton email.</p>'; return; }
   if(pickupMethod==='livraison' && !address){ statusBox.innerHTML = '<p style="color:var(--red);font-size:13px;text-align:center;margin-top:10px">Merci d\'indiquer ton adresse de livraison.</p>'; return; }
+  if(pickupMethod==='livraison' && cartTotal() < DELIVERY_MIN){ statusBox.innerHTML = `<p style="color:var(--red);font-size:13px;text-align:center;margin-top:10px">Livraison disponible à partir de ${euro(DELIVERY_MIN)} de commande.</p>`; return; }
 
   const btn = document.getElementById('ck-pay-btn');
   btn.disabled = true; btn.textContent = 'Création de la commande…';
