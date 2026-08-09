@@ -2212,7 +2212,9 @@ function getFilteredSales(){
   if(journalFilter==='all') return all.filter(s=>!s.cancelled);
   if(journalFilter==='day') return all.filter(s=>s.date===today && !s.cancelled);
   if(journalFilter==='week'){
-    const d = new Date(today); d.setDate(d.getDate()-d.getDay()+1);
+    const d = new Date(today);
+    const dow = d.getDay(); // 0=dimanche..6=samedi
+    d.setDate(d.getDate() + (dow===0 ? -6 : 1-dow)); // lundi de la semaine, correct même un dimanche
     const start = d.toISOString().slice(0,10);
     d.setDate(d.getDate()+6);
     const end = d.toISOString().slice(0,10);
@@ -2275,7 +2277,9 @@ function renderJournal(){
     : state.sales.filter(x=>{
         const today = journalDate||todayStr();
         if(journalFilter==='week'){
-          const d=new Date(today);d.setDate(d.getDate()-d.getDay()+1);
+          const d=new Date(today);
+          const dow=d.getDay();
+          d.setDate(d.getDate() + (dow===0 ? -6 : 1-dow));
           const start=d.toISOString().slice(0,10);d.setDate(d.getDate()+6);
           return x.date>=start && x.date<=d.toISOString().slice(0,10);
         }
@@ -2727,7 +2731,7 @@ function getFilteredMovements(){
   const all = state.movements;
   if(journalFilter==='all') return all;
   if(journalFilter==='day') return all.filter(m=>m.date===today);
-  if(journalFilter==='week'){ const d=new Date(today);d.setDate(d.getDate()-d.getDay()+1);const start=d.toISOString().slice(0,10);d.setDate(d.getDate()+6);return all.filter(m=>m.date>=start&&m.date<=d.toISOString().slice(0,10)); }
+  if(journalFilter==='week'){ const d=new Date(today);const dow=d.getDay();d.setDate(d.getDate() + (dow===0 ? -6 : 1-dow));const start=d.toISOString().slice(0,10);d.setDate(d.getDate()+6);return all.filter(m=>m.date>=start&&m.date<=d.toISOString().slice(0,10)); }
   if(journalFilter==='month') return all.filter(m=>m.date.startsWith(today.slice(0,7)));
   if(journalFilter==='range' && journalRangeStart && journalRangeEnd){
     const s = journalRangeStart<=journalRangeEnd?journalRangeStart:journalRangeEnd;
