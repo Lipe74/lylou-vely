@@ -678,6 +678,21 @@ nav button.on{color:var(--violet)}
   </div>
 </div>
 
+<div class="overlay center hidden" id="versement-prompt-overlay">
+  <div class="sheet">
+    <h2>💰 Versement banque</h2>
+    <p id="versement-prompt-info" style="font-size:13px;color:var(--muted);text-align:center;margin-bottom:14px"></p>
+    <div class="field">
+      <label>Montant à verser (les pièces restent en caisse si tu préfères, modifie le chiffre)</label>
+      <input type="number" inputmode="decimal" id="versement-prompt-amount" step="0.01">
+    </div>
+    <div class="row-btns" style="margin-top:14px">
+      <button class="btn btn-outline" onclick="closeVersementPrompt()">Annuler</button>
+      <button class="btn btn-primary" onclick="confirmVersementPrompt()">OK</button>
+    </div>
+  </div>
+</div>
+
 <div class="overlay center hidden" id="variant-overlay">
   <div class="sheet">
     <h2 id="variant-title">Choisir</h2>
@@ -2892,24 +2907,36 @@ window.printZ = function(){
       // Surplus trop faible pour valoir un déplacement banque : pas de popup, juste un report informatif
       setTimeout(()=>toast(`💡 Surplus de ${euro(surplus)} (sous ${VERSEMENT_MIN}€), reporté au prochain marché`), 400);
     } else {
-      setTimeout(()=>{
-        const input = prompt(
-          `💰 Versement banque\n\nSurplus théorique : ${euro(surplus)}\n\nMontant à verser (les pièces restent en caisse si tu préfères, modifie le chiffre) :`,
-          suggestion.toFixed(2)
-        );
-        if(input===null) return; // annulé
-        const amount = Math.round(parseFloat(input.replace(',','.'))*100)/100;
-        if(!amount || amount<=0 || isNaN(amount)){ toast("Versement annulé"); return; }
-        if(amount > surplus + 0.01){ toast("Montant supérieur au surplus disponible, versement annulé"); return; }
-        const mv = {id:Date.now(), type:'out', amount:amount,
-          reason:'Versement banque — clôture Z '+state.day.split('-').reverse().join('/')+(state.marche?' — '+state.marche:''),
-          payMode:'cash', time:nowTime(), date:state.day};
-        state.movements.push(mv); save(); saveMovement(mv);
-        renderMovements(); renderHeaderKPIs(); renderCaisse();
-        toast("Versement de "+euro(amount)+" enregistré");
-      }, 400);
+      setTimeout(()=>openVersementPrompt(surplus, suggestion), 400);
     }
   }
+};
+
+let versementPromptData = null;
+function openVersementPrompt(surplus, suggestion){
+  versementPromptData = { surplus };
+  document.getElementById('versement-prompt-info').textContent = `Surplus théorique : ${euro(surplus)}`;
+  document.getElementById('versement-prompt-amount').value = suggestion.toFixed(2);
+  document.getElementById('versement-prompt-overlay').classList.remove('hidden');
+}
+window.closeVersementPrompt = function(){
+  document.getElementById('versement-prompt-overlay').classList.add('hidden');
+  versementPromptData = null;
+};
+window.confirmVersementPrompt = function(){
+  if(!versementPromptData) return;
+  const { surplus } = versementPromptData;
+  const input = document.getElementById('versement-prompt-amount').value;
+  const amount = Math.round(parseFloat((input||'').replace(',','.'))*100)/100;
+  if(!amount || amount<=0 || isNaN(amount)){ toast("Montant invalide, versement annulé"); closeVersementPrompt(); return; }
+  if(amount > surplus + 0.01){ toast("Montant supérieur au surplus disponible, versement annulé"); closeVersementPrompt(); return; }
+  const mv = {id:Date.now(), type:'out', amount:amount,
+    reason:'Versement banque — clôture Z '+state.day.split('-').reverse().join('/')+(state.marche?' — '+state.marche:''),
+    payMode:'cash', time:nowTime(), date:state.day};
+  state.movements.push(mv); save(); saveMovement(mv);
+  renderMovements(); renderHeaderKPIs(); renderCaisse();
+  toast("Versement de "+euro(amount)+" enregistré");
+  closeVersementPrompt();
 };
 
 /* ============ VERSEMENT BANQUE ============ */
