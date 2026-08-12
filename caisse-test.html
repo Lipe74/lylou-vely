@@ -745,6 +745,16 @@ nav button.on{color:var(--violet)}
   </div>
 </div>
 
+<!-- ===== MODALE SÉCURITÉ : CLÔTURE Z MANQUANTE ===== -->
+<div class="overlay center hidden" id="closure-required-overlay">
+  <div class="sheet" style="max-width:380px">
+    <h2>🔒 Clôture Z manquante</h2>
+    <p style="text-align:center;color:var(--muted);font-size:14px;margin:8px 0 16px" id="closure-required-text"></p>
+    <button class="btn btn-primary" onclick="doRequiredClosure()">Faire la clôture maintenant</button>
+    <button class="btn btn-ghost" style="margin-top:10px;font-size:12px" onclick="ignoreRequiredClosure()">Ignorer (déjà fait)</button>
+  </div>
+</div>
+
 <!-- ===== MODALE FOND DE CAISSE (ouverture journée) ===== -->
 <div class="overlay center hidden" id="fond-overlay">
   <div class="sheet" style="max-width:380px">
@@ -992,6 +1002,7 @@ function normalise(s){
     categories: (s.categories && s.categories.length) ? s.categories : DEFAULT_CATEGORIES.slice(),
     sales: s.sales || [],
     movements: s.movements || [],
+    closures: s.closures || [],
     lastCount: s.lastCount || null,
     ticketCounter: (typeof s.ticketCounter === 'number') ? s.ticketCounter : (TICKET_START - 1),
   };
@@ -1062,6 +1073,28 @@ async function deleteMovementFB(id){
   catch(e){ console.warn('deleteMovement:', e.message); }
 }
 
+/* ---- Firestore : clôtures (sécurité "journée non clôturée") ---- */
+function closureKey(date, marche){ return date + '__' + slug(marche||''); }
+function hasClosureFor(date){ return state.closures.some(c=>c.date===date); }
+async function loadClosures(){
+  try{
+    const snap = await getDocs(collection(db, basePath(), 'closures'));
+    const arr = [];
+    snap.forEach(d=>arr.push({...d.data()}));
+    state.closures = arr;
+  }catch(e){ console.warn('loadClosures:', e.message); }
+}
+async function saveClosure(entry){
+  try{ await setDoc(doc(db, basePath(), 'closures', closureKey(entry.date, entry.marche)), entry); }
+  catch(e){ console.warn('saveClosure:', e.message); }
+}
+/* Enregistre qu'une clôture Z a bien été générée pour ce jour (idempotent) */
+function markClosureDone(date, marche){
+  if(hasClosureFor(date)) return;
+  const entry = {date, marche: marche||'', time: nowTime()};
+  state.closures.push(entry); save(); saveClosure(entry);
+}
+
 /* ---- Utilitaires ---- */
 function euro(n){ return (Math.round((n+Number.EPSILON)*100)/100).toFixed(2).replace('.',',')+' €'; }
 function todayStr(){ const d=new Date(); return d.toISOString().slice(0,10); }
@@ -1114,6 +1147,7 @@ async function openApp(){
   await loadConfig();
   await loadSales();
   await loadMovements();
+  await loadClosures();
   save(); // sync cache local
   initProducts();
   initDenoms();
@@ -1121,11 +1155,41 @@ async function openApp(){
   renderAll();
   loadArticlesFromFirebase();
   checkSumUpCallback();
-  // Nouveau jour → confirmation fond
-  if(state.day !== todayStr()){
+  // Nouveau jour → sécurité clôture Z puis confirmation fond
+  checkDayTransition();
+}
+
+/* ---- Sécurité : impossible de démarrer une nouvelle journée sans clôture Z de la précédente ---- */
+let awaitingNewDayAfterClosure = false;
+function checkDayTransition(){
+  if(state.day === todayStr()) return;
+  const oldDay = state.day;
+  const hadActivity = daySales(oldDay).length>0 || dayMovements(oldDay).length>0;
+  if(hadActivity && !hasClosureFor(oldDay)){
+    showClosureRequired(oldDay);
+  } else {
     showFondConfirmation();
   }
 }
+function showClosureRequired(oldDay){
+  const dLabel = oldDay.split('-').reverse().join('/');
+  const marcheLabel = state.marche ? ' — '+state.marche : '';
+  document.getElementById('closure-required-text').textContent =
+    `La clôture Z du ${dLabel}${marcheLabel} n'a pas été faite. Merci de la faire avant de démarrer une nouvelle journée.`;
+  document.getElementById('closure-required-overlay').classList.remove('hidden');
+}
+window.doRequiredClosure = function(){
+  document.getElementById('closure-required-overlay').classList.add('hidden');
+  awaitingNewDayAfterClosure = true;
+  printZ();
+};
+window.ignoreRequiredClosure = function(){
+  const dLabel = state.day.split('-').reverse().join('/');
+  if(!confirm("Confirmer que la clôture Z du "+dLabel+" a déjà été faite (papier, autre appareil…) ?\n\nCette action est définitive.")) return;
+  markClosureDone(state.day, state.marche);
+  document.getElementById('closure-required-overlay').classList.add('hidden');
+  showFondConfirmation();
+};
 
 function showFondConfirmation(){
   const t = theoreticalCash(); // fond + mouvements du jour en cours (ex: remise de pièces après clôture)
@@ -1189,12 +1253,13 @@ window.switchMode = async function(target){
   await loadConfig();
   await loadSales();
   await loadMovements();
+  await loadClosures();
   save();
   initDenoms(); updateModeUI(); renderAll();
   loadArticlesFromFirebase();
   toast(mode==='test' ? "Mode Test activé" : "Mode Production activé");
   window.go('vente');
-  if(state.day !== todayStr()){ showFondConfirmation(); }
+  checkDayTransition();
 };
 window.toggleMode = function(){
   const target = mode==='prod' ? 'test' : 'prod';
@@ -1849,7 +1914,13 @@ function showTicket(sale){
   }catch(e){}
   document.getElementById('ticket-overlay').classList.remove('hidden');
 }
-window.closeTicket = function(){ document.getElementById('ticket-overlay').classList.add('hidden'); };
+window.closeTicket = function(){
+  document.getElementById('ticket-overlay').classList.add('hidden');
+  if(awaitingNewDayAfterClosure){
+    awaitingNewDayAfterClosure = false;
+    showFondConfirmation();
+  }
+};
 
 window.imprimerTicket = function(){
   const area = document.getElementById('ticket-area');
@@ -2899,6 +2970,7 @@ window.printZ = function(){
   const area=document.getElementById('ticket-area');
   area.innerHTML = buildZTicketHTML(d, state.marche, ca, esp, qr, carte, cancelledN, theo, inTotal, outTotal, cashOut, cardOut);
   document.getElementById('ticket-overlay').classList.remove('hidden');
+  markClosureDone(d, state.marche);
   // Proposer versement banque si surplus
   const surplus = theo - FOND_CIBLE;
   if(surplus > 0.01){
@@ -3478,6 +3550,7 @@ function renderAll(){
 
 /* Fermeture overlays en cliquant sur le fond */
 document.querySelectorAll('.overlay').forEach(o=>{
+  if(o.id==='closure-required-overlay') return; // sécurité : pas de fermeture par clic extérieur
   o.addEventListener('click',e=>{ if(e.target===o) o.classList.add('hidden'); });
 });
 
