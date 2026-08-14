@@ -1109,10 +1109,11 @@ async function saveClosure(entry){
   try{ await setDoc(doc(db, basePath(), 'closures', closureKey(entry.date, entry.marche)), entry); }
   catch(e){ console.warn('saveClosure:', e.message); }
 }
-/* Enregistre qu'une clôture Z a bien été générée pour ce jour (idempotent) */
+/* Enregistre qu'une clôture Z a bien été générée pour ce jour (idempotent), avec le fond de caisse
+   réellement en vigueur ce jour-là (nécessaire pour que les réimpressions futures restent exactes) */
 function markClosureDone(date, marche){
   if(hasClosureFor(date)) return;
-  const entry = {date, marche: marche||'', time: nowTime()};
+  const entry = {date, marche: marche||'', time: nowTime(), fond: state.fond};
   state.closures.push(entry); save(); saveClosure(entry);
 }
 
@@ -2959,12 +2960,17 @@ function buildZHTML(day, marche){
   const outTotal=mvs.filter(m=>m.type==='out').reduce((a,m)=>a+m.amount,0);
   const cashOut=mvs.filter(m=>m.type==='out'&&m.payMode!=='card').reduce((a,m)=>a+m.amount,0);
   const cardOut=mvs.filter(m=>m.type==='out'&&m.payMode==='card').reduce((a,m)=>a+m.amount,0);
-  const theo = state.fond + esp + inTotal - cashOut;
-  return {ca,esp,qr,carte,cancelledN,valid,theo,inTotal,outTotal,cashOut,cardOut,mvs};
+  // Fond réellement en vigueur ce jour-là (mémorisé à la clôture) ; à défaut (clôtures antérieures
+  // à ce correctif), on retombe sur le fond actuel — seule option possible rétroactivement.
+  const closureEntry = state.closures.find(c=>c.date===day);
+  const fondForDay = (closureEntry && typeof closureEntry.fond==='number') ? closureEntry.fond : state.fond;
+  const theo = fondForDay + esp + inTotal - cashOut;
+  return {ca,esp,qr,carte,cancelledN,valid,theo,inTotal,outTotal,cashOut,cardOut,mvs,fondForDay};
 }
 
-function buildZTicketHTML(day, marche, ca, esp, qr, carte, cancelledN, theo, inTotal, outTotal, cashOut, cardOut){
+function buildZTicketHTML(day, marche, ca, esp, qr, carte, cancelledN, theo, inTotal, outTotal, cashOut, cardOut, fondForDay){
   const valid = state.sales.filter(x=>x.date===day && !x.cancelled);
+  const fond = typeof fondForDay==='number' ? fondForDay : state.fond;
   return `
     <div class="t-head"><div class="lg">${esc(SELLER.brand)}</div><div class="sl">Clôture Z</div>
       <div class="t-legal">${esc(SELLER.legal)}<br>TVA ${esc(SELLER.vat)}</div></div>
@@ -2985,7 +2991,7 @@ function buildZTicketHTML(day, marche, ca, esp, qr, carte, cancelledN, theo, inT
       if(bd.viva.amount>0) h+=`<div class="t-sub" style="color:#a15c00"><span>dont commission Viva Wallet</span><span>−${euro(bd.viva.commission)}</span></div>`;
       return h; })()}
     <div class="t-sep"></div>
-    <div class="t-item"><span>Fond de caisse</span><span>${euro(state.fond)}</span></div>
+    <div class="t-item"><span>Fond de caisse</span><span>${euro(fond)}</span></div>
     <div class="t-item"><span>Entrées</span><span>${euro(inTotal)}</span></div>
     <div class="t-item"><span>Sorties totales</span><span>${euro(outTotal)}</span></div>
     ${(cashOut>0||cardOut>0)?`<div class="t-sub"><span>dont Liquide</span><span>-${euro(cashOut)}</span></div><div class="t-sub"><span>dont Carte</span><span>-${euro(cardOut)}</span></div>`:''}
@@ -3005,7 +3011,7 @@ function buildZTicketHTML(day, marche, ca, esp, qr, carte, cancelledN, theo, inT
         <div class="t-sub"><span>Ventes espèces</span><span>+${euro(esp)}</span></div>
         ${inTotal > 0 ? `<div class="t-sub"><span>Entrées</span><span>+${euro(inTotal)}</span></div>` : ''}
         ${cashOut > 0 ? `<div class="t-sub"><span>Sorties liquide</span><span>−${euro(cashOut)}</span></div>` : ''}
-        ${state.fond < FOND_CIBLE ? `<div class="t-sub" style="color:#2e7d32"><span>Reconstitution du fond de caisse</span><span>−${euro(Math.min(FOND_CIBLE-state.fond, gapRaw))}</span></div>` : ''}
+        ${fond < FOND_CIBLE ? `<div class="t-sub" style="color:#2e7d32"><span>Reconstitution du fond de caisse</span><span>−${euro(Math.min(FOND_CIBLE-fond, gapRaw))}</span></div>` : ''}
         <div class="t-sep"></div>
         <div style="text-align:center;border:2px solid #000;border-radius:6px;padding:8px 4px;margin:6px 0;white-space:nowrap;overflow:hidden">
           <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:1px;margin-bottom:2px">A retirer (versement)</div>
@@ -3018,18 +3024,18 @@ function buildZTicketHTML(day, marche, ca, esp, qr, carte, cancelledN, theo, inT
 }
 
 window.reprintZ = function(day, marche){
-  const {ca,esp,qr,carte,cancelledN,theo,inTotal,outTotal,cashOut,cardOut} = buildZHTML(day, marche);
+  const {ca,esp,qr,carte,cancelledN,theo,inTotal,outTotal,cashOut,cardOut,fondForDay} = buildZHTML(day, marche);
   currentTicketRef = 'cloture-'+day;
-  document.getElementById('ticket-area').innerHTML = buildZTicketHTML(day, marche, ca, esp, qr, carte, cancelledN, theo, inTotal, outTotal, cashOut, cardOut);
+  document.getElementById('ticket-area').innerHTML = buildZTicketHTML(day, marche, ca, esp, qr, carte, cancelledN, theo, inTotal, outTotal, cashOut, cardOut, fondForDay);
   document.getElementById('ticket-overlay').classList.remove('hidden');
 };
 
 window.printZ = function(){
   const d = state.day;
-  const {ca,esp,qr,carte,cancelledN,theo,inTotal,outTotal,cashOut,cardOut} = buildZHTML(d, state.marche);
+  const {ca,esp,qr,carte,cancelledN,theo,inTotal,outTotal,cashOut,cardOut,fondForDay} = buildZHTML(d, state.marche);
   currentTicketRef = 'cloture-'+d;
   const area=document.getElementById('ticket-area');
-  area.innerHTML = buildZTicketHTML(d, state.marche, ca, esp, qr, carte, cancelledN, theo, inTotal, outTotal, cashOut, cardOut);
+  area.innerHTML = buildZTicketHTML(d, state.marche, ca, esp, qr, carte, cancelledN, theo, inTotal, outTotal, cashOut, cardOut, fondForDay);
   document.getElementById('ticket-overlay').classList.remove('hidden');
   markClosureDone(d, state.marche);
   // Proposer versement banque si surplus
