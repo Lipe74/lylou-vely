@@ -515,7 +515,12 @@ nav button.on{color:var(--violet)}
         </div>
 
         <div class="card">
-          <h3 style="font-size:19px;margin-bottom:2px">🏆 Produits les plus vendus</h3>
+          <div class="row-btns" style="margin-bottom:2px;flex-wrap:wrap">
+            <h3 style="font-size:19px;flex:1">🏆 Produits les plus vendus</h3>
+            <button class="btn btn-outline" style="width:auto;padding:6px 12px;font-size:12px" onclick="downloadStatsProductsPDF()">PDF</button>
+            <button class="btn btn-outline" style="width:auto;padding:6px 12px;font-size:12px" onclick="printStatsProducts('58mm')">🖨 58mm</button>
+            <button class="btn btn-outline" style="width:auto;padding:6px 12px;font-size:12px" onclick="printStatsProducts('a4')">🖨 A4</button>
+          </div>
           <div id="stats-products-subtitle" style="font-size:12px;color:var(--muted);margin-bottom:10px"></div>
           <div id="stats-products" style="overflow-x:auto"></div>
         </div>
@@ -3264,24 +3269,44 @@ function buildStatsPrintHTML(){
   const genDate = new Date().toLocaleString('fr-BE');
 
   const rowsTot = (rows)=> rows.reduce((a,d)=>{a.ca+=d.ca;a.esp+=d.esp;a.qr+=d.qr;a.carte+=d.carte;a.count+=d.count;return a;},{ca:0,esp:0,qr:0,carte:0,count:0});
-  const tblHead = `<thead><tr><th>${statsTableMode==='mois'?'Marché':'Date'}</th><th class="r">CA</th><th class="r">💶 Espèces</th><th class="r">📱 QR</th><th class="r">💳 Carte</th><th class="r">🏪 Stand</th><th class="r">Ventes</th></tr></thead>`;
+  const tblHead = (label)=>`<thead><tr><th>${label}</th><th class="r">CA</th><th class="r">💶 Espèces</th><th class="r">📱 QR</th><th class="r">💳 Carte</th><th class="r">🏪 Stand</th><th class="r">Ventes</th></tr></thead>`;
   const tblRow = (label,d,stand)=>`<tr><td>${label}</td><td class="r b">${euro(d.ca)}</td><td class="r">${euro(d.esp)}</td><td class="r">${euro(d.qr)}</td><td class="r">${euro(d.carte)}</td><td class="r" style="color:#a15c00">${stand?'−'+euro(stand):'—'}</td><td class="r">${d.count}</td></tr>`;
-  const tblTotRow = (tot,standTot)=>`<tr class="tot"><td>Total</td><td class="r">${euro(tot.ca)}</td><td class="r">${euro(tot.esp)}</td><td class="r">${euro(tot.qr)}</td><td class="r">${euro(tot.carte)}</td><td class="r" style="color:#a15c00">${standTot?'−'+euro(standTot):'—'}</td><td class="r">${tot.count}</td></tr>`;
+  const tblTotRow = (tot,standTot,label)=>`<tr class="tot"><td>${label||'Total'}</td><td class="r">${euro(tot.ca)}</td><td class="r">${euro(tot.esp)}</td><td class="r">${euro(tot.qr)}</td><td class="r">${euro(tot.carte)}</td><td class="r" style="color:#a15c00">${standTot?'−'+euro(standTot):'—'}</td><td class="r">${tot.count}</td></tr>`;
 
   let tableHTML;
   if(statsTableMode==='mois'){
-    const byMonth = computeMonthMarcheStats();
-    const standByMonth = computeStandByMonthMarche();
+    // Vue "Par mois" enrichie pour le PDF : détail date par date pour chaque marché du mois,
+    // avec un sous-total par marché, puis le total général du mois en bas.
+    const byMarcheDate = computeMarcheDateStats();
+    const standByMarche = computeStandByMarcheDate();
     const chosenMonth = document.getElementById('stats-mois-select').value;
-    const marches = byMonth[chosenMonth] || {};
-    const standMarches = standByMonth[chosenMonth] || {};
-    const names = Object.keys(marches).sort((a,b)=>marches[b].ca-marches[a].ca);
-    const tot = rowsTot(names.map(n=>marches[n]));
-    const standTot = Object.values(standMarches).reduce((a,v)=>a+v,0);
-    tableHTML = `<table class="pstats-table">${tblHead}<tbody>
-      ${names.map(n=>tblRow('🏪 '+esc(n), marches[n], standMarches[n])).join('')}
-      ${tblTotRow(tot, standTot)}
-    </tbody></table>`;
+
+    const inMonth = {}; // marche -> { dates:[...], tot:{...}, standTot }
+    Object.keys(byMarcheDate).forEach(marche=>{
+      const dates = Object.keys(byMarcheDate[marche]).filter(d=>d.slice(0,7)===chosenMonth).sort().reverse();
+      if(dates.length===0) return;
+      const tot = rowsTot(dates.map(d=>byMarcheDate[marche][d]));
+      const standDates = standByMarche[marche] || {};
+      const standTot = dates.reduce((a,d)=>a+(standDates[d]||0),0);
+      inMonth[marche] = {dates, tot, standDates, standTot};
+    });
+    const marcheNames = Object.keys(inMonth).sort((a,b)=>inMonth[b].tot.ca-inMonth[a].tot.ca);
+
+    tableHTML = marcheNames.map(marche=>{
+      const {dates, tot, standDates, standTot} = inMonth[marche];
+      return `<div class="pstats-sub">🏪 ${esc(marche)}</div>
+        <table class="pstats-table">${tblHead('Date')}<tbody>
+          ${dates.map(dt=>tblRow(dt.split('-').reverse().join('/'), byMarcheDate[marche][dt], standDates[dt])).join('')}
+          ${tblTotRow(tot, standTot, 'Sous-total')}
+        </tbody></table>`;
+    }).join('');
+
+    const grandTot = rowsTot(marcheNames.map(m=>inMonth[m].tot));
+    const grandStandTot = marcheNames.reduce((a,m)=>a+inMonth[m].standTot,0);
+    tableHTML += `<div class="pstats-sub" style="margin-top:24px">📅 Total du mois</div>
+      <table class="pstats-table">${tblHead('')}<tbody>
+        ${tblTotRow(grandTot, grandStandTot, 'Total')}
+      </tbody></table>`;
   } else {
     const byMarche = computeMarcheDateStats();
     const standByMarche = computeStandByMarcheDate();
@@ -3294,19 +3319,12 @@ function buildStatsPrintHTML(){
       const tot = rowsTot(sortedDates.map(dt=>dates[dt]));
       const standTot = Object.values(standDates).reduce((a,v)=>a+v,0);
       return `<div class="pstats-sub">🏪 ${esc(m)}</div>
-        <table class="pstats-table">${tblHead}<tbody>
+        <table class="pstats-table">${tblHead('Date')}<tbody>
           ${sortedDates.map(dt=>tblRow(dt.split('-').reverse().join('/'), dates[dt], standDates[dt])).join('')}
           ${tblTotRow(tot, standTot)}
         </tbody></table>`;
     }).join('');
   }
-
-  const products = computeProductStats(currentStatsFilteredSales());
-  const prodHTML = products.length===0 ? '<p class="pstats-empty">Pas encore de données</p>' : `
-    <table class="pstats-table">
-      <thead><tr><th>#</th><th>Produit</th><th class="r">Qté</th><th class="r">CA généré</th></tr></thead>
-      <tbody>${products.map((p,i)=>`<tr><td>${i+1}</td><td class="${i<3?'b':''}">${i===0?'🥇 ':i===1?'🥈 ':i===2?'🥉 ':''}${esc(p.name)}</td><td class="r">${p.qty}</td><td class="r b">${euro(p.revenue)}</td></tr>`).join('')}</tbody>
-    </table>`;
 
   return `<!DOCTYPE html><html><head><meta charset="UTF-8">
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Jost:wght@400;500;600&display=swap" rel="stylesheet">
@@ -3339,8 +3357,6 @@ function buildStatsPrintHTML(){
         <hr>
       </div>
       ${tableHTML}
-      <div class="pstats-section-title">🏆 Produits les plus vendus</div>
-      ${prodHTML}
       <div class="pstats-foot">Document généré le ${genDate} · Lylou-Vely by Zen-Connect</div>
     </body></html>`;
 }
@@ -3352,6 +3368,57 @@ window.downloadStatsTablePDF = function(){
 
 window.printStatsTable = function(){
   openPrintWindow(buildStatsPrintHTML());
+  // impression auto retirée : la fenêtre reste ouverte, impression manuelle
+};
+
+/* Document HTML dédié au classement "Produits les plus vendus" (export séparé, respecte le filtre actif) */
+function buildStatsProductsHTML(){
+  const filterLabel = currentStatsFilterLabel().replace(/—/g,'').trim();
+  const modeLabel = statsTableMode==='mois' ? 'Par mois' : 'Par marché';
+  const genDate = new Date().toLocaleString('fr-BE');
+  const products = computeProductStats(currentStatsFilteredSales());
+  const prodHTML = products.length===0 ? '<p class="pstats-empty">Pas encore de données</p>' : `
+    <table class="pstats-table">
+      <thead><tr><th>#</th><th>Produit</th><th class="r">Qté</th><th class="r">CA généré</th></tr></thead>
+      <tbody>${products.map((p,i)=>`<tr><td>${i+1}</td><td class="${i<3?'b':''}">${i===0?'🥇 ':i===1?'🥈 ':i===2?'🥉 ':''}${esc(p.name)}</td><td class="r">${p.qty}</td><td class="r b">${euro(p.revenue)}</td></tr>`).join('')}</tbody>
+    </table>`;
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8">
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Jost:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+      @page{margin:14mm;size:A4 portrait}
+      *{box-sizing:border-box}
+      body{font-family:'Jost',Arial,sans-serif;color:#2a2233;margin:0;padding:0}
+      .pstats-head{text-align:center;margin-bottom:20px}
+      .pstats-head .logo{font-family:'Cormorant Garamond',serif;font-size:34px;color:#6B3FA0;font-weight:700}
+      .pstats-head .sub{font-size:11px;letter-spacing:3px;text-transform:uppercase;color:#8b62c0;margin-top:2px}
+      .pstats-head .ctx{font-size:14px;color:#555;margin-top:12px;font-weight:500}
+      .pstats-head hr{border:none;border-top:1px solid #e4d9f2;margin:16px 0 0}
+      .pstats-table{width:100%;border-collapse:collapse;margin-bottom:8px;font-size:13px}
+      .pstats-table th{background:#6B3FA0;color:#fff;text-align:left;padding:9px 12px;font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.4px}
+      .pstats-table td{padding:9px 12px;border-bottom:1px solid #eee}
+      .pstats-table tr:nth-child(even) td{background:#faf7fd}
+      .pstats-table .r{text-align:right}
+      .pstats-table .b{font-weight:700}
+      .pstats-empty{color:#999;font-size:13px;font-style:italic}
+      .pstats-foot{margin-top:30px;text-align:center;font-size:10px;color:#aaa}
+    </style></head>
+    <body>
+      <div class="pstats-head">
+        <div class="logo">Lylou-Vely</div>
+        <div class="sub">Produits les plus vendus</div>
+        <div class="ctx">${modeLabel}${filterLabel ? ' — '+esc(filterLabel) : ''}</div>
+        <hr>
+      </div>
+      ${prodHTML}
+      <div class="pstats-foot">Document généré le ${genDate} · Lylou-Vely by Zen-Connect</div>
+    </body></html>`;
+}
+window.downloadStatsProductsPDF = function(){
+  const suffix = statsTableMode==='mois' ? 'par-mois' : 'par-marche';
+  htmlStringToPDF(buildStatsProductsHTML(), `produits-${suffix}-${todayStr()}.pdf`);
+};
+window.printStatsProducts = function(mode){
+  openPrintWindow(buildStatsProductsHTML(), mode||'a4');
   // impression auto retirée : la fenêtre reste ouverte, impression manuelle
 };
 
