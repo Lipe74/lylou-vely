@@ -657,6 +657,10 @@ nav button.on{color:var(--violet)}
 <!-- ===== MODALE TICKET ===== -->
 <div class="overlay center hidden" id="ticket-overlay">
   <div class="sheet" id="ticket-print">
+    <div id="ticket-z-toggle" class="no-print hidden" style="display:flex;gap:8px;margin-bottom:12px">
+      <button class="btn btn-outline btn-primary" id="ztoggle-apres" style="width:auto;padding:6px 14px;font-size:12px" onclick="toggleZReprint('apres')">✅ Après clôture</button>
+      <button class="btn btn-outline" id="ztoggle-avant" style="width:auto;padding:6px 14px;font-size:12px" onclick="toggleZReprint('avant')">🕐 Avant clôture (suggestion)</button>
+    </div>
     <div id="ticket-area"></div>
     <div class="no-print" style="margin-top:16px">
       <div class="row-btns">
@@ -1978,6 +1982,8 @@ function showTicket(sale){
 }
 window.closeTicket = function(){
   document.getElementById('ticket-overlay').classList.add('hidden');
+  document.getElementById('ticket-z-toggle').classList.add('hidden');
+  reprintZContext = null;
   if(awaitingNewDayAfterClosure){
     awaitingNewDayAfterClosure = false;
     showFondConfirmation();
@@ -2948,14 +2954,18 @@ window.exportCSV = function(){
 };
 
 /* ============ CLÔTURE Z ============ */
-function buildZHTML(day, marche){
+function buildZHTML(day, marche, excludeClosureVersement){
   const valid = state.sales.filter(x=>x.date===day && !x.cancelled);
   const cancelledN = state.sales.filter(x=>x.date===day && x.cancelled).length;
   const ca=valid.reduce((a,x)=>a+x.total,0);
   const esp=valid.reduce((a,x)=>a+methodAmount(x,'especes'),0);
   const qr=valid.reduce((a,x)=>a+methodAmount(x,'qr'),0);
   const carte=valid.reduce((a,x)=>a+methodAmount(x,'carte'),0);
-  const mvs=dayMovements(day);
+  // "Avant clôture" : on exclut le versement banque auto-généré à cette clôture, pour retrouver
+  // la suggestion telle qu'elle était affichée avant que tu confirmes le montant à retirer.
+  const closurePrefix = 'Versement banque — clôture Z '+day.split('-').reverse().join('/');
+  let mvs=dayMovements(day);
+  if(excludeClosureVersement) mvs = mvs.filter(m=>!(m.reason||'').startsWith(closurePrefix));
   const inTotal=mvs.filter(m=>m.type==='in').reduce((a,m)=>a+m.amount,0);
   const outTotal=mvs.filter(m=>m.type==='out').reduce((a,m)=>a+m.amount,0);
   const cashOut=mvs.filter(m=>m.type==='out'&&m.payMode!=='card').reduce((a,m)=>a+m.amount,0);
@@ -3023,15 +3033,33 @@ function buildZTicketHTML(day, marche, ca, esp, qr, carte, cancelledN, theo, inT
     <div class="t-foot">Clôture générée le ${new Date().toLocaleString('fr-BE')}</div>`;
 }
 
-window.reprintZ = function(day, marche){
-  const {ca,esp,qr,carte,cancelledN,theo,inTotal,outTotal,cashOut,cardOut,fondForDay} = buildZHTML(day, marche);
-  currentTicketRef = 'cloture-'+day;
+/* Contexte de la clôture en cours de réimpression (pour le sélecteur Avant/Après) */
+let reprintZContext = null;
+
+function renderZTicket(day, marche, mode){
+  const excludeVersement = mode==='avant';
+  const {ca,esp,qr,carte,cancelledN,theo,inTotal,outTotal,cashOut,cardOut,fondForDay} = buildZHTML(day, marche, excludeVersement);
   document.getElementById('ticket-area').innerHTML = buildZTicketHTML(day, marche, ca, esp, qr, carte, cancelledN, theo, inTotal, outTotal, cashOut, cardOut, fondForDay);
+  document.getElementById('ztoggle-apres').classList.toggle('btn-primary', mode!=='avant');
+  document.getElementById('ztoggle-avant').classList.toggle('btn-primary', mode==='avant');
+}
+window.toggleZReprint = function(mode){
+  if(!reprintZContext) return;
+  renderZTicket(reprintZContext.day, reprintZContext.marche, mode);
+};
+
+window.reprintZ = function(day, marche){
+  reprintZContext = {day, marche};
+  currentTicketRef = 'cloture-'+day;
+  document.getElementById('ticket-z-toggle').classList.remove('hidden');
+  renderZTicket(day, marche, 'apres');
   document.getElementById('ticket-overlay').classList.remove('hidden');
 };
 
 window.printZ = function(){
   const d = state.day;
+  reprintZContext = null;
+  document.getElementById('ticket-z-toggle').classList.add('hidden');
   const {ca,esp,qr,carte,cancelledN,theo,inTotal,outTotal,cashOut,cardOut,fondForDay} = buildZHTML(d, state.marche);
   currentTicketRef = 'cloture-'+d;
   const area=document.getElementById('ticket-area');
