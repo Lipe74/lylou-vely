@@ -1164,6 +1164,7 @@ async function openApp(){
   await loadSales();
   await loadMovements();
   await loadClosures();
+  await backfillMovementMarches();
   save(); // sync cache local
   initProducts();
   initDenoms();
@@ -1173,6 +1174,26 @@ async function openApp(){
   checkSumUpCallback();
   // Nouveau jour → sécurité clôture Z puis confirmation fond
   checkDayTransition();
+}
+
+/* Récupère le marché des anciens mouvements (créés avant le champ "marche") à partir du motif texte,
+   en comparant avec les noms de marchés réellement utilisés dans les ventes. Ne touche que les mouvements
+   sans marché déjà enregistré ; n'assigne que si le nom trouvé correspond exactement à un marché connu. */
+async function backfillMovementMarches(){
+  const knownMarches = new Set(state.sales.map(s=>s.marche).filter(Boolean));
+  if(knownMarches.size===0) return;
+  let changed = false;
+  for(const m of state.movements){
+    if(m.marche) continue;
+    const parts = (m.reason||'').split(' — ');
+    const last = (parts[parts.length-1]||'').trim();
+    if(knownMarches.has(last)){
+      m.marche = last;
+      changed = true;
+      await saveMovement(m);
+    }
+  }
+  if(changed) save();
 }
 
 /* ---- Sécurité : impossible de démarrer une nouvelle journée sans clôture Z de la précédente ---- */
@@ -1281,6 +1302,7 @@ window.switchMode = async function(target){
   await loadSales();
   await loadMovements();
   await loadClosures();
+  await backfillMovementMarches();
   save();
   initDenoms(); updateModeUI(); renderAll();
   loadArticlesFromFirebase();
@@ -2167,7 +2189,7 @@ window.addMovement = async function(){
   const payMode = mvType==='out' ? mvPayMode : null;
   const mv = {id:Date.now(), type:mvType, amount:amt,
     reason:reason||(mvType==='in'?'Entrée':'Sortie'),
-    payMode, time:nowTime(), date:state.day};
+    payMode, time:nowTime(), date:state.day, marche: state.marche || ''};
   state.movements.push(mv); save(); saveMovement(mv);
   document.getElementById('mv-amount').value='';
   document.getElementById('mv-reason').value='';
@@ -2187,7 +2209,7 @@ window.quickStand = async function(){
   const note = document.getElementById('qm-stand-note').value.trim();
   if(amt<=0){ toast("Montant invalide"); return; }
   const motif = "Paiement stand" + (note ? " — " + note : "");
-  const mv = {id:Date.now(), type:'out', amount:amt, reason:motif, payMode:qsPayMode, time:nowTime(), date:state.day};
+  const mv = {id:Date.now(), type:'out', amount:amt, reason:motif, payMode:qsPayMode, time:nowTime(), date:state.day, marche: state.marche || ''};
   state.movements.push(mv); save(); saveMovement(mv);
   document.getElementById('qm-stand-amt').value='';
   document.getElementById('qm-stand-note').value='';
@@ -2199,7 +2221,7 @@ window.quickBank = async function(){
   const note = document.getElementById('qm-bank-note').value.trim();
   if(amt<=0){ toast("Montant invalide"); return; }
   const motif = "Versement banque" + (note ? " — " + note : "");
-  const mv = {id:Date.now(), type:'out', amount:amt, reason:motif, payMode:'cash', time:nowTime(), date:state.day};
+  const mv = {id:Date.now(), type:'out', amount:amt, reason:motif, payMode:'cash', time:nowTime(), date:state.day, marche: state.marche || ''};
   state.movements.push(mv); save(); saveMovement(mv);
   document.getElementById('qm-bank-amt').value='';
   document.getElementById('qm-bank-note').value='';
@@ -3031,7 +3053,7 @@ window.confirmVersementPrompt = function(){
   if(amount > surplus + 0.01){ toast("Montant supérieur au surplus disponible, versement annulé"); closeVersementPrompt(); return; }
   const mv = {id:Date.now(), type:'out', amount:amount,
     reason:'Versement banque — clôture Z '+state.day.split('-').reverse().join('/')+(state.marche?' — '+state.marche:''),
-    payMode:'cash', time:nowTime(), date:state.day};
+    payMode:'cash', time:nowTime(), date:state.day, marche: state.marche || ''};
   state.movements.push(mv); save(); saveMovement(mv);
   renderMovements(); renderHeaderKPIs(); renderCaisse();
   toast("Versement de "+euro(amount)+" enregistré");
