@@ -18,6 +18,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <style>
 :root{
   --violet:#6B3FA0;--violet-d:#512e7a;--violet-l:#8b62c0;--violet-wash:#f4eefb;
@@ -407,7 +408,8 @@ nav button.on{color:var(--violet)}
           <button onclick="setJournalFilter('range')">Période</button>
           <input type="date" id="jr-date-pick" onchange="setJournalDate(this.value)">
         </div>
-        <button id="jr-export-closures-btn" class="btn btn-outline" style="display:none;margin-bottom:12px" onclick="downloadClosuresMonthPDF()">📦 Exporter les clôtures du mois (PDF)</button>
+        <select id="jr-month-select" onchange="setJournalMonth(this.value)" style="display:none;padding:8px 12px;border-radius:8px;border:1px solid #ddd;font-size:13px;margin-bottom:12px;width:100%"></select>
+        <button id="jr-export-closures-btn" class="btn btn-outline" style="display:none;margin-bottom:12px" onclick="downloadClosuresMonthZip()">📦 Exporter les clôtures du mois (ZIP)</button>
         <div id="jr-range-picker" style="display:none;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center" class="date-filter">
           <span style="font-size:13px;color:var(--muted)">Du</span>
           <input type="date" id="jr-range-start" onchange="setJournalRange()">
@@ -2344,15 +2346,32 @@ window.setJournalFilter = function(f){
   // Afficher/masquer picker période
   const rp = document.getElementById('jr-range-picker');
   const dp = document.getElementById('jr-date-pick');
+  const monthSel = document.getElementById('jr-month-select');
   if(f==='range'){
-    rp.style.display='flex'; dp.style.display='none';
+    rp.style.display='flex'; dp.style.display='none'; monthSel.style.display='none';
     // Init dates si vides
     if(!journalRangeStart){ journalRangeStart=todayStr(); document.getElementById('jr-range-start').value=journalRangeStart; }
     if(!journalRangeEnd){ journalRangeEnd=todayStr(); document.getElementById('jr-range-end').value=journalRangeEnd; }
+  } else if(f==='month'){
+    rp.style.display='none'; dp.style.display='none'; monthSel.style.display='block';
+    populateJournalMonthSelect();
   } else {
-    rp.style.display='none'; dp.style.display='block';
+    rp.style.display='none'; dp.style.display='block'; monthSel.style.display='none';
   }
   document.getElementById('jr-export-closures-btn').style.display = (f==='month') ? 'block' : 'none';
+  renderJournal();
+};
+/* Remplit le menu déroulant "Mois" du Journal avec tous les mois où il y a eu des ventes */
+function populateJournalMonthSelect(){
+  const sel = document.getElementById('jr-month-select');
+  const months = [...new Set(state.sales.map(s=>s.date.slice(0,7)))].sort().reverse();
+  const prev = sel.value;
+  sel.innerHTML = months.map(m=>`<option value="${m}">${monthLabel(m)}</option>`).join('');
+  if(months.includes(prev)) sel.value = prev;
+  else if(months.length){ sel.value = months[0]; journalDate = months[0]+'-01'; }
+}
+window.setJournalMonth = function(v){
+  journalDate = v+'-01';
   renderJournal();
 };
 window.setJournalDate = function(d){ journalDate = d; renderJournal(); };
@@ -2920,60 +2939,79 @@ window.downloadJournalPDF = function(){
   htmlStringToPDF(buildJournalHTML(), `journal-${(journalDate||todayStr())}.pdf`);
 };
 
-/* Export groupé : toutes les clôtures Z (version "Après", document officiel) d'un mois, en un seul PDF */
-function buildClosuresMonthHTML(month){
-  const monthClosures = state.closures.filter(c=>c.date.slice(0,7)===month).sort((a,b)=>a.date.localeCompare(b.date));
-  const monthLbl = monthLabel(month);
-  const genDate = new Date().toLocaleString('fr-BE');
-
-  const ticketsHTML = monthClosures.map(c=>{
-    const {ca,esp,qr,carte,cancelledN,theo,inTotal,outTotal,cashOut,cardOut,fondForDay} = buildZHTML(c.date, c.marche, false);
-    const body = buildZTicketHTML(c.date, c.marche, ca, esp, qr, carte, cancelledN, theo, inTotal, outTotal, cashOut, cardOut, fondForDay);
-    return `<div class="cl-ticket">${body}</div>`;
-  }).join('');
-
-  const emptyMsg = monthClosures.length===0 ? '<p style="text-align:center;color:#999;margin-top:30px">Aucune clôture enregistrée pour ce mois.</p>' : '';
-
-  return `<!DOCTYPE html><html><head><meta charset="UTF-8">
-    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&display=swap" rel="stylesheet">
-    <style>
-      @page{margin:14mm;size:A4 portrait}
-      *{box-sizing:border-box}
-      body{font-family:Arial,Helvetica,sans-serif;color:#000;background:#fff;margin:0;padding:0}
-      .cl-head{text-align:center;margin-bottom:24px}
-      .cl-head .logo{font-family:'Cormorant Garamond',serif;font-size:32px;color:#6B3FA0;font-weight:700}
-      .cl-head .sub{font-size:11px;letter-spacing:3px;text-transform:uppercase;color:#8b62c0;margin-top:2px}
-      .cl-head .ctx{font-size:14px;color:#555;margin-top:10px}
-      .cl-head hr{border:none;border-top:1px solid #e4d9f2;margin:16px 0 0}
-      .cl-ticket{max-width:320px;margin:0 auto 26px;padding-bottom:20px;border-bottom:2px dashed #ccc}
-      .cl-ticket:last-child{border-bottom:none}
-      .t-head{text-align:center;border-bottom:1px dashed #000;padding-bottom:8px;margin-bottom:8px}
-      .t-head .lg{font-size:22px;font-weight:900;font-family:'Cormorant Garamond',serif;color:#6B3FA0}
-      .t-head .sl{font-size:9px;text-transform:uppercase;letter-spacing:2px;color:#8b62c0}
-      .t-legal{font-size:10px;text-align:center;color:#555}
-      .t-meta{display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px}
-      .t-item{display:flex;justify-content:space-between;padding:2px 0;font-size:12px}
-      .t-sep{border-top:1px dashed #999;margin:6px 0}
-      .t-sub{display:flex;justify-content:space-between;font-size:11px;color:#555}
-      .t-tot{display:flex;justify-content:space-between;border-top:1px dashed #000;padding-top:5px;margin-top:4px;font-weight:900;font-size:15px}
-      .paid{display:block;text-align:center;border:2px solid #000;border-radius:6px;padding:6px 10px;font-weight:900;margin:6px auto;width:fit-content;font-size:12px}
-      .t-foot{text-align:center;font-size:9px;border-top:1px dashed #999;padding-top:6px;margin-top:6px;color:#888}
-    </style></head>
-    <body>
-      <div class="cl-head">
-        <div class="logo">Lylou-Vely</div>
-        <div class="sub">Clôtures du mois</div>
-        <div class="ctx">${esc(monthLbl)} — ${monthClosures.length} clôture${monthClosures.length>1?'s':''}</div>
-        <hr>
-      </div>
-      ${ticketsHTML}
-      ${emptyMsg}
-      <div class="t-foot" style="margin-top:20px">Document généré le ${genDate} · Lylou-Vely by Zen-Connect</div>
-    </body></html>`;
+/* Liste des clôtures (date+marché) réellement vendues sur un mois, à partir des vraies ventes
+   (indépendant de l'historique des clôtures, pour couvrir aussi les mois antérieurs à ce suivi) */
+function getMonthClosureDates(month){
+  const byMarcheDate = computeMarcheDateStats();
+  const list = [];
+  Object.keys(byMarcheDate).forEach(marche=>{
+    Object.keys(byMarcheDate[marche]).forEach(date=>{
+      if(date.slice(0,7)===month) list.push({date, marche});
+    });
+  });
+  return list.sort((a,b)=>a.date.localeCompare(b.date) || a.marche.localeCompare(b.marche));
 }
-window.downloadClosuresMonthPDF = function(){
+
+/* Génère le PDF (blob) d'un ticket de clôture Z isolé, hors écran, sans passer par la modale visible */
+async function ticketToPdfBlob(day, marche, mode){
+  const excludeVersement = mode==='avant';
+  const {ca,esp,qr,carte,cancelledN,theo,inTotal,outTotal,cashOut,cardOut,fondForDay} = buildZHTML(day, marche, excludeVersement);
+  const bodyHtml = buildZTicketHTML(day, marche, ca, esp, qr, carte, cancelledN, theo, inTotal, outTotal, cashOut, cardOut, fondForDay);
+
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'position:fixed;left:-99999px;top:0;background:#fff;width:300px;padding:14px;font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:1.6;color:#000';
+  wrap.innerHTML = `<style>
+    .t-head{text-align:center;border-bottom:1px dashed #000;padding-bottom:8px;margin-bottom:8px}
+    .t-head .lg{font-size:22px;font-weight:900;font-family:'Cormorant Garamond',serif;color:#6B3FA0}
+    .t-head .sl{font-size:9px;text-transform:uppercase;letter-spacing:2px;color:#8b62c0}
+    .t-legal{font-size:10px;text-align:center;color:#555}
+    .t-meta{display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px}
+    .t-item{display:flex;justify-content:space-between;padding:2px 0;font-size:12px}
+    .t-sep{border-top:1px dashed #999;margin:6px 0}
+    .t-sub{display:flex;justify-content:space-between;font-size:11px;color:#555}
+    .t-tot{display:flex;justify-content:space-between;border-top:1px dashed #000;padding-top:5px;margin-top:4px;font-weight:900;font-size:15px}
+    .paid{display:block;text-align:center;border:2px solid #000;border-radius:6px;padding:6px 10px;font-weight:900;margin:6px auto;width:fit-content;font-size:12px}
+    .t-foot{text-align:center;font-size:9px;border-top:1px dashed #999;padding-top:6px;margin-top:6px;color:#888}
+  </style>${bodyHtml}`;
+  document.body.appendChild(wrap);
+  await new Promise(r=>setTimeout(r,30));
+  const canvas = await html2canvas(wrap, {scale:2, backgroundColor:'#ffffff'});
+  wrap.remove();
+  const img = canvas.toDataURL('image/png');
+  const { jsPDF } = window.jspdf;
+  const wmm = 80;
+  const hmm = canvas.height * wmm / canvas.width;
+  const pdf = new jsPDF({unit:'mm', format:[wmm, hmm]});
+  pdf.addImage(img, 'PNG', 0, 0, wmm, hmm);
+  return pdf.output('blob');
+}
+
+/* Exporte toutes les clôtures du mois sélectionné en un ZIP (un PDF Après + un PDF Avant par clôture) */
+window.downloadClosuresMonthZip = async function(){
   const month = (journalDate||todayStr()).slice(0,7);
-  htmlStringToPDF(buildClosuresMonthHTML(month), `Clotures-${month}.pdf`);
+  const list = getMonthClosureDates(month);
+  if(list.length===0){ toast("Aucune vente trouvée pour ce mois"); return; }
+  if(!window.JSZip){ toast("Export ZIP indisponible"); return; }
+  toast("Génération du ZIP en cours…");
+  try{
+    const zip = new JSZip();
+    for(const {date, marche} of list){
+      const apres = await ticketToPdfBlob(date, marche, 'apres');
+      zip.file(zPdfName(date, marche, 'apres')+'.pdf', apres);
+      const avant = await ticketToPdfBlob(date, marche, 'avant');
+      zip.file(zPdfName(date, marche, 'avant')+'.pdf', avant);
+    }
+    const blob = await zip.generateAsync({type:'blob'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `Clotures-${month}.zip`;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url), 3000);
+    toast("ZIP téléchargé — "+list.length+" clôture"+(list.length>1?'s':''));
+  }catch(e){
+    console.warn('downloadClosuresMonthZip:', e);
+    toast("Erreur lors de la génération du ZIP");
+  }
 };
 
 /* ---- Export par marché ---- */
