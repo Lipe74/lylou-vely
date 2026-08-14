@@ -3036,12 +3036,20 @@ function buildZTicketHTML(day, marche, ca, esp, qr, carte, cancelledN, theo, inT
 /* Contexte de la clôture en cours de réimpression (pour le sélecteur Avant/Après) */
 let reprintZContext = null;
 
+/* Nom de fichier distinct selon la vue (document officiel vs suggestion), avec date + marché */
+function zPdfName(day, marche, mode){
+  const marcheSlug = slug(marche||'');
+  const suffix = marcheSlug ? '-'+marcheSlug : '';
+  return mode==='avant' ? `Suggestion-versement-${day}${suffix}` : `Cloture-${day}${suffix}`;
+}
+
 function renderZTicket(day, marche, mode){
   const excludeVersement = mode==='avant';
   const {ca,esp,qr,carte,cancelledN,theo,inTotal,outTotal,cashOut,cardOut,fondForDay} = buildZHTML(day, marche, excludeVersement);
   document.getElementById('ticket-area').innerHTML = buildZTicketHTML(day, marche, ca, esp, qr, carte, cancelledN, theo, inTotal, outTotal, cashOut, cardOut, fondForDay);
   document.getElementById('ztoggle-apres').classList.toggle('btn-primary', mode!=='avant');
   document.getElementById('ztoggle-avant').classList.toggle('btn-primary', mode==='avant');
+  currentTicketRef = zPdfName(day, marche, mode);
 }
 window.toggleZReprint = function(mode){
   if(!reprintZContext) return;
@@ -3050,7 +3058,6 @@ window.toggleZReprint = function(mode){
 
 window.reprintZ = function(day, marche){
   reprintZContext = {day, marche};
-  currentTicketRef = 'cloture-'+day;
   document.getElementById('ticket-z-toggle').classList.remove('hidden');
   renderZTicket(day, marche, 'apres');
   document.getElementById('ticket-overlay').classList.remove('hidden');
@@ -3061,7 +3068,7 @@ window.printZ = function(){
   reprintZContext = null;
   document.getElementById('ticket-z-toggle').classList.add('hidden');
   const {ca,esp,qr,carte,cancelledN,theo,inTotal,outTotal,cashOut,cardOut,fondForDay} = buildZHTML(d, state.marche);
-  currentTicketRef = 'cloture-'+d;
+  currentTicketRef = zPdfName(d, state.marche, 'apres');
   const area=document.getElementById('ticket-area');
   area.innerHTML = buildZTicketHTML(d, state.marche, ca, esp, qr, carte, cancelledN, theo, inTotal, outTotal, cashOut, cardOut, fondForDay);
   document.getElementById('ticket-overlay').classList.remove('hidden');
