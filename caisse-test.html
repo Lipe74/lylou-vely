@@ -506,16 +506,17 @@ nav button.on{color:var(--violet)}
             <button class="btn btn-outline" style="width:auto;padding:6px 12px;font-size:12px" onclick="printStatsTable()">🖨 A4</button>
           </div>
           <div id="stats-marche-filter" style="text-align:right;margin-bottom:8px">
-            <select id="stats-marche-select" onchange="renderStatsTable()" style="padding:6px 10px;border-radius:8px;border:1px solid #ddd;font-size:13px"></select>
+            <select id="stats-marche-select" onchange="onStatsFilterChange()" style="padding:6px 10px;border-radius:8px;border:1px solid #ddd;font-size:13px"></select>
           </div>
           <div id="stats-mois-filter" style="text-align:right;margin-bottom:8px;display:none">
-            <select id="stats-mois-select" onchange="renderStatsTable()" style="padding:6px 10px;border-radius:8px;border:1px solid #ddd;font-size:13px"></select>
+            <select id="stats-mois-select" onchange="onStatsFilterChange()" style="padding:6px 10px;border-radius:8px;border:1px solid #ddd;font-size:13px"></select>
           </div>
           <div id="stats-table" style="overflow-x:auto"></div>
         </div>
 
         <div class="card">
-          <h3 style="font-size:19px;margin-bottom:10px">🏆 Produits les plus vendus</h3>
+          <h3 style="font-size:19px;margin-bottom:2px">🏆 Produits les plus vendus</h3>
+          <div id="stats-products-subtitle" style="font-size:12px;color:var(--muted);margin-bottom:10px"></div>
           <div id="stats-products" style="overflow-x:auto"></div>
         </div>
 
@@ -3213,40 +3214,96 @@ function renderHeaderKPIs(){
 }
 
 /* Télécharge le tableau Statistiques affiché (Par marché ou Par mois) en PDF */
-window.downloadStatsTablePDF = async function(){
-  if(!window.html2canvas || !window.jspdf){ toast("PDF indisponible"); return; }
-  toast("Génération du PDF…");
-  try{
-    const node = document.getElementById('stats-table');
-    const canvas = await html2canvas(node, { scale:2, backgroundColor:'#ffffff' });
-    const suffix = statsTableMode==='mois' ? 'par-mois' : 'par-marche';
-    canvasToPDFPages(canvas, `statistiques-${suffix}-${todayStr()}.pdf`);
-    toast("PDF téléchargé");
-  }catch(e){
-    toast("Erreur lors de la génération du PDF");
+/* Document HTML complet et soigné pour l'export Statistiques (PDF + impression A4) */
+function buildStatsPrintHTML(){
+  const filterLabel = currentStatsFilterLabel().replace(/—/g,'').trim();
+  const modeLabel = statsTableMode==='mois' ? 'Par mois' : 'Par marché';
+  const genDate = new Date().toLocaleString('fr-BE');
+
+  const rowsTot = (rows)=> rows.reduce((a,d)=>{a.ca+=d.ca;a.esp+=d.esp;a.qr+=d.qr;a.carte+=d.carte;a.count+=d.count;return a;},{ca:0,esp:0,qr:0,carte:0,count:0});
+  const tblHead = `<thead><tr><th>${statsTableMode==='mois'?'Marché':'Date'}</th><th class="r">CA</th><th class="r">💶 Espèces</th><th class="r">📱 QR</th><th class="r">💳 Carte</th><th class="r">Ventes</th></tr></thead>`;
+  const tblRow = (label,d)=>`<tr><td>${label}</td><td class="r b">${euro(d.ca)}</td><td class="r">${euro(d.esp)}</td><td class="r">${euro(d.qr)}</td><td class="r">${euro(d.carte)}</td><td class="r">${d.count}</td></tr>`;
+  const tblTotRow = (tot)=>`<tr class="tot"><td>Total</td><td class="r">${euro(tot.ca)}</td><td class="r">${euro(tot.esp)}</td><td class="r">${euro(tot.qr)}</td><td class="r">${euro(tot.carte)}</td><td class="r">${tot.count}</td></tr>`;
+
+  let tableHTML;
+  if(statsTableMode==='mois'){
+    const byMonth = computeMonthMarcheStats();
+    const chosenMonth = document.getElementById('stats-mois-select').value;
+    const marches = byMonth[chosenMonth] || {};
+    const names = Object.keys(marches).sort((a,b)=>marches[b].ca-marches[a].ca);
+    const tot = rowsTot(names.map(n=>marches[n]));
+    tableHTML = `<table class="pstats-table">${tblHead}<tbody>
+      ${names.map(n=>tblRow('🏪 '+esc(n), marches[n])).join('')}
+      ${tblTotRow(tot)}
+    </tbody></table>`;
+  } else {
+    const byMarche = computeMarcheDateStats();
+    const chosen = document.getElementById('stats-marche-select').value || '__all__';
+    const marchesToShow = chosen==='__all__' ? Object.keys(byMarche).sort() : [chosen];
+    tableHTML = marchesToShow.map(m=>{
+      const dates = byMarche[m]; if(!dates) return '';
+      const sortedDates = Object.keys(dates).sort().reverse();
+      const tot = rowsTot(sortedDates.map(dt=>dates[dt]));
+      return `<div class="pstats-sub">🏪 ${esc(m)}</div>
+        <table class="pstats-table">${tblHead}<tbody>
+          ${sortedDates.map(dt=>tblRow(dt.split('-').reverse().join('/'), dates[dt])).join('')}
+          ${tblTotRow(tot)}
+        </tbody></table>`;
+    }).join('');
   }
+
+  const products = computeProductStats(currentStatsFilteredSales());
+  const prodHTML = products.length===0 ? '<p class="pstats-empty">Pas encore de données</p>' : `
+    <table class="pstats-table">
+      <thead><tr><th>#</th><th>Produit</th><th class="r">Qté</th><th class="r">CA généré</th></tr></thead>
+      <tbody>${products.map((p,i)=>`<tr><td>${i+1}</td><td class="${i<3?'b':''}">${i===0?'🥇 ':i===1?'🥈 ':i===2?'🥉 ':''}${esc(p.name)}</td><td class="r">${p.qty}</td><td class="r b">${euro(p.revenue)}</td></tr>`).join('')}</tbody>
+    </table>`;
+
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8">
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Jost:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+      @page{margin:14mm;size:A4 portrait}
+      *{box-sizing:border-box}
+      body{font-family:'Jost',Arial,sans-serif;color:#2a2233;margin:0;padding:0}
+      .pstats-head{text-align:center;margin-bottom:20px}
+      .pstats-head .logo{font-family:'Cormorant Garamond',serif;font-size:34px;color:#6B3FA0;font-weight:700}
+      .pstats-head .sub{font-size:11px;letter-spacing:3px;text-transform:uppercase;color:#8b62c0;margin-top:2px}
+      .pstats-head .ctx{font-size:14px;color:#555;margin-top:12px;font-weight:500}
+      .pstats-head hr{border:none;border-top:1px solid #e4d9f2;margin:16px 0 0}
+      .pstats-sub{font-family:'Cormorant Garamond',serif;font-size:18px;color:#6B3FA0;font-weight:700;margin:20px 0 8px}
+      .pstats-table{width:100%;border-collapse:collapse;margin-bottom:8px;font-size:13px}
+      .pstats-table th{background:#6B3FA0;color:#fff;text-align:left;padding:9px 12px;font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.4px}
+      .pstats-table td{padding:9px 12px;border-bottom:1px solid #eee}
+      .pstats-table tr:nth-child(even) td{background:#faf7fd}
+      .pstats-table .r{text-align:right}
+      .pstats-table .b{font-weight:700}
+      .pstats-table tr.tot td{border-top:2px solid #6B3FA0;background:#f4eefb;font-weight:700}
+      .pstats-section-title{font-family:'Cormorant Garamond',serif;font-size:21px;color:#6B3FA0;font-weight:700;margin:30px 0 4px}
+      .pstats-empty{color:#999;font-size:13px;font-style:italic}
+      .pstats-foot{margin-top:30px;text-align:center;font-size:10px;color:#aaa}
+    </style></head>
+    <body>
+      <div class="pstats-head">
+        <div class="logo">Lylou-Vely</div>
+        <div class="sub">Statistiques</div>
+        <div class="ctx">${modeLabel}${filterLabel ? ' — '+esc(filterLabel) : ''}</div>
+        <hr>
+      </div>
+      ${tableHTML}
+      <div class="pstats-section-title">🏆 Produits les plus vendus</div>
+      ${prodHTML}
+      <div class="pstats-foot">Document généré le ${genDate} · Lylou-Vely by Zen-Connect</div>
+    </body></html>`;
+}
+
+window.downloadStatsTablePDF = function(){
+  const suffix = statsTableMode==='mois' ? 'par-mois' : 'par-marche';
+  htmlStringToPDF(buildStatsPrintHTML(), `statistiques-${suffix}-${todayStr()}.pdf`);
 };
 
-/* Ouvre une fenêtre d'impression A4 pour le tableau Statistiques affiché */
-window.printStatsTable = async function(){
-  if(!window.html2canvas){ toast("Impression indisponible"); return; }
-  toast("Préparation de l'impression…");
-  try{
-    const node = document.getElementById('stats-table');
-    const canvas = await html2canvas(node, { scale:2, backgroundColor:'#ffffff' });
-    const imgData = canvas.toDataURL('image/png');
-    const w = window.open('','_blank','width=900,height=700');
-    if(!w){ toast("Popup bloqué — autorise les popups"); return; }
-    w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><style>
-      @page{margin:10mm;size:A4 portrait}
-      body{margin:0;padding:0}
-      img{width:100%;display:block}
-    </style></head><body><img src="${imgData}"></body></html>`);
-    w.document.close();
-    // impression auto retirée : la fenêtre reste ouverte, impression manuelle
-  }catch(e){
-    toast("Erreur lors de la préparation de l'impression");
-  }
+window.printStatsTable = function(){
+  openPrintWindow(buildStatsPrintHTML());
+  // impression auto retirée : la fenêtre reste ouverte, impression manuelle
 };
 
 
@@ -3512,16 +3569,22 @@ window.setStatsTableMode = function(mode){
   document.getElementById('stats-marche-filter').style.display = mode==='marche' ? 'block' : 'none';
   document.getElementById('stats-mois-filter').style.display = mode==='mois' ? 'block' : 'none';
   window.renderStatsTable();
+  renderStatsProducts();
 };
 window.renderStatsTable = function(){
   if(statsTableMode==='mois') renderStatsTableByMonth();
   else renderStatsTableByMarche();
 };
+window.onStatsFilterChange = function(){
+  window.renderStatsTable();
+  renderStatsProducts();
+};
 
-/* Produits les plus vendus (quantité + CA généré) */
-function computeProductStats(){
+/* Produits les plus vendus (quantité + CA généré) — respecte le filtre mois/marché actif */
+function computeProductStats(salesList){
+  const list = salesList || state.sales.filter(s=>!s.cancelled);
   const byProduct = {};
-  state.sales.filter(s=>!s.cancelled).forEach(s=>{
+  list.forEach(s=>{
     (s.items||[]).forEach(it=>{
       if(!byProduct[it.name]) byProduct[it.name] = {qty:0, revenue:0};
       byProduct[it.name].qty += it.qty;
@@ -3531,9 +3594,29 @@ function computeProductStats(){
   return Object.keys(byProduct).map(name=>({name, ...byProduct[name]})).sort((a,b)=>b.revenue-a.revenue);
 }
 
+/* Ventes filtrées selon le mode/sélection actifs de la carte Statistiques */
+function currentStatsFilteredSales(){
+  const all = state.sales.filter(s=>!s.cancelled);
+  if(statsTableMode==='mois'){
+    const chosen = document.getElementById('stats-mois-select').value;
+    return chosen ? all.filter(s=>s.date.slice(0,7)===chosen) : all;
+  }
+  const chosen = document.getElementById('stats-marche-select').value || '__all__';
+  return chosen==='__all__' ? all : all.filter(s=>(s.marche||'(sans marché)')===chosen);
+}
+/* Libellé du filtre actif, affiché en sous-titre du classement produits */
+function currentStatsFilterLabel(){
+  const selId = statsTableMode==='mois' ? 'stats-mois-select' : 'stats-marche-select';
+  const sel = document.getElementById(selId);
+  const opt = sel && sel.selectedOptions[0];
+  return opt ? '— '+opt.textContent+' —' : '';
+}
+
 function renderStatsProducts(){
   const box = document.getElementById('stats-products');
-  const products = computeProductStats();
+  const subtitle = document.getElementById('stats-products-subtitle');
+  if(subtitle) subtitle.textContent = currentStatsFilterLabel();
+  const products = computeProductStats(currentStatsFilteredSales());
   if(products.length===0){ box.innerHTML = '<div class="empty">Pas encore de données</div>'; return; }
 
   let html = `<table style="width:100%;min-width:480px;border-collapse:collapse;font-size:12px">
