@@ -1177,18 +1177,25 @@ async function openApp(){
 }
 
 /* Récupère le marché des anciens mouvements (créés avant le champ "marche") à partir du motif texte,
-   en comparant avec les noms de marchés réellement utilisés dans les ventes. Ne touche que les mouvements
-   sans marché déjà enregistré ; n'assigne que si le nom trouvé correspond exactement à un marché connu. */
+   en comparant avec les noms de marchés réellement utilisés dans les ventes (comparaison insensible à la
+   casse, pour éviter que "Visé" et "visé" soient traités comme deux marchés différents). Ne touche que
+   les mouvements sans marché déjà enregistré. */
 async function backfillMovementMarches(){
-  const knownMarches = new Set(state.sales.map(s=>s.marche).filter(Boolean));
-  if(knownMarches.size===0) return;
+  const marcheMap = new Map(); // clé normalisée (minuscule, sans espaces superflus) -> nom canonique
+  state.sales.forEach(s=>{
+    if(!s.marche) return;
+    const key = s.marche.trim().toLowerCase();
+    if(!marcheMap.has(key)) marcheMap.set(key, s.marche);
+  });
+  if(marcheMap.size===0) return;
   let changed = false;
   for(const m of state.movements){
     if(m.marche) continue;
     const parts = (m.reason||'').split(' — ');
     const last = (parts[parts.length-1]||'').trim();
-    if(knownMarches.has(last)){
-      m.marche = last;
+    const key = last.toLowerCase();
+    if(marcheMap.has(key)){
+      m.marche = marcheMap.get(key);
       changed = true;
       await saveMovement(m);
     }
