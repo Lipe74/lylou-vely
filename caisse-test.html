@@ -2952,26 +2952,28 @@ function getMonthClosureDates(month){
   return list.sort((a,b)=>a.date.localeCompare(b.date) || a.marche.localeCompare(b.marche));
 }
 
-/* Génère le PDF (blob) d'un ticket de clôture Z isolé, hors écran, sans passer par la modale visible */
+/* Génère le PDF (blob) d'un ticket de clôture Z isolé, hors écran, sans passer par la modale visible.
+   Utilise le même style large "A5" que le bouton A4 de l'app, pour un rendu cohérent avec le reste. */
 async function ticketToPdfBlob(day, marche, mode){
   const excludeVersement = mode==='avant';
   const {ca,esp,qr,carte,cancelledN,theo,inTotal,outTotal,cashOut,cardOut,fondForDay} = buildZHTML(day, marche, excludeVersement);
   const bodyHtml = buildZTicketHTML(day, marche, ca, esp, qr, carte, cancelledN, theo, inTotal, outTotal, cashOut, cardOut, fondForDay);
 
   const wrap = document.createElement('div');
-  wrap.style.cssText = 'position:fixed;left:-99999px;top:0;background:#fff;width:300px;padding:14px;font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:1.6;color:#000';
+  wrap.style.cssText = 'position:fixed;left:-99999px;top:0;background:#fff;width:560px;padding:24px;font-family:Arial,Helvetica,sans-serif;color:#000';
   wrap.innerHTML = `<style>
     .t-head{text-align:center;border-bottom:1px dashed #000;padding-bottom:8px;margin-bottom:8px}
-    .t-head .lg{font-size:22px;font-weight:900;font-family:'Cormorant Garamond',serif;color:#6B3FA0}
-    .t-head .sl{font-size:9px;text-transform:uppercase;letter-spacing:2px;color:#8b62c0}
+    .t-head .lg{font-size:26px;font-weight:900;font-family:'Cormorant Garamond',serif;color:#6B3FA0}
+    .t-head .sl{font-size:10px;text-transform:uppercase;letter-spacing:2px;color:#8b62c0}
     .t-legal{font-size:10px;text-align:center;color:#555}
-    .t-meta{display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px}
-    .t-item{display:flex;justify-content:space-between;padding:2px 0;font-size:12px}
-    .t-sep{border-top:1px dashed #999;margin:6px 0}
-    .t-sub{display:flex;justify-content:space-between;font-size:11px;color:#555}
-    .t-tot{display:flex;justify-content:space-between;border-top:1px dashed #000;padding-top:5px;margin-top:4px;font-weight:900;font-size:15px}
-    .paid{display:block;text-align:center;border:2px solid #000;border-radius:6px;padding:6px 10px;font-weight:900;margin:6px auto;width:fit-content;font-size:12px}
-    .t-foot{text-align:center;font-size:9px;border-top:1px dashed #999;padding-top:6px;margin-top:6px;color:#888}
+    .t-meta{display:flex;justify-content:space-between;font-size:12px;margin-bottom:2px}
+    .t-item{display:flex;justify-content:space-between;padding:3px 0;font-size:13px}
+    .t-sep{border-top:1px dashed #000;margin:6px 0}
+    .t-sub{display:flex;justify-content:space-between;font-size:12px}
+    .t-tot{display:flex;justify-content:space-between;border-top:1px dashed #000;padding-top:6px;margin-top:4px;font-weight:900;font-size:18px}
+    .paid{display:block;text-align:center;border:2px solid #2e9e6b;color:#2e9e6b;border-radius:6px;padding:4px 12px;font-weight:900;margin:8px auto;width:fit-content;font-size:13px}
+    .paid.cancelled{border-color:#c0475e;color:#c0475e}
+    .t-foot{text-align:center;font-size:11px;border-top:1px dashed #000;padding-top:8px;margin-top:8px;color:#666;line-height:1.6}
   </style>${bodyHtml}`;
   document.body.appendChild(wrap);
   await new Promise(r=>setTimeout(r,30));
@@ -2979,7 +2981,7 @@ async function ticketToPdfBlob(day, marche, mode){
   wrap.remove();
   const img = canvas.toDataURL('image/png');
   const { jsPDF } = window.jspdf;
-  const wmm = 80;
+  const wmm = 148; // Largeur A5 portrait, format "large" (identique au rendu du bouton A4)
   const hmm = canvas.height * wmm / canvas.width;
   const pdf = new jsPDF({unit:'mm', format:[wmm, hmm]});
   pdf.addImage(img, 'PNG', 0, 0, wmm, hmm);
