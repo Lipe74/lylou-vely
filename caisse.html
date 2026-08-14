@@ -521,10 +521,24 @@ nav button.on{color:var(--violet)}
         </div>
 
         <div class="card">
-          <div class="row-btns" style="margin-bottom:10px">
+          <div class="row-btns" style="margin-bottom:10px;flex-wrap:wrap">
+            <h3 style="font-size:19px;flex:1">🏦 Versements banque</h3>
+            <button class="btn btn-outline" style="width:auto;padding:6px 12px;font-size:12px" onclick="downloadStatsBankPDF()">PDF</button>
+            <button class="btn btn-outline" style="width:auto;padding:6px 12px;font-size:12px" onclick="printStatsBank('58mm')">🖨 58mm</button>
+            <button class="btn btn-outline" style="width:auto;padding:6px 12px;font-size:12px" onclick="printStatsBank('a4')">🖨 A4</button>
+          </div>
+          <div id="stats-bank-subtitle" style="font-size:12px;color:var(--muted);margin-bottom:10px"></div>
+          <div id="stats-bank-list"></div>
+        </div>
+
+        <div class="card">
+          <div class="row-btns" style="margin-bottom:10px;flex-wrap:wrap">
             <h3 style="font-size:19px;flex:1">Évolution du CA</h3>
             <button class="btn btn-outline btn-primary" id="stats-mode-bars" style="width:auto;padding:6px 12px;font-size:12px" onclick="setStatsChartMode('bars')">📊 Barres</button>
             <button class="btn btn-outline" id="stats-mode-lines" style="width:auto;padding:6px 12px;font-size:12px" onclick="setStatsChartMode('lines')">📈 Courbes</button>
+          </div>
+          <div style="text-align:right;margin-bottom:10px">
+            <select id="stats-chart-marche-select" onchange="renderStatsChart()" style="padding:6px 10px;border-radius:8px;border:1px solid #ddd;font-size:13px"></select>
           </div>
           <div id="stats-chart"></div>
           <div id="stats-legend" style="display:flex;gap:14px;justify-content:center;margin-top:10px;font-size:12px;flex-wrap:wrap"></div>
@@ -2640,9 +2654,9 @@ window.downloadMvCatPDF = function(cat){
   htmlStringToPDF(buildJournalMvHTML(getMovementsByCat(cat), MV_CAT_LABEL[cat]), `mouvements-${cat}-${(journalDate||todayStr())}.pdf`);
 };
 
-function buildJournalMvHTML(subset, subtitle){
+function buildJournalMvHTML(subset, subtitle, dateLabelOverride){
   const mvs = subset || getFilteredMovements();
-  const dateLabel = document.getElementById('journal-date').textContent + (subtitle ? ' — ' + subtitle : '');
+  const dateLabel = dateLabelOverride || (document.getElementById('journal-date').textContent + (subtitle ? ' — ' + subtitle : ''));
   const totalIn = mvs.filter(m=>m.type==='in').reduce((a,m)=>a+m.amount,0);
   const totalOut = mvs.filter(m=>m.type==='out').reduce((a,m)=>a+m.amount,0);
   let html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
@@ -3221,33 +3235,39 @@ function buildStatsPrintHTML(){
   const genDate = new Date().toLocaleString('fr-BE');
 
   const rowsTot = (rows)=> rows.reduce((a,d)=>{a.ca+=d.ca;a.esp+=d.esp;a.qr+=d.qr;a.carte+=d.carte;a.count+=d.count;return a;},{ca:0,esp:0,qr:0,carte:0,count:0});
-  const tblHead = `<thead><tr><th>${statsTableMode==='mois'?'Marché':'Date'}</th><th class="r">CA</th><th class="r">💶 Espèces</th><th class="r">📱 QR</th><th class="r">💳 Carte</th><th class="r">Ventes</th></tr></thead>`;
-  const tblRow = (label,d)=>`<tr><td>${label}</td><td class="r b">${euro(d.ca)}</td><td class="r">${euro(d.esp)}</td><td class="r">${euro(d.qr)}</td><td class="r">${euro(d.carte)}</td><td class="r">${d.count}</td></tr>`;
-  const tblTotRow = (tot)=>`<tr class="tot"><td>Total</td><td class="r">${euro(tot.ca)}</td><td class="r">${euro(tot.esp)}</td><td class="r">${euro(tot.qr)}</td><td class="r">${euro(tot.carte)}</td><td class="r">${tot.count}</td></tr>`;
+  const tblHead = `<thead><tr><th>${statsTableMode==='mois'?'Marché':'Date'}</th><th class="r">CA</th><th class="r">💶 Espèces</th><th class="r">📱 QR</th><th class="r">💳 Carte</th><th class="r">🏪 Stand</th><th class="r">Ventes</th></tr></thead>`;
+  const tblRow = (label,d,stand)=>`<tr><td>${label}</td><td class="r b">${euro(d.ca)}</td><td class="r">${euro(d.esp)}</td><td class="r">${euro(d.qr)}</td><td class="r">${euro(d.carte)}</td><td class="r" style="color:#a15c00">${stand?'−'+euro(stand):'—'}</td><td class="r">${d.count}</td></tr>`;
+  const tblTotRow = (tot,standTot)=>`<tr class="tot"><td>Total</td><td class="r">${euro(tot.ca)}</td><td class="r">${euro(tot.esp)}</td><td class="r">${euro(tot.qr)}</td><td class="r">${euro(tot.carte)}</td><td class="r" style="color:#a15c00">${standTot?'−'+euro(standTot):'—'}</td><td class="r">${tot.count}</td></tr>`;
 
   let tableHTML;
   if(statsTableMode==='mois'){
     const byMonth = computeMonthMarcheStats();
+    const standByMonth = computeStandByMonthMarche();
     const chosenMonth = document.getElementById('stats-mois-select').value;
     const marches = byMonth[chosenMonth] || {};
+    const standMarches = standByMonth[chosenMonth] || {};
     const names = Object.keys(marches).sort((a,b)=>marches[b].ca-marches[a].ca);
     const tot = rowsTot(names.map(n=>marches[n]));
+    const standTot = Object.values(standMarches).reduce((a,v)=>a+v,0);
     tableHTML = `<table class="pstats-table">${tblHead}<tbody>
-      ${names.map(n=>tblRow('🏪 '+esc(n), marches[n])).join('')}
-      ${tblTotRow(tot)}
+      ${names.map(n=>tblRow('🏪 '+esc(n), marches[n], standMarches[n])).join('')}
+      ${tblTotRow(tot, standTot)}
     </tbody></table>`;
   } else {
     const byMarche = computeMarcheDateStats();
+    const standByMarche = computeStandByMarcheDate();
     const chosen = document.getElementById('stats-marche-select').value || '__all__';
     const marchesToShow = chosen==='__all__' ? Object.keys(byMarche).sort() : [chosen];
     tableHTML = marchesToShow.map(m=>{
       const dates = byMarche[m]; if(!dates) return '';
+      const standDates = standByMarche[m] || {};
       const sortedDates = Object.keys(dates).sort().reverse();
       const tot = rowsTot(sortedDates.map(dt=>dates[dt]));
+      const standTot = Object.values(standDates).reduce((a,v)=>a+v,0);
       return `<div class="pstats-sub">🏪 ${esc(m)}</div>
         <table class="pstats-table">${tblHead}<tbody>
-          ${sortedDates.map(dt=>tblRow(dt.split('-').reverse().join('/'), dates[dt])).join('')}
-          ${tblTotRow(tot)}
+          ${sortedDates.map(dt=>tblRow(dt.split('-').reverse().join('/'), dates[dt], standDates[dt])).join('')}
+          ${tblTotRow(tot, standTot)}
         </tbody></table>`;
     }).join('');
   }
@@ -3311,10 +3331,11 @@ window.printStatsTable = function(){
 let statsChartMode = 'bars';
 const STATS_COLORS = { esp:'#6B3FA0', qr:'#3f8cd4', carte:'#e08a3c' };
 
-/* Regroupe toutes les ventes valides par mois (YYYY-MM) */
-function computeMonthlyStats(){
+/* Regroupe toutes les ventes valides par mois (YYYY-MM), avec filtre marché optionnel */
+function computeMonthlyStats(marcheFilter){
   const byMonth = {};
   state.sales.filter(s=>!s.cancelled).forEach(s=>{
+    if(marcheFilter && marcheFilter!=='__all__' && (s.marche||'(sans marché)')!==marcheFilter) return;
     const m = s.date.slice(0,7); // YYYY-MM
     if(!byMonth[m]) byMonth[m] = {esp:0, qr:0, carte:0, ca:0, count:0};
     byMonth[m].esp += methodAmount(s,'especes');
@@ -3360,6 +3381,28 @@ function computeMarcheDateStats(){
   return byMarche;
 }
 
+/* Totaux "Paiement stand" par marché puis par date réelle (miroir de computeMarcheDateStats) */
+function computeStandByMarcheDate(){
+  const out = {};
+  state.movements.filter(m=>mvCategory(m)==='stand').forEach(m=>{
+    const marche = m.marche || '(sans marché)';
+    if(!out[marche]) out[marche] = {};
+    out[marche][m.date] = (out[marche][m.date]||0) + m.amount;
+  });
+  return out;
+}
+/* Totaux "Paiement stand" par mois puis par marché (miroir de computeMonthMarcheStats) */
+function computeStandByMonthMarche(){
+  const out = {};
+  state.movements.filter(m=>mvCategory(m)==='stand').forEach(m=>{
+    const mo = m.date.slice(0,7);
+    const marche = m.marche || '(sans marché)';
+    if(!out[mo]) out[mo] = {};
+    out[mo][marche] = (out[mo][marche]||0) + m.amount;
+  });
+  return out;
+}
+
 function monthLabel(ym){
   const [y,m] = ym.split('-');
   const noms = ['Jan','Fév','Mar','Avr','Mai','Juin','Juil','Août','Sep','Oct','Nov','Déc'];
@@ -3382,6 +3425,13 @@ function renderStats(){
     marches.map(m=>`<option value="${esc(m)}">${esc(m)}</option>`).join('');
   if(marches.includes(prevVal) || prevVal==='__all__') sel.value = prevVal;
 
+  // Remplit le sélecteur de marché du graphique d'évolution
+  const chartSel = document.getElementById('stats-chart-marche-select');
+  const prevChartVal = chartSel.value;
+  chartSel.innerHTML = '<option value="__all__">Tous les marchés</option>' +
+    marches.map(m=>`<option value="${esc(m)}">${esc(m)}</option>`).join('');
+  if(marches.includes(prevChartVal) || prevChartVal==='__all__') chartSel.value = prevChartVal;
+
   // Remplit le sélecteur de mois (le plus récent avec données par défaut)
   const moisSel = document.getElementById('stats-mois-select');
   const months = [...new Set(state.sales.filter(s=>!s.cancelled).map(s=>s.date.slice(0,7)))].sort().reverse();
@@ -3392,10 +3442,12 @@ function renderStats(){
   renderStatsChart();
   window.renderStatsTable();
   renderStatsProducts();
+  renderStatsBankList();
 }
 
 function renderStatsChart(){
-  const data = computeMonthlyStats();
+  const chartMarche = document.getElementById('stats-chart-marche-select').value || '__all__';
+  const data = computeMonthlyStats(chartMarche);
   const box = document.getElementById('stats-chart');
   const legend = document.getElementById('stats-legend');
   legend.innerHTML = `
@@ -3405,30 +3457,42 @@ function renderStatsChart(){
 
   if(data.length===0){ box.innerHTML = '<div class="empty">Pas encore de données</div>'; return; }
 
-  const W = 700, H = 260, padL = 40, padB = 30, padT = 10, padR = 10;
+  const W = 700, H = 280, padL = 44, padB = 32, padT = 26, padR = 10;
   const chartW = W - padL - padR, chartH = H - padT - padB;
-  const maxCA = Math.max(...data.map(d=>d.ca), 1);
+  const maxCA = Math.max(...data.map(d=>d.ca), 1) * 1.12; // marge en haut pour le libellé du total
   const n = data.length;
 
   let svg = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;font-family:inherit">`;
   // axes horizontales (grille légère)
   for(let i=0;i<=4;i++){
     const y = padT + chartH - (i/4)*chartH;
-    svg += `<line x1="${padL}" y1="${y}" x2="${W-padR}" y2="${y}" stroke="#eee" stroke-width="1"/>`;
-    svg += `<text x="${padL-6}" y="${y+3}" font-size="9" fill="#999" text-anchor="end">${euro(maxCA*i/4)}</text>`;
+    svg += `<line x1="${padL}" y1="${y}" x2="${W-padR}" y2="${y}" stroke="#f0ecf5" stroke-width="1"/>`;
+    svg += `<text x="${padL-8}" y="${y+3}" font-size="9" fill="#aaa" text-anchor="end">${euro(maxCA*i/4)}</text>`;
   }
 
   if(statsChartMode==='bars'){
-    const bw = chartW/n*0.6;
+    const bw = Math.min(chartW/n*0.42, 46);
     data.forEach((d,i)=>{
       const cx = padL + chartW*(i+0.5)/n;
       let y0 = padT + chartH;
-      [['esp',d.esp],['qr',d.qr],['carte',d.carte]].forEach(([key,val])=>{
+      const r = 6; // rayon d'arrondi du sommet de la barre
+      const total = d.esp + d.qr + d.carte;
+      const parts = [['esp',d.esp],['qr',d.qr],['carte',d.carte]].filter(([,v])=>v>0);
+      parts.forEach(([key,val],pi)=>{
         const h = (val/maxCA)*chartH;
-        svg += `<rect x="${cx-bw/2}" y="${y0-h}" width="${bw}" height="${h}" fill="${STATS_COLORS[key]}" rx="2"/>`;
+        const isTop = pi === parts.length-1;
+        if(isTop && h>r){
+          // segment du haut : coins arrondis en haut seulement
+          svg += `<path d="M${cx-bw/2},${y0} v${-(h-r)} q0,${-r} ${r},${-r} h${bw-2*r} q${r},0 ${r},${r} v${h-r} Z" fill="${STATS_COLORS[key]}"/>`;
+        } else {
+          svg += `<rect x="${cx-bw/2}" y="${y0-h}" width="${bw}" height="${h}" fill="${STATS_COLORS[key]}"/>`;
+        }
         y0 -= h;
       });
-      svg += `<text x="${cx}" y="${H-8}" font-size="9" fill="#666" text-anchor="middle">${monthLabel(d.month)}</text>`;
+      // Total CA affiché au-dessus de la barre
+      const topY = padT + chartH - (total/maxCA)*chartH;
+      svg += `<text x="${cx}" y="${topY-8}" font-size="11" font-weight="700" fill="#6B3FA0" text-anchor="middle">${euro(total)}</text>`;
+      svg += `<text x="${cx}" y="${H-10}" font-size="10" fill="#777" text-anchor="middle">${monthLabel(d.month)}</text>`;
     });
   } else {
     ['esp','qr','carte'].forEach(key=>{
@@ -3437,16 +3501,19 @@ function renderStatsChart(){
         const cy = padT + chartH - (d[key]/maxCA)*chartH;
         return `${cx},${cy}`;
       }).join(' ');
-      svg += `<polyline points="${points}" fill="none" stroke="${STATS_COLORS[key]}" stroke-width="2"/>`;
+      svg += `<polyline points="${points}" fill="none" stroke="${STATS_COLORS[key]}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>`;
       data.forEach((d,i)=>{
         const cx = padL + chartW*(i+0.5)/n;
         const cy = padT + chartH - (d[key]/maxCA)*chartH;
-        svg += `<circle cx="${cx}" cy="${cy}" r="3" fill="${STATS_COLORS[key]}"/>`;
+        svg += `<circle cx="${cx}" cy="${cy}" r="3.5" fill="#fff" stroke="${STATS_COLORS[key]}" stroke-width="2"/>`;
       });
     });
     data.forEach((d,i)=>{
       const cx = padL + chartW*(i+0.5)/n;
-      svg += `<text x="${cx}" y="${H-8}" font-size="9" fill="#666" text-anchor="middle">${monthLabel(d.month)}</text>`;
+      const total = d.esp+d.qr+d.carte;
+      const topY = padT + chartH - (total/maxCA)*chartH;
+      svg += `<text x="${cx}" y="${topY-10}" font-size="11" font-weight="700" fill="#6B3FA0" text-anchor="middle">${euro(total)}</text>`;
+      svg += `<text x="${cx}" y="${H-10}" font-size="10" fill="#777" text-anchor="middle">${monthLabel(d.month)}</text>`;
     });
   }
   svg += '</svg>';
@@ -3457,6 +3524,7 @@ function renderStatsTableByMarche(){
   const sel = document.getElementById('stats-marche-select');
   const chosen = sel.value || '__all__';
   const byMarche = computeMarcheDateStats();
+  const standByMarche = computeStandByMarcheDate();
   const box = document.getElementById('stats-table');
 
   const marchesToShow = chosen==='__all__' ? Object.keys(byMarche).sort() : [chosen];
@@ -3469,13 +3537,15 @@ function renderStatsTableByMarche(){
   marchesToShow.forEach(marche=>{
     const dates = byMarche[marche];
     if(!dates) return;
+    const standDates = standByMarche[marche] || {};
     const sortedDates = Object.keys(dates).sort().reverse();
     html += `<div style="font-weight:600;color:var(--violet);margin:14px 0 6px;font-size:13px">🏪 ${esc(marche)}</div>
-      <table style="width:100%;min-width:480px;border-collapse:collapse;font-size:12px">
+      <table style="width:100%;min-width:560px;border-collapse:collapse;font-size:12px">
         <thead><tr style="border-bottom:2px solid #eee;text-align:left">
           <th style="padding:4px">Date</th><th style="padding:4px;text-align:right">CA</th>
           <th style="padding:4px;text-align:right">💶 Espèces</th><th style="padding:4px;text-align:right">📱 QR</th>
-          <th style="padding:4px;text-align:right">💳 Carte</th><th style="padding:4px;text-align:right">Ventes</th>
+          <th style="padding:4px;text-align:right">💳 Carte</th><th style="padding:4px;text-align:right">🏪 Stand</th>
+          <th style="padding:4px;text-align:right">Ventes</th>
         </tr></thead><tbody>`;
     sortedDates.forEach(dt=>{
       const d = dates[dt];
@@ -3485,6 +3555,7 @@ function renderStatsTableByMarche(){
         <td style="padding:4px;text-align:right">${euro(d.esp)}</td>
         <td style="padding:4px;text-align:right">${euro(d.qr)}</td>
         <td style="padding:4px;text-align:right">${euro(d.carte)}</td>
+        <td style="padding:4px;text-align:right;color:#a15c00">${standDates[dt] ? '−'+euro(standDates[dt]) : '—'}</td>
         <td style="padding:4px;text-align:right">${d.count}</td>
       </tr>`;
     });
@@ -3512,6 +3583,7 @@ function computeMonthMarcheStats(){
 
 function renderStatsTableByMonth(){
   const byMonth = computeMonthMarcheStats();
+  const standByMonth = computeStandByMonthMarche();
   const box = document.getElementById('stats-table');
   const moisSel = document.getElementById('stats-mois-select');
   const chosenMonth = moisSel.value;
@@ -3521,13 +3593,15 @@ function renderStatsTableByMonth(){
   let html = '';
   months.forEach(m=>{
     const marches = byMonth[m];
+    const standMarches = standByMonth[m] || {};
     const marcheNames = Object.keys(marches).sort((a,b)=>marches[b].ca-marches[a].ca);
     html += `<div style="font-weight:600;color:var(--violet);margin:14px 0 6px;font-size:13px">📅 ${monthLabel(m)}</div>
-      <table style="width:100%;min-width:480px;border-collapse:collapse;font-size:12px">
+      <table style="width:100%;min-width:560px;border-collapse:collapse;font-size:12px">
         <thead><tr style="border-bottom:2px solid #eee;text-align:left">
           <th style="padding:4px">Marché</th><th style="padding:4px;text-align:right">CA</th>
           <th style="padding:4px;text-align:right">💶 Espèces</th><th style="padding:4px;text-align:right">📱 QR</th>
-          <th style="padding:4px;text-align:right">💳 Carte</th><th style="padding:4px;text-align:right">Ventes</th>
+          <th style="padding:4px;text-align:right">💳 Carte</th><th style="padding:4px;text-align:right">🏪 Stand</th>
+          <th style="padding:4px;text-align:right">Ventes</th>
         </tr></thead><tbody>`;
     marcheNames.forEach(marche=>{
       const d = marches[marche];
@@ -3537,6 +3611,7 @@ function renderStatsTableByMonth(){
         <td style="padding:4px;text-align:right">${euro(d.esp)}</td>
         <td style="padding:4px;text-align:right">${euro(d.qr)}</td>
         <td style="padding:4px;text-align:right">${euro(d.carte)}</td>
+        <td style="padding:4px;text-align:right;color:#a15c00">${standMarches[marche] ? '−'+euro(standMarches[marche]) : '—'}</td>
         <td style="padding:4px;text-align:right">${d.count}</td>
       </tr>`;
     });
@@ -3546,12 +3621,14 @@ function renderStatsTableByMonth(){
       a.ca+=d.ca; a.esp+=d.esp; a.qr+=d.qr; a.carte+=d.carte; a.count+=d.count;
       return a;
     }, {ca:0,esp:0,qr:0,carte:0,count:0});
+    const totStand = Object.values(standMarches).reduce((a,v)=>a+v,0);
     html += `<tr style="border-top:2px solid var(--violet);background:var(--violet-wash,#f5f0fa)">
       <td style="padding:5px;font-weight:700">Total du mois</td>
       <td style="padding:5px;text-align:right;font-weight:700">${euro(tot.ca)}</td>
       <td style="padding:5px;text-align:right;font-weight:600">${euro(tot.esp)}</td>
       <td style="padding:5px;text-align:right;font-weight:600">${euro(tot.qr)}</td>
       <td style="padding:5px;text-align:right;font-weight:600">${euro(tot.carte)}</td>
+      <td style="padding:5px;text-align:right;font-weight:600;color:#a15c00">${totStand ? '−'+euro(totStand) : '—'}</td>
       <td style="padding:5px;text-align:right;font-weight:700">${tot.count}</td>
     </tr>`;
     html += '</tbody></table>';
@@ -3570,6 +3647,7 @@ window.setStatsTableMode = function(mode){
   document.getElementById('stats-mois-filter').style.display = mode==='mois' ? 'block' : 'none';
   window.renderStatsTable();
   renderStatsProducts();
+  renderStatsBankList();
 };
 window.renderStatsTable = function(){
   if(statsTableMode==='mois') renderStatsTableByMonth();
@@ -3578,6 +3656,7 @@ window.renderStatsTable = function(){
 window.onStatsFilterChange = function(){
   window.renderStatsTable();
   renderStatsProducts();
+  renderStatsBankList();
 };
 
 /* Produits les plus vendus (quantité + CA généré) — respecte le filtre mois/marché actif */
@@ -3603,6 +3682,16 @@ function currentStatsFilteredSales(){
   }
   const chosen = document.getElementById('stats-marche-select').value || '__all__';
   return chosen==='__all__' ? all : all.filter(s=>(s.marche||'(sans marché)')===chosen);
+}
+/* Mouvements (d'une catégorie donnée) filtrés selon le mode/sélection actifs de Statistiques */
+function currentStatsFilteredMovements(cat){
+  const all = state.movements.filter(m=>mvCategory(m)===cat);
+  if(statsTableMode==='mois'){
+    const chosen = document.getElementById('stats-mois-select').value;
+    return chosen ? all.filter(m=>m.date.slice(0,7)===chosen) : all;
+  }
+  const chosen = document.getElementById('stats-marche-select').value || '__all__';
+  return chosen==='__all__' ? all : all.filter(m=>(m.marche||'(sans marché)')===chosen);
 }
 /* Libellé du filtre actif, affiché en sous-titre du classement produits */
 function currentStatsFilterLabel(){
@@ -3635,6 +3724,33 @@ function renderStatsProducts(){
   html += '</tbody></table>';
   box.innerHTML = html;
 }
+
+/* Carte "Versements banque" de l'onglet Stats — respecte le filtre mois/marché actif */
+function renderStatsBankList(){
+  const box = document.getElementById('stats-bank-list');
+  const subtitle = document.getElementById('stats-bank-subtitle');
+  const list = currentStatsFilteredMovements('bank');
+  const totalOut = list.filter(m=>m.type==='out').reduce((a,m)=>a+m.amount,0);
+  if(subtitle){
+    subtitle.textContent = `${list.length} versement${list.length>1?'s':''} · Total : −${euro(totalOut)} ${currentStatsFilterLabel()}`;
+  }
+  if(list.length===0){ box.innerHTML = '<div class="empty">Pas encore de données</div>'; return; }
+  box.innerHTML = '';
+  [...list].reverse().forEach(m=>{
+    const div = document.createElement('div'); div.className='mv-line';
+    div.innerHTML = mvLineHTML(m);
+    box.appendChild(div);
+  });
+}
+window.downloadStatsBankPDF = function(){
+  const label = (statsTableMode==='mois'?'Par mois':'Par marché') + (currentStatsFilterLabel()?(' '+currentStatsFilterLabel()):'');
+  htmlStringToPDF(buildJournalMvHTML(currentStatsFilteredMovements('bank'), 'Versements banque', label), `versements-banque-${todayStr()}.pdf`);
+};
+window.printStatsBank = function(mode){
+  const label = (statsTableMode==='mois'?'Par mois':'Par marché') + (currentStatsFilterLabel()?(' '+currentStatsFilterLabel()):'');
+  openPrintWindow(buildJournalMvHTML(currentStatsFilteredMovements('bank'), 'Versements banque', label), mode||'a4');
+  // impression auto retirée : la fenêtre reste ouverte, impression manuelle
+};
 
 
 function renderAll(){
