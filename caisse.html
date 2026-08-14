@@ -764,6 +764,7 @@ nav button.on{color:var(--violet)}
     <div class="field" style="margin-top:12px"><label>Fond de caisse (pré-rempli, modifie si différent)</label><input type="number" inputmode="decimal" id="fond-input" placeholder="Montant €" step="0.01"></div>
     <div class="field" style="margin-top:10px"><label>Nom du marché</label><input type="text" id="marche-input" placeholder="Ex. : Marché de Tilff" autocomplete="off"></div>
     <button class="btn btn-primary" style="margin-top:14px" onclick="confirmFond()">Démarrer la journée</button>
+    <button class="btn btn-ghost" style="margin-top:10px" onclick="confirmDayOff()">🏖️ Repos / Pas de marché</button>
   </div>
 </div>
 
@@ -1209,6 +1210,17 @@ window.confirmFond = async function(){
   document.getElementById('fond-overlay').classList.add('hidden');
   renderAll();
   toast("Journée démarrée"+(marche?' — '+marche:'')+' · Fond : '+euro(state.fond));
+};
+/* Jour de repos : passe à aujourd'hui sans toucher au fond de caisse (juste consulter/imprimer) */
+window.confirmDayOff = async function(){
+  state.marche = 'Repos / Pas de marché';
+  state.day = todayStr();
+  save();
+  await saveConfig();
+  document.getElementById('fond-overlay').classList.add('hidden');
+  renderAll();
+  toast("Jour off enregistré · Fond de caisse inchangé : "+euro(state.fond));
+  window.go('journal');
 };
 
 /* ---- Navigation ---- */
