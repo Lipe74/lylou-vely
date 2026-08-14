@@ -407,6 +407,7 @@ nav button.on{color:var(--violet)}
           <button onclick="setJournalFilter('range')">Période</button>
           <input type="date" id="jr-date-pick" onchange="setJournalDate(this.value)">
         </div>
+        <button id="jr-export-closures-btn" class="btn btn-outline" style="display:none;margin-bottom:12px" onclick="downloadClosuresMonthPDF()">📦 Exporter les clôtures du mois (PDF)</button>
         <div id="jr-range-picker" style="display:none;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center" class="date-filter">
           <span style="font-size:13px;color:var(--muted)">Du</span>
           <input type="date" id="jr-range-start" onchange="setJournalRange()">
@@ -2351,6 +2352,7 @@ window.setJournalFilter = function(f){
   } else {
     rp.style.display='none'; dp.style.display='block';
   }
+  document.getElementById('jr-export-closures-btn').style.display = (f==='month') ? 'block' : 'none';
   renderJournal();
 };
 window.setJournalDate = function(d){ journalDate = d; renderJournal(); };
@@ -2916,6 +2918,62 @@ window.printJournal = function(){
 };
 window.downloadJournalPDF = function(){
   htmlStringToPDF(buildJournalHTML(), `journal-${(journalDate||todayStr())}.pdf`);
+};
+
+/* Export groupé : toutes les clôtures Z (version "Après", document officiel) d'un mois, en un seul PDF */
+function buildClosuresMonthHTML(month){
+  const monthClosures = state.closures.filter(c=>c.date.slice(0,7)===month).sort((a,b)=>a.date.localeCompare(b.date));
+  const monthLbl = monthLabel(month);
+  const genDate = new Date().toLocaleString('fr-BE');
+
+  const ticketsHTML = monthClosures.map(c=>{
+    const {ca,esp,qr,carte,cancelledN,theo,inTotal,outTotal,cashOut,cardOut,fondForDay} = buildZHTML(c.date, c.marche, false);
+    const body = buildZTicketHTML(c.date, c.marche, ca, esp, qr, carte, cancelledN, theo, inTotal, outTotal, cashOut, cardOut, fondForDay);
+    return `<div class="cl-ticket">${body}</div>`;
+  }).join('');
+
+  const emptyMsg = monthClosures.length===0 ? '<p style="text-align:center;color:#999;margin-top:30px">Aucune clôture enregistrée pour ce mois.</p>' : '';
+
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8">
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&display=swap" rel="stylesheet">
+    <style>
+      @page{margin:14mm;size:A4 portrait}
+      *{box-sizing:border-box}
+      body{font-family:Arial,Helvetica,sans-serif;color:#000;background:#fff;margin:0;padding:0}
+      .cl-head{text-align:center;margin-bottom:24px}
+      .cl-head .logo{font-family:'Cormorant Garamond',serif;font-size:32px;color:#6B3FA0;font-weight:700}
+      .cl-head .sub{font-size:11px;letter-spacing:3px;text-transform:uppercase;color:#8b62c0;margin-top:2px}
+      .cl-head .ctx{font-size:14px;color:#555;margin-top:10px}
+      .cl-head hr{border:none;border-top:1px solid #e4d9f2;margin:16px 0 0}
+      .cl-ticket{max-width:320px;margin:0 auto 26px;padding-bottom:20px;border-bottom:2px dashed #ccc}
+      .cl-ticket:last-child{border-bottom:none}
+      .t-head{text-align:center;border-bottom:1px dashed #000;padding-bottom:8px;margin-bottom:8px}
+      .t-head .lg{font-size:22px;font-weight:900;font-family:'Cormorant Garamond',serif;color:#6B3FA0}
+      .t-head .sl{font-size:9px;text-transform:uppercase;letter-spacing:2px;color:#8b62c0}
+      .t-legal{font-size:10px;text-align:center;color:#555}
+      .t-meta{display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px}
+      .t-item{display:flex;justify-content:space-between;padding:2px 0;font-size:12px}
+      .t-sep{border-top:1px dashed #999;margin:6px 0}
+      .t-sub{display:flex;justify-content:space-between;font-size:11px;color:#555}
+      .t-tot{display:flex;justify-content:space-between;border-top:1px dashed #000;padding-top:5px;margin-top:4px;font-weight:900;font-size:15px}
+      .paid{display:block;text-align:center;border:2px solid #000;border-radius:6px;padding:6px 10px;font-weight:900;margin:6px auto;width:fit-content;font-size:12px}
+      .t-foot{text-align:center;font-size:9px;border-top:1px dashed #999;padding-top:6px;margin-top:6px;color:#888}
+    </style></head>
+    <body>
+      <div class="cl-head">
+        <div class="logo">Lylou-Vely</div>
+        <div class="sub">Clôtures du mois</div>
+        <div class="ctx">${esc(monthLbl)} — ${monthClosures.length} clôture${monthClosures.length>1?'s':''}</div>
+        <hr>
+      </div>
+      ${ticketsHTML}
+      ${emptyMsg}
+      <div class="t-foot" style="margin-top:20px">Document généré le ${genDate} · Lylou-Vely by Zen-Connect</div>
+    </body></html>`;
+}
+window.downloadClosuresMonthPDF = function(){
+  const month = (journalDate||todayStr()).slice(0,7);
+  htmlStringToPDF(buildClosuresMonthHTML(month), `Clotures-${month}.pdf`);
 };
 
 /* ---- Export par marché ---- */
