@@ -666,10 +666,10 @@ nav button.on{color:var(--violet)}
       <div class="qr-amount-lbl">Montant à taper dans l'app Mollie</div>
       <div class="pay-amt" id="mollie-amount">0,00 €</div>
       <div class="confirm-icon">💳</div>
-      <p class="confirm-steps">Ouvre l'app Mollie, tape le montant, fais taper la carte du client (Tap to Pay).<br>Une fois accepté, choisis le type de carte ci-dessous.</p>
+      <p class="confirm-steps">Ouvre l'app Mollie, tape le montant, fais taper la carte du client (Tap to Pay).<br>Une fois accepté, choisis ci-dessous selon la carte (belge ou étrangère/pro).</p>
       <button class="btn btn-outline" onclick="copyMollieAmount()" style="width:auto;padding:6px 14px;font-size:12px;margin-bottom:14px">📋 Copier le montant</button>
-      <button class="btn btn-primary" onclick="confirmExternal('carte','mollie_debit')" style="margin-bottom:8px">💳 Débit (1,50%) — Paiement accepté ✓</button>
-      <button class="btn btn-primary" onclick="confirmExternal('carte','mollie_credit')">💳 Crédit (1,80%) — Paiement accepté ✓</button>
+      <button class="btn btn-primary" onclick="confirmExternal('carte','mollie_be')" style="margin-bottom:8px">💳 Carte belge (1,50%) — Paiement accepté ✓</button>
+      <button class="btn btn-primary" onclick="confirmExternal('carte','mollie_intl')">💳 Carte étrangère/pro (1,80%) — Paiement accepté ✓</button>
       <div class="confirm-refused">
         <button class="btn btn-outline" onclick="backToChoice()">Retour</button>
         <button class="btn btn-danger" onclick="backToChoice()">Refusé / Annulé</button>
@@ -981,10 +981,10 @@ function sumupLineHTML(carteAmount, cls){
 const VIVA_BANCONTACT_FEE = 0.14; // frais fixe confirmé par téléphone (Bancontact carte présente)
 const VIVA_MIN_FEE = 0.03; // minimum contractuel par transaction
 /* --- Mollie (Tap to Pay carte) : taux estimés (Mastercard/Visa au même tarif), à ajuster dès le premier relevé réel --- */
-const MOLLIE_DEBIT_RATE = 0.015;  // 1,50% — cartes débit (majoritaire en Belgique)
-const MOLLIE_CREDIT_RATE = 0.018; // 1,80% — cartes crédit
-const PROVIDER_LABEL = { sumup:'SumUp', viva:'Viva Wallet', mollie_debit:'Mollie (Débit)', mollie_credit:'Mollie (Crédit)' };
-const KNOWN_PROVIDERS = ['sumup','viva','mollie_debit','mollie_credit'];
+const MOLLIE_DEBIT_RATE = 0.015;  // 1,50% — cartes débit ET crédit belges/domestiques (confirmé grille tarifaire Mollie)
+const MOLLIE_CREDIT_RATE = 0.018; // 1,80% — cartes étrangères ("autres cartes de consommateur")
+const PROVIDER_LABEL = { sumup:'SumUp', viva:'Viva Wallet', mollie_be:'Mollie (Carte belge)', mollie_intl:'Mollie (Carte étrangère/pro)' };
+const KNOWN_PROVIDERS = ['sumup','viva','mollie_be','mollie_intl'];
 /* Normalise le prestataire d'une part de paiement carte : 'sumup' par défaut si absent/inconnu (compat anciennes ventes) */
 function normalizeProvider(p){ return KNOWN_PROVIDERS.includes(p.provider) ? p.provider : 'sumup'; }
 
@@ -993,8 +993,8 @@ function cardPartCommission(part){
   const amt = part.amount || 0;
   const prov = normalizeProvider(part);
   if(prov === 'viva') return Math.max(VIVA_BANCONTACT_FEE, VIVA_MIN_FEE);
-  if(prov === 'mollie_debit') return Math.round(amt*MOLLIE_DEBIT_RATE*100)/100;
-  if(prov === 'mollie_credit') return Math.round(amt*MOLLIE_CREDIT_RATE*100)/100;
+  if(prov === 'mollie_be') return Math.round(amt*MOLLIE_DEBIT_RATE*100)/100;
+  if(prov === 'mollie_intl') return Math.round(amt*MOLLIE_CREDIT_RATE*100)/100;
   return sumupCommission(amt); // 'sumup' par défaut (compat anciennes ventes sans provider)
 }
 function cardPartNet(part){
@@ -1025,8 +1025,8 @@ function cardCommissionLinesHTML(sale, cls){
   });
   const rateTxt = (prov)=>{
     if(prov==='viva') return `${euro(VIVA_BANCONTACT_FEE)} fixe`;
-    if(prov==='mollie_debit') return `${(MOLLIE_DEBIT_RATE*100).toFixed(2).replace(/\.?0+$/,'').replace('.',',')}%`;
-    if(prov==='mollie_credit') return `${(MOLLIE_CREDIT_RATE*100).toFixed(2).replace(/\.?0+$/,'').replace('.',',')}%`;
+    if(prov==='mollie_be') return `${(MOLLIE_DEBIT_RATE*100).toFixed(2).replace(/\.?0+$/,'').replace('.',',')}%`;
+    if(prov==='mollie_intl') return `${(MOLLIE_CREDIT_RATE*100).toFixed(2).replace(/\.?0+$/,'').replace('.',',')}%`;
     return `${(SUMUP_RATE*100).toFixed(2).replace(/\.?0+$/,'').replace('.',',')}%`;
   };
   return Object.keys(byProv).map(prov=>{
@@ -2481,8 +2481,8 @@ function renderJournal(){
     const parts = [];
     if(bd.sumup.amount>0) parts.push(`SumUp −${euro(bd.sumup.commission)}`);
     if(bd.viva.amount>0) parts.push(`Viva −${euro(bd.viva.commission)}`);
-    if(bd.mollie_debit.amount>0) parts.push(`Mollie Débit −${euro(bd.mollie_debit.commission)}`);
-    if(bd.mollie_credit.amount>0) parts.push(`Mollie Crédit −${euro(bd.mollie_credit.commission)}`);
+    if(bd.mollie_be.amount>0) parts.push(`Mollie Belge −${euro(bd.mollie_be.commission)}`);
+    if(bd.mollie_intl.amount>0) parts.push(`Mollie Étrangère −${euro(bd.mollie_intl.commission)}`);
     jrFee.textContent = parts.join(' · ');
   } else {
     jrFee.textContent = '';
@@ -2907,8 +2907,8 @@ function buildJournalHTML(marcheFilter){
       ${(()=>{ const bd=cardBreakdown(s); let h='';
         if(bd.sumup.amount>0) h+=`<div class="kpi" style="background:#fff3e0"><b style="color:#a15c00">−${euro(bd.sumup.commission)}</b>Commission SumUp</div>`;
         if(bd.viva.amount>0) h+=`<div class="kpi" style="background:#fff3e0"><b style="color:#a15c00">−${euro(bd.viva.commission)}</b>Commission Viva</div>`;
-        if(bd.mollie_debit.amount>0) h+=`<div class="kpi" style="background:#fff3e0"><b style="color:#a15c00">−${euro(bd.mollie_debit.commission)}</b>Commission Mollie Débit</div>`;
-        if(bd.mollie_credit.amount>0) h+=`<div class="kpi" style="background:#fff3e0"><b style="color:#a15c00">−${euro(bd.mollie_credit.commission)}</b>Commission Mollie Crédit</div>`;
+        if(bd.mollie_be.amount>0) h+=`<div class="kpi" style="background:#fff3e0"><b style="color:#a15c00">−${euro(bd.mollie_be.commission)}</b>Commission Mollie Belge</div>`;
+        if(bd.mollie_intl.amount>0) h+=`<div class="kpi" style="background:#fff3e0"><b style="color:#a15c00">−${euro(bd.mollie_intl.commission)}</b>Commission Mollie Étrangère</div>`;
         return h; })()}
     </div>
     <div class="sect">Ventes</div>`;
@@ -2924,8 +2924,8 @@ function buildJournalHTML(marcheFilter){
       const gFeeParts = [];
       if(gBd.sumup.amount>0) gFeeParts.push(`commission SumUp −${euro(gBd.sumup.commission)}`);
       if(gBd.viva.amount>0) gFeeParts.push(`commission Viva −${euro(gBd.viva.commission)}`);
-      if(gBd.mollie_debit.amount>0) gFeeParts.push(`commission Mollie Débit −${euro(gBd.mollie_debit.commission)}`);
-      if(gBd.mollie_credit.amount>0) gFeeParts.push(`commission Mollie Crédit −${euro(gBd.mollie_credit.commission)}`);
+      if(gBd.mollie_be.amount>0) gFeeParts.push(`commission Mollie Belge −${euro(gBd.mollie_be.commission)}`);
+      if(gBd.mollie_intl.amount>0) gFeeParts.push(`commission Mollie Étrangère −${euro(gBd.mollie_intl.commission)}`);
       const gFeeTxt = gFeeParts.length ? ` (${gFeeParts.join(', ')})` : '';
       html+=`<div class="marche-hdr">🏪 ${esc(groupe.marche)} — CA : ${euro(gca)}</div>
       <div class="marche-sub">💶 Espèces : ${euro(gesp)} · 📱 QR : ${euro(gqr)} · 💳 Carte : ${euro(gcarte)}${gFeeTxt}</div>`;
@@ -3152,8 +3152,8 @@ function buildZTicketHTML(day, marche, ca, esp, qr, carte, cancelledN, theo, inT
     ${(()=>{ const bd=cardBreakdown(valid); let h='';
       if(bd.sumup.amount>0) h+=`<div class="t-sub" style="color:#a15c00"><span>dont commission SumUp</span><span>−${euro(bd.sumup.commission)}</span></div>`;
       if(bd.viva.amount>0) h+=`<div class="t-sub" style="color:#a15c00"><span>dont commission Viva Wallet</span><span>−${euro(bd.viva.commission)}</span></div>`;
-      if(bd.mollie_debit.amount>0) h+=`<div class="t-sub" style="color:#a15c00"><span>dont commission Mollie Débit</span><span>−${euro(bd.mollie_debit.commission)}</span></div>`;
-      if(bd.mollie_credit.amount>0) h+=`<div class="t-sub" style="color:#a15c00"><span>dont commission Mollie Crédit</span><span>−${euro(bd.mollie_credit.commission)}</span></div>`;
+      if(bd.mollie_be.amount>0) h+=`<div class="t-sub" style="color:#a15c00"><span>dont commission Mollie Belge</span><span>−${euro(bd.mollie_be.commission)}</span></div>`;
+      if(bd.mollie_intl.amount>0) h+=`<div class="t-sub" style="color:#a15c00"><span>dont commission Mollie Étrangère</span><span>−${euro(bd.mollie_intl.commission)}</span></div>`;
       return h; })()}
     <div class="t-sep"></div>
     <div class="t-item"><span>Fond de caisse</span><span>${euro(fond)}</span></div>
