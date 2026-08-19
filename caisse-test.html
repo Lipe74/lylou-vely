@@ -434,7 +434,7 @@ nav button.on{color:var(--violet)}
           <h3 style="font-size:19px;flex:1">Tickets</h3>
           <button class="btn btn-outline" style="width:auto;padding:8px 14px;font-size:13px" onclick="downloadJournalPDF()">PDF</button>
           <button class="btn btn-outline" style="width:auto;padding:8px 14px;font-size:13px" onclick="printJournal('58mm')">🖨 58mm</button>
-          <button class="btn btn-outline" style="width:auto;padding:8px 14px;font-size:13px" onclick="printJournal('a4')">🖨 A4</button>
+          <button class="btn btn-outline" style="width:auto;padding:8px 14px;font-size:13px" onclick="downloadTicketsFilteredZip()">📦 ZIP</button>
         </div>
         <div id="jr-cloture-links"></div>
         <div id="jr-list"></div>
@@ -2612,7 +2612,7 @@ function renderJournal(){
           <div style="font-weight:600;font-size:13px;color:var(--violet);flex:1;min-width:180px">🏪 ${esc(groupe.marche||'Sans marché')} — CA : ${euro(ca)} · 💶 ${euro(esp)} · 📱 ${euro(qr)} · 💳 ${euro(carte)}${mFeeTxt}</div>
           <button class="btn btn-outline" style="width:auto;padding:5px 10px;font-size:12px" onclick="downloadMarchePDF('${mArg}')">PDF</button>
           <button class="btn btn-outline" style="width:auto;padding:5px 10px;font-size:12px" onclick="printMarche('${mArg}','58mm')">🖨 58mm</button>
-          <button class="btn btn-outline" style="width:auto;padding:5px 10px;font-size:12px" onclick="printMarche('${mArg}','a4')">🖨 A4</button>
+          <button class="btn btn-outline" style="width:auto;padding:5px 10px;font-size:12px" onclick="downloadTicketsFilteredZip('${mArg}')">📦 ZIP</button>
         </div>`;
       box.appendChild(hdr);
     }
@@ -2624,8 +2624,8 @@ function renderJournal(){
       const ref = sale.ref || makeRef(sale.num);
       const div=document.createElement('div'); div.className='jr-line'+(sale.cancelled?' cancelled':'');
       const actions = sale.cancelled
-        ? `<span class="jr-badge">ANNULÉ</span><button class="del" onclick="reprint(${sale.id})" style="color:var(--muted);font-size:15px">⎙</button>`
-        : `<button class="del" onclick="reprint(${sale.id})" style="color:var(--violet);font-size:15px">⎙</button>
+        ? `<span class="jr-badge">ANNULÉ</span><button class="del" onclick="quickDownloadTicketPDF(${sale.id})" style="color:var(--muted);font-size:15px" title="PDF">📄</button>`
+        : `<button class="del" onclick="quickDownloadTicketPDF(${sale.id})" style="color:var(--violet);font-size:15px" title="PDF">📄</button>
            <button class="del" onclick="cancelSale(${sale.id})" style="color:var(--red);font-size:15px">⊘</button>`;
       const marcheTag = (groupes.length===1 && sale.marche) ? `<span style="font-size:10px;color:var(--violet);margin-left:4px">Marche : ${esc(sale.marche)}</span>` : '';
       div.innerHTML = `
@@ -2656,7 +2656,7 @@ function mvLineHTML(m){
     <div class="pill ${m.type}">${m.type==='in'?'＋':'－'}</div>
     <div class="m-info"><div class="t">${esc(m.reason)}${payBadge}${bancedBadge}</div><div class="d">${m.date.split('-').reverse().join('/')} ${m.time}</div></div>
     <div class="amt ${m.type==='in'?'plus':'minus'}">${m.type==='in'?'+':'−'}${euro(m.amount)}</div>
-    <button class="del" onclick="openMvSingleChoice(${m.id})" style="color:var(--violet);font-size:15px" title="Justificatif">⎙</button>${reprZ}`;
+    <button class="del" onclick="quickDownloadMvPDF(${m.id})" style="color:var(--violet);font-size:15px" title="PDF">📄</button>${reprZ}`;
 }
 
 /* Rendu d'un bloc-catégorie de mouvements (titre + total + boutons + liste) */
@@ -2674,7 +2674,7 @@ function renderMvGroup(container, cat, title, list){
       <h3 style="font-size:19px;flex:1">${title}</h3>
       <button class="btn btn-outline" style="width:auto;padding:8px 14px;font-size:13px" onclick="downloadMvCatPDF('${cat}')">PDF</button>
       <button class="btn btn-outline" style="width:auto;padding:8px 14px;font-size:13px" onclick="printMvCat('${cat}','58mm')">🖨 58mm</button>
-      <button class="btn btn-outline" style="width:auto;padding:8px 14px;font-size:13px" onclick="printMvCat('${cat}','a4')">🖨 A4</button>
+      <button class="btn btn-outline" style="width:auto;padding:8px 14px;font-size:13px" onclick="downloadMvCatZip('${cat}')">📦 ZIP</button>
     </div>
     <div style="font-size:13px;color:var(--muted);margin-bottom:8px">
       ${list.length} mouvement${list.length>1?'s':''} · Total : <b style="color:${netCol}">${netTxt}</b>
@@ -2688,6 +2688,39 @@ function renderMvGroup(container, cat, title, list){
   });
   container.appendChild(card);
 }
+/* Déclenche le téléchargement d'un blob déjà généré (PDF, ZIP...) */
+function downloadBlob(blob, filename){
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url), 3000);
+}
+/* Téléchargement PDF direct d'un mouvement, sans passer par le menu de choix */
+window.quickDownloadMvPDF = function(id){
+  const m = state.movements.find(x=>x.id===id);
+  const html = buildSingleMvHTML(id);
+  if(!html || !m) return;
+  const dateLbl = m.date.split('-').reverse().join('-');
+  const motifShort = (m.reason||'Mouvement').split(' — ')[0].trim();
+  htmlStringToPDF(html, `${motifShort} - ${dateLbl}.pdf`);
+};
+/* Téléchargement PDF direct d'un ticket de vente, sans passer par le menu de choix */
+window.quickDownloadTicketPDF = async function(saleId){
+  const s = state.sales.find(x=>x.id===saleId);
+  if(!s) return;
+  toast("Génération du PDF…");
+  try{
+    const ref = s.ref || makeRef(s.num);
+    const filename = 'recu-' + ref + '-' + saleModeSuffix(s) + (s.cancelled ? '-Annule' : '');
+    const blob = await saleTicketToPdfBlob(s);
+    downloadBlob(blob, filename+'.pdf');
+    toast("PDF téléchargé");
+  }catch(e){
+    console.warn('quickDownloadTicketPDF:', e);
+    toast("Erreur lors de la génération du PDF");
+  }
+};
 window.reprint = function(id){ const s=state.sales.find(x=>x.id===id); if(s) showTicket(s); };
 
 /* Annuler un ticket */
@@ -2819,6 +2852,39 @@ window.printMvCat = function(cat, mode){
 window.downloadMvCatPDF = function(cat){
   htmlStringToPDF(buildJournalMvHTML(getMovementsByCat(cat), MV_CAT_LABEL[cat]), `mouvements-${cat}-${(journalDate||todayStr())}.pdf`);
 };
+/* Récupère le libellé de la période actuellement affichée dans Journal (ex. "Semaine du 19/08/2026") */
+function journalPeriodLabel(){
+  return (document.getElementById('journal-date').textContent||'').replace(/\//g,'-').trim() || todayStr();
+}
+/* Exporte, en ZIP, un PDF individuel pour chaque mouvement d'une catégorie actuellement affichée */
+window.downloadMvCatZip = async function(cat){
+  const list = getMovementsByCat(cat);
+  if(list.length===0){ toast("Aucun mouvement à exporter"); return; }
+  if(!window.JSZip){ toast("Export ZIP indisponible"); return; }
+  toast("Génération du ZIP en cours…");
+  try{
+    const zip = new JSZip();
+    const usedNames = {};
+    for(const m of list){
+      const html = buildSingleMvHTML(m.id);
+      if(!html) continue;
+      const dateLbl = m.date.split('-').reverse().join('-');
+      const motifShort = (m.reason||'Mouvement').split(' — ')[0].trim();
+      let filename = `${motifShort} - ${dateLbl}`;
+      // Évite les doublons de nom si plusieurs mouvements identiques le même jour
+      usedNames[filename] = (usedNames[filename]||0) + 1;
+      if(usedNames[filename] > 1) filename += ` (${usedNames[filename]})`;
+      const canvasBlob = await htmlToPdfBlobViaIframe(html);
+      zip.file(filename+'.pdf', canvasBlob);
+    }
+    const blob = await zip.generateAsync({type:'blob'});
+    downloadBlob(blob, `${MV_CAT_LABEL[cat]} - ${journalPeriodLabel()}.zip`);
+    toast("ZIP téléchargé — "+list.length+" mouvement"+(list.length>1?'s':''));
+  }catch(e){
+    console.warn('downloadMvCatZip:', e);
+    toast("Erreur lors de la génération du ZIP");
+  }
+};
 
 function buildJournalMvHTML(subset, subtitle, dateLabelOverride){
   const mvs = subset || getFilteredMovements();
@@ -2858,6 +2924,10 @@ function buildJournalMvHTML(subset, subtitle, dateLabelOverride){
 /* Convertit un document HTML complet en PDF A4 multi-pages et le télécharge. */
 /* Découpe un canvas en pages A4 et déclenche le téléchargement du PDF */
 function canvasToPDFPages(canvas, filename){
+  buildPDFFromCanvas(canvas).save(filename);
+}
+/* Construit un document jsPDF paginé à partir d'un canvas (utilisé par canvasToPDFPages et les exports en blob) */
+function buildPDFFromCanvas(canvas){
   const { jsPDF } = window.jspdf;
   const pdf = new jsPDF({unit:'mm', format:'a4'});
   const pageW = 210, pageH = 297, margin = 8;
@@ -2877,14 +2947,11 @@ function canvasToPDFPages(canvas, filename){
     pdf.addImage(pageCanvas.toDataURL('image/png'), 'PNG', margin, margin, imgW, sliceH/pxPerMm);
     rendered += sliceH; page++;
   }
-  pdf.save(filename);
+  return pdf;
 }
 
-async function htmlStringToPDF(fullHtml, filename){
-  if(!window.html2canvas || !window.jspdf){
-    toast("PDF indisponible → impression"); const w=openPrintWindow(fullHtml);  return;
-  }
-  toast("Génération du PDF…");
+/* Rendu hors-écran d'un document HTML complet en canvas (utilisé pour la génération PDF, en téléchargement direct ou en blob pour ZIP) */
+async function htmlToCanvasViaIframe(fullHtml){
   const iframe = document.createElement('iframe');
   iframe.style.cssText = 'position:fixed;left:-99999px;top:0;width:820px;border:0;background:#fff';
   document.body.appendChild(iframe);
@@ -2894,16 +2961,31 @@ async function htmlStringToPDF(fullHtml, filename){
     await new Promise(r=>setTimeout(r, 350));
     const bodyEl = doc.body;
     iframe.style.height = (bodyEl.scrollHeight + 40) + 'px';
-    const canvas = await html2canvas(bodyEl, {
+    return await html2canvas(bodyEl, {
       scale: 2, backgroundColor:'#ffffff',
       windowWidth: 820, width: 820, height: bodyEl.scrollHeight
     });
+  } finally {
+    setTimeout(()=>{ if(iframe.parentNode) iframe.parentNode.removeChild(iframe); }, 500);
+  }
+}
+/* Convertit un document HTML complet en blob PDF, sans déclencher de téléchargement (utilisé pour les exports ZIP) */
+async function htmlToPdfBlobViaIframe(fullHtml){
+  const canvas = await htmlToCanvasViaIframe(fullHtml);
+  return buildPDFFromCanvas(canvas).output('blob');
+}
+
+async function htmlStringToPDF(fullHtml, filename){
+  if(!window.html2canvas || !window.jspdf){
+    toast("PDF indisponible → impression"); const w=openPrintWindow(fullHtml);  return;
+  }
+  toast("Génération du PDF…");
+  try{
+    const canvas = await htmlToCanvasViaIframe(fullHtml);
     canvasToPDFPages(canvas, filename);
     toast("PDF téléchargé");
   }catch(e){
     toast("Erreur PDF → impression"); const w=openPrintWindow(fullHtml); 
-  }finally{
-    setTimeout(()=>{ if(iframe.parentNode) iframe.parentNode.removeChild(iframe); }, 500);
   }
 }
 
@@ -3207,14 +3289,37 @@ window.downloadTicketsMonthZip = async function(){
       zip.file(filename+'.pdf', blob);
     }
     const blob = await zip.generateAsync({type:'blob'});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = `Tickets-${month}.zip`;
-    document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(()=>URL.revokeObjectURL(url), 3000);
+    downloadBlob(blob, `Tickets-${month}.zip`);
     toast("ZIP téléchargé — "+sales.length+" ticket"+(sales.length>1?'s':''));
   }catch(e){
     console.warn('downloadTicketsMonthZip:', e);
+    toast("Erreur lors de la génération du ZIP");
+  }
+};
+
+/* Exporte, en ZIP, un PDF individuel pour chaque ticket actuellement affiché dans Journal
+   (respecte le filtre Jour/Semaine/Mois/Tout/Période en cours), avec filtre marché optionnel */
+window.downloadTicketsFilteredZip = async function(marcheFilter){
+  let sales = getFilteredSales();
+  if(marcheFilter) sales = sales.filter(s=>(s.marche||'')===marcheFilter);
+  sales = [...sales].sort((a,b)=>a.date.localeCompare(b.date)||a.time.localeCompare(b.time));
+  if(sales.length===0){ toast("Aucun ticket à exporter"); return; }
+  if(!window.JSZip){ toast("Export ZIP indisponible"); return; }
+  toast("Génération du ZIP en cours…");
+  try{
+    const zip = new JSZip();
+    for(const sale of sales){
+      const ref = sale.ref || makeRef(sale.num);
+      const filename = ref + '-' + saleModeSuffix(sale) + (sale.cancelled ? '-Annule' : '');
+      const blob = await saleTicketToPdfBlob(sale);
+      zip.file(filename+'.pdf', blob);
+    }
+    const blob = await zip.generateAsync({type:'blob'});
+    const label = marcheFilter ? `${marcheFilter.replace(/^Marché de\s+/i,'')} - ${journalPeriodLabel()}` : journalPeriodLabel();
+    downloadBlob(blob, `Tickets - ${label}.zip`);
+    toast("ZIP téléchargé — "+sales.length+" ticket"+(sales.length>1?'s':''));
+  }catch(e){
+    console.warn('downloadTicketsFilteredZip:', e);
     toast("Erreur lors de la génération du ZIP");
   }
 };
