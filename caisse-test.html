@@ -2414,6 +2414,7 @@ window.setJournalFilter = function(f){
   }
   document.getElementById('jr-export-closures-btn').style.display = (f==='month') ? 'block' : 'none';
   renderJournal();
+  renderMovements();
 };
 /* Remplit le menu déroulant "Mois" du Journal avec tous les mois où il y a eu des ventes */
 function populateJournalMonthSelect(){
@@ -2427,12 +2428,14 @@ function populateJournalMonthSelect(){
 window.setJournalMonth = function(v){
   journalDate = v+'-01';
   renderJournal();
+  renderMovements();
 };
-window.setJournalDate = function(d){ journalDate = d; renderJournal(); };
+window.setJournalDate = function(d){ journalDate = d; renderJournal(); renderMovements(); };
 window.setJournalRange = function(){
   journalRangeStart = document.getElementById('jr-range-start').value;
   journalRangeEnd = document.getElementById('jr-range-end').value;
   renderJournal();
+  renderMovements();
 };
 
 function getFilteredSales(){
