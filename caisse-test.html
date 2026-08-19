@@ -1045,6 +1045,7 @@ let countQty = {};
 let mvType = 'in';
 let payParts = [];
 let currentTicketRef = '';
+let currentPdfFilename = ''; // nom de fichier complet (sans préfixe "recu-"), prioritaire s'il est défini — utilisé pour les clôtures Z
 let journalFilter = 'day';
 let journalDate = todayStr();
 
@@ -1944,6 +1945,7 @@ function showTicket(sale){
   const area = document.getElementById('ticket-area');
   const ref = sale.ref || makeRef(sale.num);
   currentTicketRef = ref;
+  currentPdfFilename = '';
 
   let sellerLegal = [SELLER.legal, SELLER.address, SELLER.vat?('TVA '+SELLER.vat):'']
     .filter(Boolean).map(l=>esc(l)).join('<br>');
@@ -2069,7 +2071,7 @@ window.downloadPDF = function(){
     const hmm = canvas.height * wmm / canvas.width;
     const pdf = new jsPDF({unit:'mm', format:[wmm, hmm]});
     pdf.addImage(img, 'PNG', 0, 0, wmm, hmm);
-    pdf.save(`recu-${currentTicketRef||'ticket'}.pdf`);
+    pdf.save(currentPdfFilename ? `${currentPdfFilename}.pdf` : `recu-${currentTicketRef||'ticket'}.pdf`);
   }).catch(()=>{ toast("Erreur PDF → impression"); window.print(); });
 };
 
@@ -3212,11 +3214,12 @@ function buildZTicketHTML(day, marche, ca, esp, qr, carte, cancelledN, theo, inT
 /* Contexte de la clôture en cours de réimpression (pour le sélecteur Avant/Après) */
 let reprintZContext = null;
 
-/* Nom de fichier distinct selon la vue (document officiel vs suggestion), avec date + marché */
+/* Nom de fichier court et uniforme : "Cloture - JJ-MM-AAAA - Marché" / "Infos Versement - JJ-MM-AAAA - Marché" */
 function zPdfName(day, marche, mode){
-  const marcheSlug = slug(marche||'');
-  const suffix = marcheSlug ? '-'+marcheSlug : '';
-  return mode==='avant' ? `Suggestion-versement-${day}${suffix}` : `Cloture-${day}${suffix}`;
+  const dateLbl = day.split('-').reverse().join('-'); // JJ-MM-AAAA
+  const marcheShort = (marche||'').replace(/^Marché de\s+/i, '').trim();
+  const suffix = marcheShort ? ` - ${marcheShort}` : '';
+  return mode==='avant' ? `Infos Versement - ${dateLbl}${suffix}` : `Cloture - ${dateLbl}${suffix}`;
 }
 
 function renderZTicket(day, marche, mode){
@@ -3225,7 +3228,7 @@ function renderZTicket(day, marche, mode){
   document.getElementById('ticket-area').innerHTML = buildZTicketHTML(day, marche, ca, esp, qr, carte, cancelledN, theo, inTotal, outTotal, cashOut, cardOut, fondForDay);
   document.getElementById('ztoggle-apres').classList.toggle('btn-primary', mode!=='avant');
   document.getElementById('ztoggle-avant').classList.toggle('btn-primary', mode==='avant');
-  currentTicketRef = zPdfName(day, marche, mode);
+  currentPdfFilename = zPdfName(day, marche, mode);
 }
 window.toggleZReprint = function(mode){
   if(!reprintZContext) return;
@@ -3244,7 +3247,7 @@ window.printZ = function(){
   reprintZContext = null;
   document.getElementById('ticket-z-toggle').classList.add('hidden');
   const {ca,esp,qr,carte,cancelledN,theo,inTotal,outTotal,cashOut,cardOut,fondForDay} = buildZHTML(d, state.marche);
-  currentTicketRef = zPdfName(d, state.marche, 'apres');
+  currentPdfFilename = zPdfName(d, state.marche, 'apres');
   const area=document.getElementById('ticket-area');
   area.innerHTML = buildZTicketHTML(d, state.marche, ca, esp, qr, carte, cancelledN, theo, inTotal, outTotal, cashOut, cardOut, fondForDay);
   document.getElementById('ticket-overlay').classList.remove('hidden');
