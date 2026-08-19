@@ -2744,25 +2744,24 @@ function buildSingleMvHTML(id){
       *{box-sizing:border-box}
       html,body{margin:0;padding:0}
       body{width:820px;font-family:'Jost',Arial,sans-serif;color:#2a2233;background:#fff}
-      .mv-page{width:820px;padding:130px 0;text-align:center}
-      .mv-outer{display:inline-block;text-align:left;border:1px solid #e4d9f2;border-radius:32px;padding:18px;width:640px}
-      .mv-inner{border:3px solid #6B3FA0;border-radius:24px;padding:70px 60px}
-      .mv-head{text-align:center;margin-bottom:32px}
-      .mv-head .logo{font-family:'Cormorant Garamond',serif;font-size:48px;color:#6B3FA0;font-weight:700}
-      .mv-head .sub{font-size:14px;letter-spacing:5px;text-transform:uppercase;color:#8b62c0;margin-top:6px}
-      .mv-head .legal{font-size:14px;color:#777;margin-top:12px}
-      .mv-head hr{border:none;border-top:1px solid #e4d9f2;margin:26px 0 0}
-      .mv-table{width:100%;border-collapse:collapse;margin-top:32px}
-      .mv-table td{padding:18px 6px;border-bottom:1px solid #f0ecf5;font-size:19px}
+      .mv-page{width:820px;height:1160px;padding:46px}
+      .mv-frame{width:100%;height:100%;border:3px solid #6B3FA0;border-radius:28px;padding:0 80px;display:flex;flex-direction:column;justify-content:center}
+      .mv-head{text-align:center;margin-bottom:36px}
+      .mv-head .logo{font-family:'Cormorant Garamond',serif;font-size:52px;color:#6B3FA0;font-weight:700}
+      .mv-head .sub{font-size:15px;letter-spacing:5px;text-transform:uppercase;color:#8b62c0;margin-top:8px}
+      .mv-head .legal{font-size:15px;color:#777;margin-top:14px}
+      .mv-head hr{border:none;border-top:1px solid #e4d9f2;margin:30px 0 0}
+      .mv-table{width:100%;border-collapse:collapse;margin-top:36px}
+      .mv-table td{padding:22px 6px;border-bottom:1px solid #f0ecf5;font-size:21px}
       .mv-table td:first-child{color:#8b62c0;font-weight:600;width:38%}
       .mv-table td:last-child{text-align:right;color:#2a2233}
-      .mv-amt{text-align:center;margin:44px 0 32px}
-      .mv-amt .lbl{font-size:14px;letter-spacing:4px;text-transform:uppercase;color:#8b62c0;margin-bottom:10px}
-      .mv-amt .val{font-family:'Cormorant Garamond',serif;font-size:72px;font-weight:700;color:${amtColor}}
-      .mv-foot{text-align:center;font-size:13px;color:#aaa;margin-top:40px;border-top:1px dashed #e4d9f2;padding-top:18px}
+      .mv-amt{text-align:center;margin:52px 0 40px}
+      .mv-amt .lbl{font-size:15px;letter-spacing:4px;text-transform:uppercase;color:#8b62c0;margin-bottom:12px}
+      .mv-amt .val{font-family:'Cormorant Garamond',serif;font-size:84px;font-weight:700;color:${amtColor}}
+      .mv-foot{text-align:center;font-size:14px;color:#aaa;margin-top:48px;border-top:1px dashed #e4d9f2;padding-top:20px}
     </style></head><body>
     <div class="mv-page">
-      <div class="mv-outer"><div class="mv-inner">
+      <div class="mv-frame">
         <div class="mv-head">
           <div class="logo">${esc(SELLER.brand)}</div>
           <div class="sub">Justificatif</div>
@@ -2780,7 +2779,7 @@ function buildSingleMvHTML(id){
           <div class="val">${sign}${euro(m.amount)}</div>
         </div>
         <div class="mv-foot">Justificatif généré le ${new Date().toLocaleString('fr-BE')} · ${esc(SELLER.brand)}</div>
-      </div></div>
+      </div>
     </div>
     </body></html>`;
 }
