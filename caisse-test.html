@@ -410,6 +410,7 @@ nav button.on{color:var(--violet)}
         </div>
         <select id="jr-month-select" onchange="setJournalMonth(this.value)" style="display:none;padding:8px 12px;border-radius:8px;border:1px solid #ddd;font-size:13px;margin-bottom:12px;width:100%"></select>
         <button id="jr-export-closures-btn" class="btn btn-outline" style="display:none;margin-bottom:12px" onclick="downloadClosuresMonthZip()">📦 Exporter les clôtures du mois (ZIP)</button>
+        <button id="jr-export-tickets-btn" class="btn btn-outline" style="display:none;margin-bottom:12px" onclick="downloadTicketsMonthZip()">🧾 Exporter tous les tickets du mois (ZIP)</button>
         <div id="jr-range-picker" style="display:none;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center" class="date-filter">
           <span style="font-size:13px;color:var(--muted)">Du</span>
           <input type="date" id="jr-range-start" onchange="setJournalRange()">
@@ -1941,23 +1942,38 @@ async function finalizeSale(){
 
 
 /* ============ TICKET ============ */
-function showTicket(sale){
-  const area = document.getElementById('ticket-area');
-  const ref = sale.ref || makeRef(sale.num);
-  currentTicketRef = ref;
-  currentPdfFilename = '';
+/* Suffixe du nom de fichier selon le(s) mode(s) de paiement réel(s) de la vente */
+function saleModeSuffix(sale){
+  const modes = new Set((sale.payments||[]).map(p=>{
+    if(p.method==='especes') return 'Especes';
+    if(p.method==='qr') return 'QRCode';
+    if(p.method==='carte'){
+      const prov = normalizeProvider(p);
+      if(prov==='sumup') return 'SumUp';
+      if(prov==='viva') return 'Viva';
+      if(prov==='mollie_be') return 'MollieBE';
+      if(prov==='mollie_intl') return 'MollieIntl';
+      return 'Carte';
+    }
+    return '';
+  }).filter(Boolean));
+  if(modes.size===0) return sale.method ? (METHOD_LABEL[sale.method]||'').replace(/\s+/g,'') : '';
+  if(modes.size>1) return 'Mixte';
+  return [...modes][0];
+}
 
+/* Génère le corps HTML d'un ticket de vente (utilisé à l'écran ET pour l'export PDF individuel/groupé) */
+function buildSaleTicketBodyHTML(sale){
+  const ref = sale.ref || makeRef(sale.num);
   let sellerLegal = [SELLER.legal, SELLER.address, SELLER.vat?('TVA '+SELLER.vat):'']
     .filter(Boolean).map(l=>esc(l)).join('<br>');
   sellerLegal = sellerLegal ? `<div class="t-legal">${sellerLegal}</div>` : '';
   const testMark = (mode==='test') ? `<div class="t-testmark">⚠ TICKET DE TEST — SANS VALEUR</div>` : '';
 
-  // articles
   let items = sale.items.map(it=>
     `<div class="t-item"><span>${esc(it.name)} <span class="q">×${it.qty}</span></span><span>${euro(it.price*it.qty)}</span></div>`
   ).join('');
 
-  // remise
   let discountBlock = '';
   if(sale.discount && sale.discount.amount > 0){
     const discLabel = sale.discount.type==='euro' ? `Remise −${euro(sale.discount.value)}`
@@ -1969,7 +1985,6 @@ function showTicket(sale){
       <div class="t-item" style="color:#2e9e6b"><span>🏷 ${esc(discLabel)}</span><span>−${euro(sale.discount.amount)}</span></div>`;
   }
 
-  // TVA
   const totalTVAC = sale.total;
   const totalHTVA = htva(totalTVAC);
   const totalTVA = tvaAmount(totalTVAC);
@@ -1978,7 +1993,6 @@ function showTicket(sale){
     <div class="t-sub"><span>Sous-total HTVA</span><span>${euro(totalHTVA)}</span></div>
     <div class="t-sub"><span>TVA 21 %</span><span>${euro(totalTVA)}</span></div>`;
 
-  // paiement
   const paymentLabel = (p)=> p.method==='carte' ? `Carte (${PROVIDER_LABEL[normalizeProvider(p)]})` : METHOD_LABEL[p.method];
   let payInfo = '';
   if(sale.payments && sale.payments.length > 1){
@@ -1989,9 +2003,7 @@ function showTicket(sale){
     const singleLabel = (sale.payments && sale.payments[0]) ? paymentLabel(sale.payments[0]) : METHOD_LABEL[sale.method];
     payInfo = `<div class="t-pay">Paiement : ${singleLabel}${sale.cancelled?' — remboursé':''}</div>`;
   }
-  // Commission carte (SumUp et/ou Viva Wallet selon le prestataire utilisé)
   const sumupBlock = (!sale.cancelled) ? cardCommissionLinesHTML(sale, 't-pay') : '';
-  // rendu espèces
   let cashExtra = '';
   const cashPart = sale.payments ? sale.payments.find(p=>p.method==='especes') : null;
   if(cashPart && cashPart.extra && cashPart.extra.rendu > 0){
@@ -2004,7 +2016,7 @@ function showTicket(sale){
 
   const footer = TICKET_FOOTER.map(l=>esc(l)).join('<br>');
 
-  area.innerHTML = `
+  return `
     ${testMark}
     <div class="t-head">
       <div class="lg">${esc(SELLER.brand)}</div>
@@ -2024,6 +2036,16 @@ function showTicket(sale){
     ${stamp}
     <div class="t-qr" id="t-qr"></div>
     <div class="t-foot">${footer}</div>`;
+}
+
+function showTicket(sale){
+  const area = document.getElementById('ticket-area');
+  const ref = sale.ref || makeRef(sale.num);
+  currentTicketRef = ref + '-' + saleModeSuffix(sale) + (sale.cancelled ? '-Annule' : '');
+  currentPdfFilename = '';
+
+  area.innerHTML = buildSaleTicketBodyHTML(sale);
+  const totalTVAC = sale.total;
 
   // QR code
   const qrBox = document.getElementById('t-qr'); qrBox.innerHTML='';
@@ -2415,6 +2437,7 @@ window.setJournalFilter = function(f){
     }
   }
   document.getElementById('jr-export-closures-btn').style.display = (f==='month') ? 'block' : 'none';
+  document.getElementById('jr-export-tickets-btn').style.display = (f==='month') ? 'block' : 'none';
   renderJournal();
 };
 /* Remplit le menu déroulant "Mois" du Journal avec tous les mois où il y a eu des ventes */
@@ -3007,7 +3030,8 @@ window.printJournal = function(){
   // impression auto retirée : la fenêtre reste ouverte, impression manuelle
 };
 window.downloadJournalPDF = function(){
-  htmlStringToPDF(buildJournalHTML(), `journal-${(journalDate||todayStr())}.pdf`);
+  const dateLbl = (journalDate||todayStr()).split('-').reverse().join('-');
+  htmlStringToPDF(buildJournalHTML(), `Journal - ${dateLbl}.pdf`);
 };
 
 /* Liste des clôtures (date+marché) d'un mois : vraies clôtures enregistrées (couvre aussi les jours
@@ -3094,6 +3118,78 @@ window.downloadClosuresMonthZip = async function(){
   }
 };
 
+/* Génère le PDF (blob) d'un ticket de vente isolé, hors écran, même style que le téléchargement individuel */
+async function saleTicketToPdfBlob(sale){
+  const ref = sale.ref || makeRef(sale.num);
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'position:fixed;left:-99999px;top:0;background:#fff';
+  wrap.innerHTML = `<style>
+    .zt-area{background:#fff;color:#000;max-width:280px;margin:0 auto;padding:10px;font-family:'Jost',Arial,sans-serif;font-size:11px;line-height:1.3}
+    .zt-area .t-head{text-align:center;border-bottom:1px dashed #999;padding-bottom:6px;margin-bottom:6px}
+    .zt-area .t-head .lg{font-family:'Cormorant Garamond',serif;font-size:20px;color:#6B3FA0;font-weight:600}
+    .zt-area .t-head .sl{font-size:8px;letter-spacing:2px;text-transform:uppercase;color:#777}
+    .zt-area .t-legal{font-size:8px;color:#555;line-height:1.4;margin-top:4px}
+    .zt-area .t-meta{display:flex;justify-content:space-between;font-size:10px;color:#555;margin-bottom:2px}
+    .zt-area .t-item{display:flex;justify-content:space-between;padding:1px 0;font-size:11px}
+    .zt-area .t-item .q{color:#777}
+    .zt-area .t-sep{border-top:1px dashed #ccc;margin:3px 0}
+    .zt-area .t-sub{display:flex;justify-content:space-between;padding:1px 0;font-size:10px;color:#555}
+    .zt-area .t-tot{display:flex;justify-content:space-between;border-top:1px dashed #999;margin-top:3px;padding-top:4px;font-weight:600;font-size:14px}
+    .zt-area .t-pay{margin-top:4px;font-size:10px;color:#444}
+    .zt-area .paid{display:inline-block;border:1.5px solid #2e9e6b;color:#2e9e6b;border-radius:4px;padding:1px 8px;font-weight:600;font-size:10px;letter-spacing:1px;transform:rotate(-3deg);margin-top:4px}
+    .zt-area .paid.cancelled{border-color:#c0475e !important;color:#c0475e !important}
+    .zt-area .t-qr{display:flex;justify-content:center;margin:6px 0 2px}
+    .zt-area .t-qr img,.zt-area .t-qr canvas{width:80px;height:80px}
+    .zt-area .t-foot{text-align:center;font-size:9px;color:#666;border-top:1px dashed #999;padding-top:6px;margin-top:6px;line-height:1.4}
+    .zt-area .t-testmark{text-align:center;font-size:9px;font-weight:600;color:#b06a00;background:#fdecc8;border:1px dashed #e0a94f;border-radius:4px;padding:3px;margin-bottom:6px;letter-spacing:.5px}
+  </style><div class="zt-area">${buildSaleTicketBodyHTML(sale)}</div>`;
+  document.body.appendChild(wrap);
+  const qrBox = wrap.querySelector('#t-qr');
+  try{
+    if(window.QRCode && qrBox){
+      new QRCode(qrBox, {text:`${SELLER.brand}|${ref}|${euro(sale.total)}|PAYE`, width:80, height:80, colorDark:'#512e7a', colorLight:'#ffffff'});
+    }
+  }catch(e){}
+  await new Promise(r=>setTimeout(r,30));
+  const canvas = await html2canvas(wrap, {scale:3, backgroundColor:'#ffffff'});
+  wrap.remove();
+  const img = canvas.toDataURL('image/png');
+  const { jsPDF } = window.jspdf;
+  const wmm = 80;
+  const hmm = canvas.height * wmm / canvas.width;
+  const pdf = new jsPDF({unit:'mm', format:[wmm, hmm]});
+  pdf.addImage(img, 'PNG', 0, 0, wmm, hmm);
+  return pdf.output('blob');
+}
+
+/* Exporte tous les tickets de vente du mois sélectionné en un ZIP (un PDF par ticket, nommé selon le mode de paiement) */
+window.downloadTicketsMonthZip = async function(){
+  const month = (journalDate||todayStr()).slice(0,7);
+  const sales = state.sales.filter(s=>s.date.slice(0,7)===month).sort((a,b)=>a.date.localeCompare(b.date)||a.time.localeCompare(b.time));
+  if(sales.length===0){ toast("Aucun ticket trouvé pour ce mois"); return; }
+  if(!window.JSZip){ toast("Export ZIP indisponible"); return; }
+  toast("Génération du ZIP en cours…");
+  try{
+    const zip = new JSZip();
+    for(const sale of sales){
+      const ref = sale.ref || makeRef(sale.num);
+      const filename = ref + '-' + saleModeSuffix(sale) + (sale.cancelled ? '-Annule' : '');
+      const blob = await saleTicketToPdfBlob(sale);
+      zip.file(filename+'.pdf', blob);
+    }
+    const blob = await zip.generateAsync({type:'blob'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `Tickets-${month}.zip`;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url), 3000);
+    toast("ZIP téléchargé — "+sales.length+" ticket"+(sales.length>1?'s':''));
+  }catch(e){
+    console.warn('downloadTicketsMonthZip:', e);
+    toast("Erreur lors de la génération du ZIP");
+  }
+};
+
 /* ---- Export par marché ---- */
 function slug(s){ return (s||'sans-marche').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'') || 'marche'; }
 window.printMarche = function(marche, mode){
@@ -3101,7 +3197,9 @@ window.printMarche = function(marche, mode){
   // impression auto retirée : la fenêtre reste ouverte, impression manuelle
 };
 window.downloadMarchePDF = function(marche){
-  htmlStringToPDF(buildJournalHTML(marche), `journal-${slug(marche)}-${(journalDate||todayStr())}.pdf`);
+  const dateLbl = (journalDate||todayStr()).split('-').reverse().join('-');
+  const marcheShort = (marche||'').replace(/^Marché de\s+/i, '').trim();
+  htmlStringToPDF(buildJournalHTML(marche), `Journal - ${marcheShort} - ${dateLbl}.pdf`);
 };
 
 
