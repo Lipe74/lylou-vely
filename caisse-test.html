@@ -2736,31 +2736,54 @@ function buildSingleMvHTML(id){
   const sign = m.type==='in'?'+':'−';
   const pm = m.payMode==='card'?'Carte':m.payMode==='cash'?'Liquide':'—';
   const typeLabel = m.type==='in'?'Entrée':'Sortie';
+  const amtColor = m.type==='in' ? '#2e9e6b' : '#c0475e';
   return `<!DOCTYPE html><html><head><meta charset="UTF-8">
     <title>${esc(SELLER.brand)} — Justificatif</title>
-    <style>body{font-family:Arial,sans-serif;font-size:13px;color:#000;padding:20px;background:#fff;max-width:400px;margin:0 auto}
-    h1{color:#6B3FA0;font-size:20px;text-align:center;margin:0 0 4px}
-    .sub{text-align:center;font-size:11px;color:#777;margin-bottom:16px}
-    .sep{border-top:1px dashed #ccc;margin:12px 0}
-    .row{display:flex;justify-content:space-between;padding:5px 0;font-size:13px}
-    .amt{font-size:22px;font-weight:600;text-align:center;margin:12px 0;color:${m.type==='in'?'green':'red'}}
-    .foot{text-align:center;font-size:10px;color:#999;margin-top:16px;border-top:1px dashed #ccc;padding-top:10px}</style></head><body>
-    <h1>${esc(SELLER.brand)}</h1>
-    <div class="sub">${esc(SELLER.legal)} · TVA ${esc(SELLER.vat)}</div>
-    <div class="sep"></div>
-    <div class="row"><span><b>Type</b></span><span>${typeLabel}</span></div>
-    <div class="row"><span><b>Motif</b></span><span>${esc(m.reason)}</span></div>
-    <div class="row"><span><b>Date</b></span><span>${m.date.split('-').reverse().join('/')} ${m.time}</span></div>
-    <div class="row"><span><b>Mode</b></span><span>${pm}</span></div>
-    <div class="sep"></div>
-    <div class="amt">${sign}${euro(m.amount)}</div>
-    <div class="foot">Justificatif généré le ${new Date().toLocaleString('fr-BE')}<br>${esc(SELLER.brand)}</div>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Jost:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+      @page{margin:14mm;size:A5 portrait}
+      *{box-sizing:border-box}
+      body{font-family:'Jost',Arial,sans-serif;color:#2a2233;background:#fff;padding:0;margin:0;max-width:420px;margin:0 auto}
+      .mv-head{text-align:center;margin-bottom:20px}
+      .mv-head .logo{font-family:'Cormorant Garamond',serif;font-size:32px;color:#6B3FA0;font-weight:700}
+      .mv-head .sub{font-size:11px;letter-spacing:3px;text-transform:uppercase;color:#8b62c0;margin-top:2px}
+      .mv-head .legal{font-size:11px;color:#777;margin-top:8px}
+      .mv-head hr{border:none;border-top:1px solid #e4d9f2;margin:16px 0 0}
+      .mv-table{width:100%;border-collapse:collapse;margin-top:18px}
+      .mv-table td{padding:10px 4px;border-bottom:1px solid #f0ecf5;font-size:14px}
+      .mv-table td:first-child{color:#8b62c0;font-weight:600;width:38%}
+      .mv-table td:last-child{text-align:right;color:#2a2233}
+      .mv-amt{text-align:center;margin:26px 0 22px}
+      .mv-amt .lbl{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#8b62c0;margin-bottom:4px}
+      .mv-amt .val{font-family:'Cormorant Garamond',serif;font-size:44px;font-weight:700;color:${amtColor}}
+      .mv-foot{text-align:center;font-size:10px;color:#aaa;margin-top:30px;border-top:1px dashed #e4d9f2;padding-top:14px}
+    </style></head><body>
+      <div class="mv-head">
+        <div class="logo">${esc(SELLER.brand)}</div>
+        <div class="sub">Justificatif</div>
+        <div class="legal">${esc(SELLER.legal)} · TVA ${esc(SELLER.vat)}</div>
+        <hr>
+      </div>
+      <table class="mv-table">
+        <tr><td>Type</td><td>${typeLabel}</td></tr>
+        <tr><td>Motif</td><td>${esc(m.reason)}</td></tr>
+        <tr><td>Date</td><td>${m.date.split('-').reverse().join('/')} — ${m.time}</td></tr>
+        <tr><td>Mode</td><td>${pm}</td></tr>
+      </table>
+      <div class="mv-amt">
+        <div class="lbl">Montant</div>
+        <div class="val">${sign}${euro(m.amount)}</div>
+      </div>
+      <div class="mv-foot">Justificatif généré le ${new Date().toLocaleString('fr-BE')} · ${esc(SELLER.brand)}</div>
     </body></html>`;
 }
 window.downloadSingleMvPDF = function(){
+  const m = state.movements.find(x=>x.id===currentSingleMvId);
   const html = buildSingleMvHTML(currentSingleMvId);
-  if(!html) return;
-  htmlStringToPDF(html, `justificatif-${currentSingleMvId}.pdf`);
+  if(!html || !m) return;
+  const dateLbl = m.date.split('-').reverse().join('-');
+  const motifShort = (m.reason||'Mouvement').split(' — ')[0].trim();
+  htmlStringToPDF(html, `${motifShort} - ${dateLbl}.pdf`);
   closeMvSingleOverlay();
 };
 window.printSingleMv = function(mode){
