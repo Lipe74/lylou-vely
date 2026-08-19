@@ -2742,8 +2742,10 @@ function buildSingleMvHTML(id){
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Jost:wght@400;500;600&display=swap" rel="stylesheet">
     <style>
       *{box-sizing:border-box}
-      body{margin:0;padding:0;width:820px;min-height:1160px;display:flex;align-items:center;justify-content:center;font-family:'Jost',Arial,sans-serif;color:#2a2233;background:#fff}
-      .mv-outer{border:1px solid #e4d9f2;border-radius:28px;padding:16px;width:86%;max-width:560px}
+      html,body{margin:0;padding:0}
+      body{width:820px;font-family:'Jost',Arial,sans-serif;color:#2a2233;background:#fff}
+      .mv-page{width:820px;padding:270px 0;text-align:center}
+      .mv-outer{display:inline-block;text-align:left;border:1px solid #e4d9f2;border-radius:28px;padding:16px;width:560px}
       .mv-inner{border:2px solid #6B3FA0;border-radius:20px;padding:56px 48px}
       .mv-head{text-align:center;margin-bottom:26px}
       .mv-head .logo{font-family:'Cormorant Garamond',serif;font-size:38px;color:#6B3FA0;font-weight:700}
@@ -2759,6 +2761,7 @@ function buildSingleMvHTML(id){
       .mv-amt .val{font-family:'Cormorant Garamond',serif;font-size:58px;font-weight:700;color:${amtColor}}
       .mv-foot{text-align:center;font-size:11px;color:#aaa;margin-top:34px;border-top:1px dashed #e4d9f2;padding-top:16px}
     </style></head><body>
+    <div class="mv-page">
       <div class="mv-outer"><div class="mv-inner">
         <div class="mv-head">
           <div class="logo">${esc(SELLER.brand)}</div>
@@ -2778,6 +2781,7 @@ function buildSingleMvHTML(id){
         </div>
         <div class="mv-foot">Justificatif généré le ${new Date().toLocaleString('fr-BE')} · ${esc(SELLER.brand)}</div>
       </div></div>
+    </div>
     </body></html>`;
 }
 window.downloadSingleMvPDF = function(){
