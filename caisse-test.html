@@ -2414,7 +2414,6 @@ window.setJournalFilter = function(f){
   }
   document.getElementById('jr-export-closures-btn').style.display = (f==='month') ? 'block' : 'none';
   renderJournal();
-  renderMovements();
 };
 /* Remplit le menu déroulant "Mois" du Journal avec tous les mois où il y a eu des ventes */
 function populateJournalMonthSelect(){
@@ -2428,14 +2427,12 @@ function populateJournalMonthSelect(){
 window.setJournalMonth = function(v){
   journalDate = v+'-01';
   renderJournal();
-  renderMovements();
 };
-window.setJournalDate = function(d){ journalDate = d; renderJournal(); renderMovements(); };
+window.setJournalDate = function(d){ journalDate = d; renderJournal(); };
 window.setJournalRange = function(){
   journalRangeStart = document.getElementById('jr-range-start').value;
   journalRangeEnd = document.getElementById('jr-range-end').value;
   renderJournal();
-  renderMovements();
 };
 
 function getFilteredSales(){
@@ -2538,6 +2535,17 @@ function renderJournal(){
     clotBox.innerHTML = '';
   }
 
+  // Mouvements filtrés — séparés par catégorie (toujours affichés, même sans vente ce jour/cette période)
+  const mvs = getFilteredMovements();
+  const wrap = document.getElementById('jr-mv-groups');
+  wrap.innerHTML = '';
+  const bank  = mvs.filter(m=>mvCategory(m)==='bank');
+  const stand = mvs.filter(m=>mvCategory(m)==='stand');
+  const other = mvs.filter(m=>mvCategory(m)==='other');
+  renderMvGroup(wrap, 'bank',  '🏦 Versements banque', bank);
+  renderMvGroup(wrap, 'stand', '🏪 Paiement stand',    stand);
+  renderMvGroup(wrap, 'other', '🔁 Autres mouvements', other);
+
   if(filtered.length===0){ box.innerHTML='<div class="empty">Aucune vente</div>'; return; }
   box.innerHTML='';
   if(clotList.length){
@@ -2546,8 +2554,6 @@ function renderJournal(){
     ticketsLbl.textContent = '🧾 Tickets';
     box.appendChild(ticketsLbl);
   }
-
-  // Grouper par marché
   const groupes = [];
   const marchesVus = {};
   [...filtered].reverse().forEach(sale=>{
@@ -2604,17 +2610,6 @@ function renderJournal(){
       box.appendChild(div);
     });
   });
-
-  // Mouvements filtrés — séparés par catégorie
-  const mvs = getFilteredMovements();
-  const wrap = document.getElementById('jr-mv-groups');
-  wrap.innerHTML = '';
-  const bank  = mvs.filter(m=>mvCategory(m)==='bank');
-  const stand = mvs.filter(m=>mvCategory(m)==='stand');
-  const other = mvs.filter(m=>mvCategory(m)==='other');
-  renderMvGroup(wrap, 'bank',  '🏦 Versements banque', bank);
-  renderMvGroup(wrap, 'stand', '🏪 Paiement stand',    stand);
-  renderMvGroup(wrap, 'other', '🔁 Autres mouvements', other);
 }
 
 /* Catégorie d'un mouvement */
