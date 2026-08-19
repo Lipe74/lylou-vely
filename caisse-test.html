@@ -2196,50 +2196,63 @@ function buildComptageHTML(){
   const dateLabel = todayStr().split('-').reverse().join('/');
   return `<!DOCTYPE html><html><head><meta charset="UTF-8">
     <title>${esc(SELLER.brand)} — Comptage de caisse</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Jost:wght@400;500;600&display=swap" rel="stylesheet">
     <style>
-      body{font-family:Arial,sans-serif;font-size:12px;color:#000;padding:24px;max-width:600px;margin:0 auto}
-      h1{color:#6B3FA0;font-size:22px;text-align:center;margin:0 0 4px;font-family:Georgia,serif}
-      .sub{text-align:center;font-size:11px;color:#777;margin-bottom:16px}
-      .titre{font-size:14px;font-weight:600;margin:16px 0 6px;color:#333;border-bottom:2px solid #6B3FA0;padding-bottom:3px}
-      table{width:100%;border-collapse:collapse;margin-bottom:10px}
-      th{background:#f5f0fa;color:#6B3FA0;padding:5px 8px;text-align:left;font-size:11px;border-bottom:2px solid #6B3FA0}
-      td{padding:4px 8px;border-bottom:1px solid #eee;font-size:12px}
-      td.r,th.r{text-align:right}
-      .kpi-row{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #eee;font-size:13px}
-      .kpi-row b{font-weight:600}
-      .total-box{background:#f5f0fa;border:2px solid #6B3FA0;border-radius:8px;padding:12px;text-align:center;margin:14px 0}
-      .total-label{font-size:12px;color:#555;margin-bottom:2px}
-      .total-amt{font-size:26px;font-weight:600;color:#6B3FA0;font-family:Georgia,serif}
-      .ecart{padding:10px;border-radius:8px;text-align:center;margin-top:10px;font-weight:600}
-      .ecart.ok{background:#e6f4ea;color:#2e9e6b}
-      .ecart.warn{background:#fdecea;color:#c0475e}
-      .foot{text-align:center;font-size:10px;color:#999;margin-top:20px;border-top:1px solid #eee;padding-top:8px}
-    </style></head><body>
-    <h1>${esc(SELLER.brand)}</h1>
-    <div class="sub">${esc(SELLER.legal)} · TVA ${esc(SELLER.vat)}<br>Comptage du ${dateLabel}${state.marche?' — '+esc(state.marche):''}</div>
+      @page{margin:14mm;size:A4 portrait}
+      *{box-sizing:border-box}
+      body{font-family:'Jost',Arial,sans-serif;color:#2a2233;margin:0;padding:0}
+      .cp-head{text-align:center;margin-bottom:20px}
+      .cp-head .logo{font-family:'Cormorant Garamond',serif;font-size:34px;color:#6B3FA0;font-weight:700}
+      .cp-head .sub{font-size:11px;letter-spacing:3px;text-transform:uppercase;color:#8b62c0;margin-top:2px}
+      .cp-head .ctx{font-size:14px;color:#555;margin-top:12px;font-weight:500}
+      .cp-head hr{border:none;border-top:1px solid #e4d9f2;margin:16px 0 0}
+      .cp-sect{font-family:'Cormorant Garamond',serif;font-size:19px;color:#6B3FA0;font-weight:700;margin:22px 0 6px}
+      .cp-table{width:100%;border-collapse:collapse;margin-bottom:8px;font-size:13px}
+      .cp-table th{background:#6B3FA0;color:#fff;text-align:left;padding:8px 12px;font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.4px}
+      .cp-table td{padding:8px 12px;border-bottom:1px solid #eee}
+      .cp-table tr:nth-child(even) td{background:#faf7fd}
+      .cp-table .r{text-align:right}
+      .cp-total{background:#faf7fd;border:2px solid #6B3FA0;border-radius:16px;padding:18px;text-align:center;margin:22px 0}
+      .cp-total .lbl{font-size:12px;letter-spacing:2px;text-transform:uppercase;color:#8b62c0;margin-bottom:4px}
+      .cp-total .val{font-family:'Cormorant Garamond',serif;font-size:38px;font-weight:700;color:#6B3FA0}
+      .cp-kpi{display:flex;justify-content:space-between;padding:9px 4px;border-bottom:1px solid #f0ecf5;font-size:14px}
+      .cp-kpi b{font-weight:600}
+      .cp-ecart{padding:14px;border-radius:12px;text-align:center;margin-top:14px;font-weight:600;font-size:15px}
+      .cp-ecart.ok{background:#e6f4ea;color:#2e9e6b}
+      .cp-ecart.warn{background:#fdecea;color:#c0475e}
+      .cp-foot{margin-top:30px;text-align:center;font-size:10px;color:#aaa;border-top:1px dashed #e4d9f2;padding-top:14px}
+    </style></head>
+    <body>
+      <div class="cp-head">
+        <div class="logo">${esc(SELLER.brand)}</div>
+        <div class="sub">Comptage de caisse</div>
+        <div class="ctx">${esc(dateLabel)}${state.marche?' — '+esc(state.marche):''}</div>
+        <hr>
+      </div>
 
-    ${rowsCoins ? `<div class="titre">Pièces</div><table><thead><tr><th>Valeur</th><th class="r">Qté</th><th class="r">Sous-total</th></tr></thead><tbody>${rowsCoins}</tbody></table>` : ''}
-    ${rowsBills ? `<div class="titre">Billets</div><table><thead><tr><th>Valeur</th><th class="r">Qté</th><th class="r">Sous-total</th></tr></thead><tbody>${rowsBills}</tbody></table>` : ''}
+      ${rowsCoins ? `<div class="cp-sect">Pièces</div><table class="cp-table"><thead><tr><th>Valeur</th><th class="r">Qté</th><th class="r">Sous-total</th></tr></thead><tbody>${rowsCoins}</tbody></table>` : ''}
+      ${rowsBills ? `<div class="cp-sect">Billets</div><table class="cp-table"><thead><tr><th>Valeur</th><th class="r">Qté</th><th class="r">Sous-total</th></tr></thead><tbody>${rowsBills}</tbody></table>` : ''}
 
-    <div class="total-box">
-      <div class="total-label">Total compté</div>
-      <div class="total-amt">${euro(counted)}</div>
-    </div>
+      <div class="cp-total">
+        <div class="lbl">Total compté</div>
+        <div class="val">${euro(counted)}</div>
+      </div>
 
-    <div class="titre">État de la caisse</div>
-    <div class="kpi-row"><span>Fond de caisse</span><b>${euro(state.fond)}</b></div>
-    <div class="kpi-row"><span>Ventes espèces</span><b>${euro(sumCashSales())}</b></div>
-    <div class="kpi-row"><span>Entrées</span><b>${euro(sumIn())}</b></div>
-    <div class="kpi-row"><span>Sorties</span><b>${euro(sumOut())}</b></div>
-    <div class="kpi-row"><span>Espèces théoriques en caisse</span><b>${euro(theo)}</b></div>
+      <div class="cp-sect">État de la caisse</div>
+      <div class="cp-kpi"><span>Fond de caisse</span><b>${euro(state.fond)}</b></div>
+      <div class="cp-kpi"><span>Ventes espèces</span><b>${euro(sumCashSales())}</b></div>
+      <div class="cp-kpi"><span>Entrées</span><b>${euro(sumIn())}</b></div>
+      <div class="cp-kpi"><span>Sorties</span><b>${euro(sumOut())}</b></div>
+      <div class="cp-kpi"><span>Espèces théoriques en caisse</span><b>${euro(theo)}</b></div>
 
-    ${counted>0 ? `<div class="ecart ${Math.abs(ecart)<0.005?'ok':'warn'}">Écart (compté − théorique) : ${ecart>=0?'+':''}${euro(ecart)}</div>` : ''}
+      ${counted>0 ? `<div class="cp-ecart ${Math.abs(ecart)<0.005?'ok':'warn'}">Écart (compté − théorique) : ${ecart>=0?'+':''}${euro(ecart)}</div>` : ''}
 
-    <div class="foot">Comptage généré le ${new Date().toLocaleString('fr-BE')} — ${esc(SELLER.brand)}</div>
+      <div class="cp-foot">Comptage généré le ${new Date().toLocaleString('fr-BE')} · ${esc(SELLER.brand)}</div>
     </body></html>`;
 }
 window.downloadComptagePDF = function(){
-  htmlStringToPDF(buildComptageHTML(), `comptage-caisse-${todayStr()}.pdf`);
+  const dateLbl = todayStr().split('-').reverse().join('-');
+  htmlStringToPDF(buildComptageHTML(), `Comptage de caisse - ${dateLbl}.pdf`);
 };
 window.printComptage = function(mode){
   openPrintWindow(buildComptageHTML(), mode||'a4');
@@ -2359,34 +2372,60 @@ window.printDayMovements = function(mode){
 };
 /* Téléchargement PDF direct des mouvements du jour, sans ouvrir la boîte d'impression */
 window.downloadDayMovementsPDF = function(){
-  htmlStringToPDF(buildMvPrintWindowHTML(), `mouvements-${state.day}.pdf`);
+  const dateLbl = state.day.split('-').reverse().join('-');
+  htmlStringToPDF(buildMvPrintWindowHTML(), `Mouvements - ${dateLbl}.pdf`);
 };
 
 function buildMvPrintWindowHTML(){
   const mvs = dayMovements(state.day);
   const totalIn = mvs.filter(m=>m.type==='in').reduce((a,m)=>a+m.amount,0);
   const totalOut = mvs.filter(m=>m.type==='out').reduce((a,m)=>a+m.amount,0);
-  let html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+  const rowsHTML = mvs.length===0 ? '<tr><td colspan="4" style="color:#999;font-style:italic">Aucun mouvement</td></tr>' : mvs.map(m=>{
+    const sign = m.type==='in'?'+':'−';
+    const pm = m.payMode==='card'?'Carte':m.payMode==='cash'?'Liquide':'—';
+    const cls = m.type==='in'?'jm-plus':'jm-minus';
+    return `<tr><td>${sign}</td><td>${esc(m.reason)}</td><td>${pm}</td><td class="r ${cls} b">${sign}${euro(m.amount)}</td></tr>`;
+  }).join('');
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8">
     <title>${esc(SELLER.brand)} — Mouvements</title>
-    <style>body{font-family:Arial,sans-serif;font-size:12px;color:#000;padding:20px}
-    h1{color:#6B3FA0;font-size:20px;text-align:center;margin:0 0 4px}
-    table{width:100%;border-collapse:collapse}th{border-bottom:2px solid #333;padding:4px;text-align:left}
-    td{border-bottom:1px solid #eee;padding:4px}.r{text-align:right}
-    .foot{text-align:center;font-size:10px;color:#999;margin-top:16px}</style></head><body>
-    <h1>${esc(SELLER.brand)}</h1>
-    <div style="text-align:center;font-size:11px;color:#777;margin-bottom:12px">${esc(SELLER.legal)} · TVA ${esc(SELLER.vat)}</div>
-    <div style="font-weight:600;margin-bottom:12px">Mouvements du ${state.day.split('-').reverse().join('/')}</div>
-    <table><thead><tr><th>Type</th><th>Motif</th><th>Mode</th><th class="r">Montant</th></tr></thead><tbody>`;
-  if(mvs.length===0) html+='<tr><td colspan="4" style="color:#999">Aucun mouvement</td></tr>';
-  mvs.forEach(m=>{
-    const sign=m.type==='in'?'+':'−';
-    const pm=m.payMode==='card'?'Carte':m.payMode==='cash'?'Liquide':'-';
-    html+=`<tr><td>${sign}</td><td>${esc(m.reason)}</td><td>${pm}</td><td class="r">${sign}${euro(m.amount)}</td></tr>`;
-  });
-  html+=`</tbody></table>
-    <div style="margin-top:12px;font-size:11px"><b>Entrées : +${euro(totalIn)}</b> &nbsp;|&nbsp; <b>Sorties : −${euro(totalOut)}</b></div>
-    <div class="foot">Généré le ${new Date().toLocaleString('fr-BE')}</div></body></html>`;
-  return html;
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Jost:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+      @page{margin:14mm;size:A4 portrait}
+      *{box-sizing:border-box}
+      body{font-family:'Jost',Arial,sans-serif;color:#2a2233;margin:0;padding:0}
+      .jm-head{text-align:center;margin-bottom:20px}
+      .jm-head .logo{font-family:'Cormorant Garamond',serif;font-size:34px;color:#6B3FA0;font-weight:700}
+      .jm-head .sub{font-size:11px;letter-spacing:3px;text-transform:uppercase;color:#8b62c0;margin-top:2px}
+      .jm-head .ctx{font-size:14px;color:#555;margin-top:12px;font-weight:500}
+      .jm-head hr{border:none;border-top:1px solid #e4d9f2;margin:16px 0 0}
+      .jm-table{width:100%;border-collapse:collapse;margin-bottom:10px;font-size:13px}
+      .jm-table th{background:#6B3FA0;color:#fff;text-align:left;padding:9px 12px;font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.4px}
+      .jm-table td{padding:9px 12px;border-bottom:1px solid #eee}
+      .jm-table tr:nth-child(even) td{background:#faf7fd}
+      .jm-table .r{text-align:right}
+      .jm-table .b{font-weight:700}
+      .jm-plus{color:#2e9e6b}
+      .jm-minus{color:#c0475e}
+      .jm-tot{display:flex;justify-content:center;gap:26px;margin-top:20px;font-size:14px;font-weight:600}
+      .jm-foot{margin-top:30px;text-align:center;font-size:10px;color:#aaa}
+    </style></head>
+    <body>
+      <div class="jm-head">
+        <div class="logo">${esc(SELLER.brand)}</div>
+        <div class="sub">Mouvements</div>
+        <div class="ctx">Mouvements du ${state.day.split('-').reverse().join('/')}</div>
+        <hr>
+      </div>
+      <table class="jm-table">
+        <thead><tr><th>Type</th><th>Motif</th><th>Mode</th><th class="r">Montant</th></tr></thead>
+        <tbody>${rowsHTML}</tbody>
+      </table>
+      <div class="jm-tot">
+        <span class="jm-plus">Total entrées : +${euro(totalIn)}</span>
+        <span class="jm-minus">Total sorties : −${euro(totalOut)}</span>
+      </div>
+      <div class="jm-foot">Document généré le ${new Date().toLocaleString('fr-BE')} · ${esc(SELLER.brand)}</div>
+    </body></html>`;
 }
 window.closeMvPrint = function(){ document.getElementById('mvprint-overlay').classList.add('hidden'); };
 function buildMvPrintHTML(){
@@ -2837,7 +2876,8 @@ window.printJournalMv = function(mode){
   // impression auto retirée : la fenêtre reste ouverte, impression manuelle
 };
 window.downloadJournalMvPDF = function(mode){
-  htmlStringToPDF(buildJournalMvHTML(), `mouvements-${(journalDate||todayStr())}.pdf`);
+  const dateLbl = (journalDate||todayStr()).split('-').reverse().join('-');
+  htmlStringToPDF(buildJournalMvHTML(), `Mouvements - ${dateLbl}.pdf`);
 };
 
 /* ---- Mouvements par catégorie (bank / stand / other) ---- */
@@ -2850,7 +2890,8 @@ window.printMvCat = function(cat, mode){
   // impression auto retirée : la fenêtre reste ouverte, impression manuelle
 };
 window.downloadMvCatPDF = function(cat){
-  htmlStringToPDF(buildJournalMvHTML(getMovementsByCat(cat), MV_CAT_LABEL[cat]), `mouvements-${cat}-${(journalDate||todayStr())}.pdf`);
+  const dateLbl = (journalDate||todayStr()).split('-').reverse().join('-');
+  htmlStringToPDF(buildJournalMvHTML(getMovementsByCat(cat), MV_CAT_LABEL[cat]), `${MV_CAT_LABEL[cat]} - ${dateLbl}.pdf`);
 };
 /* Récupère le libellé de la période actuellement affichée dans Journal (ex. "Semaine du 19/08/2026") */
 function journalPeriodLabel(){
@@ -2891,33 +2932,52 @@ function buildJournalMvHTML(subset, subtitle, dateLabelOverride){
   const dateLabel = dateLabelOverride || (document.getElementById('journal-date').textContent + (subtitle ? ' — ' + subtitle : ''));
   const totalIn = mvs.filter(m=>m.type==='in').reduce((a,m)=>a+m.amount,0);
   const totalOut = mvs.filter(m=>m.type==='out').reduce((a,m)=>a+m.amount,0);
-  let html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
-    <title>${esc(SELLER.brand)} — Mouvements</title>
-    <style>body{font-family:Arial,sans-serif;font-size:12px;color:#000;padding:20px;background:#fff}
-    h1{color:#6B3FA0;font-size:20px;text-align:center;margin:0 0 4px}
-    .sub{text-align:center;font-size:11px;color:#777;margin-bottom:16px}
-    table{width:100%;border-collapse:collapse}
-    th{border-bottom:2px solid #333;padding:6px 4px;text-align:left;font-size:11px}
-    td{border-bottom:1px solid #eee;padding:5px 4px;font-size:11px}
-    .r{text-align:right}.plus{color:green}.minus{color:red}
-    .tot{font-weight:600;margin-top:12px;font-size:12px}
-    .foot{text-align:center;font-size:10px;color:#999;margin-top:16px}</style></head><body>
-    <h1>${esc(SELLER.brand)}</h1>
-    <div class="sub">${esc(SELLER.legal)} · TVA ${esc(SELLER.vat)}</div>
-    <div style="font-weight:600;margin-bottom:12px">${esc(dateLabel)}</div>
-    <table><thead><tr><th>Type</th><th>Motif</th><th>Date</th><th>Mode</th><th class="r">Montant</th></tr></thead><tbody>`;
-  if(mvs.length===0) html+='<tr><td colspan="5" style="color:#999">Aucun mouvement</td></tr>';
-  [...mvs].forEach(m=>{
+  const rowsHTML = mvs.length===0 ? '<tr><td colspan="5" style="color:#999;font-style:italic">Aucun mouvement</td></tr>' : mvs.map(m=>{
     const sign = m.type==='in'?'+':'−';
     const pm = m.payMode==='card'?'Carte':m.payMode==='cash'?'Liquide':'—';
-    const cls = m.type==='in'?'plus':'minus';
-    html+=`<tr><td>${sign}</td><td>${esc(m.reason)}</td><td>${m.date.split('-').reverse().join('/')} ${m.time}</td><td>${pm}</td><td class="r ${cls}">${sign}${euro(m.amount)}</td></tr>`;
-  });
-  html+=`</tbody></table>
-    <div class="tot">Total entrées : <span class="plus">+${euro(totalIn)}</span> &nbsp;|&nbsp; Total sorties : <span class="minus">−${euro(totalOut)}</span></div>
-    <div class="foot">Généré le ${new Date().toLocaleString('fr-BE')} — ${esc(SELLER.brand)}</div>
+    const cls = m.type==='in'?'jm-plus':'jm-minus';
+    return `<tr><td>${sign}</td><td>${esc(m.reason)}</td><td>${m.date.split('-').reverse().join('/')} — ${m.time}</td><td>${pm}</td><td class="r ${cls} b">${sign}${euro(m.amount)}</td></tr>`;
+  }).join('');
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8">
+    <title>${esc(SELLER.brand)} — Mouvements</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Jost:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+      @page{margin:14mm;size:A4 portrait}
+      *{box-sizing:border-box}
+      body{font-family:'Jost',Arial,sans-serif;color:#2a2233;margin:0;padding:0}
+      .jm-head{text-align:center;margin-bottom:20px}
+      .jm-head .logo{font-family:'Cormorant Garamond',serif;font-size:34px;color:#6B3FA0;font-weight:700}
+      .jm-head .sub{font-size:11px;letter-spacing:3px;text-transform:uppercase;color:#8b62c0;margin-top:2px}
+      .jm-head .ctx{font-size:14px;color:#555;margin-top:12px;font-weight:500}
+      .jm-head hr{border:none;border-top:1px solid #e4d9f2;margin:16px 0 0}
+      .jm-table{width:100%;border-collapse:collapse;margin-bottom:10px;font-size:13px}
+      .jm-table th{background:#6B3FA0;color:#fff;text-align:left;padding:9px 12px;font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.4px}
+      .jm-table td{padding:9px 12px;border-bottom:1px solid #eee}
+      .jm-table tr:nth-child(even) td{background:#faf7fd}
+      .jm-table .r{text-align:right}
+      .jm-table .b{font-weight:700}
+      .jm-plus{color:#2e9e6b}
+      .jm-minus{color:#c0475e}
+      .jm-tot{display:flex;justify-content:center;gap:26px;margin-top:20px;font-size:14px;font-weight:600}
+      .jm-foot{margin-top:30px;text-align:center;font-size:10px;color:#aaa}
+    </style></head>
+    <body>
+      <div class="jm-head">
+        <div class="logo">${esc(SELLER.brand)}</div>
+        <div class="sub">Mouvements</div>
+        <div class="ctx">${esc(dateLabel)}</div>
+        <hr>
+      </div>
+      <table class="jm-table">
+        <thead><tr><th>Type</th><th>Motif</th><th>Date</th><th>Mode</th><th class="r">Montant</th></tr></thead>
+        <tbody>${rowsHTML}</tbody>
+      </table>
+      <div class="jm-tot">
+        <span class="jm-plus">Total entrées : +${euro(totalIn)}</span>
+        <span class="jm-minus">Total sorties : −${euro(totalOut)}</span>
+      </div>
+      <div class="jm-foot">Document généré le ${new Date().toLocaleString('fr-BE')} · ${esc(SELLER.brand)}</div>
     </body></html>`;
-  return html;
 }
 
 /* ============ TÉLÉCHARGEMENT PDF DIRECT (sans fenêtre d'impression) ============ */
@@ -3016,37 +3076,58 @@ function buildJournalHTML(marcheFilter){
 
   let html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
     <title>${esc(SELLER.brand)} — Journal</title>
-    <style>body{font-family:Arial,sans-serif;font-size:12px;color:#000;padding:20px;background:#fff}
-    h1{color:#6B3FA0;font-size:20px;text-align:center;margin:0 0 4px}
-    .sub{text-align:center;font-size:11px;color:#777;margin-bottom:16px}
-    .kpis{display:flex;gap:8px;margin-bottom:12px;font-size:11px;flex-wrap:wrap}
-    .kpi{flex:1;background:#f5f0fa;padding:8px;border-radius:6px;text-align:center;min-width:80px}
-    .kpi b{display:block;font-size:14px;color:#6B3FA0}
-    table{width:100%;border-collapse:collapse;margin-bottom:12px}
-    th{border-bottom:2px solid #333;padding:4px;text-align:left;font-size:11px}
-    td{border-bottom:1px solid #eee;padding:4px;font-size:11px}
-    td.r{text-align:right}
-    .sect{font-weight:600;margin:14px 0 6px;font-size:13px}
-    .marche-hdr{background:#f5f0fa;color:#6B3FA0;font-weight:600;padding:6px 8px;border-radius:6px;margin:12px 0 6px;font-size:12px}
-    .marche-sub{font-size:10px;color:#555;margin-bottom:6px}
-    .foot{text-align:center;font-size:10px;color:#999;margin-top:16px;border-top:1px solid #eee;padding-top:8px}</style></head><body>
-    <h1>${esc(SELLER.brand)}</h1>
-    <div class="sub">${esc(SELLER.legal)} · TVA ${esc(SELLER.vat)}</div>
-    <div style="font-weight:600;margin-bottom:8px">${esc(dateLabel)}</div>
-    <div class="kpis">
-      <div class="kpi"><b>${euro(ca)}</b>CA Total</div>
-      <div class="kpi"><b>${s.length}</b>Ventes</div>
-      <div class="kpi"><b>${euro(esp)}</b>Espèces</div>
-      <div class="kpi"><b>${euro(qr)}</b>QR Code</div>
-      <div class="kpi"><b>${euro(carte)}</b>Carte</div>
-      ${(()=>{ const bd=cardBreakdown(s); let h='';
-        if(bd.sumup.amount>0) h+=`<div class="kpi" style="background:#fff3e0"><b style="color:#a15c00">−${euro(bd.sumup.commission)}</b>Commission SumUp</div>`;
-        if(bd.viva.amount>0) h+=`<div class="kpi" style="background:#fff3e0"><b style="color:#a15c00">−${euro(bd.viva.commission)}</b>Commission Viva</div>`;
-        if(bd.mollie_be.amount>0) h+=`<div class="kpi" style="background:#fff3e0"><b style="color:#a15c00">−${euro(bd.mollie_be.commission)}</b>Commission Mollie Belge</div>`;
-        if(bd.mollie_intl.amount>0) h+=`<div class="kpi" style="background:#fff3e0"><b style="color:#a15c00">−${euro(bd.mollie_intl.commission)}</b>Commission Mollie Étrangère</div>`;
-        return h; })()}
-    </div>
-    <div class="sect">Ventes</div>`;
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Jost:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+      @page{margin:14mm;size:A4 portrait}
+      *{box-sizing:border-box}
+      body{font-family:'Jost',Arial,sans-serif;color:#2a2233;margin:0;padding:0}
+      .jh-head{text-align:center;margin-bottom:20px}
+      .jh-head .logo{font-family:'Cormorant Garamond',serif;font-size:34px;color:#6B3FA0;font-weight:700}
+      .jh-head .sub{font-size:11px;letter-spacing:3px;text-transform:uppercase;color:#8b62c0;margin-top:2px}
+      .jh-head .ctx{font-size:14px;color:#555;margin-top:12px;font-weight:500}
+      .jh-head hr{border:none;border-top:1px solid #e4d9f2;margin:16px 0 0}
+      .jh-kpis{display:flex;gap:10px;margin:20px 0 24px;flex-wrap:wrap}
+      .jh-kpi{flex:1;background:#faf7fd;border:1px solid #f0ecf5;padding:12px 8px;border-radius:10px;text-align:center;min-width:90px}
+      .jh-kpi b{display:block;font-size:17px;color:#6B3FA0;font-family:'Cormorant Garamond',serif}
+      .jh-kpi.fee{background:#fdf3e6;border-color:#f3e0c4}
+      .jh-kpi.fee b{color:#a15c00}
+      .jh-kpi span{font-size:10px;color:#777;text-transform:uppercase;letter-spacing:.3px}
+      .jh-sect{font-family:'Cormorant Garamond',serif;font-size:21px;color:#6B3FA0;font-weight:700;margin:30px 0 6px}
+      .jh-table{width:100%;border-collapse:collapse;margin-bottom:10px;font-size:13px}
+      .jh-table th{background:#6B3FA0;color:#fff;text-align:left;padding:9px 12px;font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.4px}
+      .jh-table td{padding:9px 12px;border-bottom:1px solid #eee}
+      .jh-table tr:nth-child(even) td{background:#faf7fd}
+      .jh-table .r{text-align:right}
+      .jh-table .b{font-weight:700}
+      .jh-marche-hdr{font-family:'Cormorant Garamond',serif;font-size:17px;color:#6B3FA0;font-weight:700;margin:20px 0 2px}
+      .jh-marche-sub{font-size:12px;color:#777;margin-bottom:8px}
+      .jh-tot{display:flex;justify-content:center;gap:26px;margin-top:14px;font-size:14px;font-weight:600}
+      .jh-plus{color:#2e9e6b}
+      .jh-minus{color:#c0475e}
+      .jh-empty{color:#999;font-style:italic;font-size:13px}
+      .jh-foot{margin-top:30px;text-align:center;font-size:10px;color:#aaa;border-top:1px dashed #e4d9f2;padding-top:14px}
+    </style></head>
+    <body>
+      <div class="jh-head">
+        <div class="logo">${esc(SELLER.brand)}</div>
+        <div class="sub">Journal</div>
+        <div class="ctx">${esc(dateLabel)}</div>
+        <hr>
+      </div>
+      <div class="jh-kpis">
+        <div class="jh-kpi"><b>${euro(ca)}</b><span>CA Total</span></div>
+        <div class="jh-kpi"><b>${s.length}</b><span>Ventes</span></div>
+        <div class="jh-kpi"><b>${euro(esp)}</b><span>Espèces</span></div>
+        <div class="jh-kpi"><b>${euro(qr)}</b><span>QR Code</span></div>
+        <div class="jh-kpi"><b>${euro(carte)}</b><span>Carte</span></div>
+        ${(()=>{ const bd=cardBreakdown(s); let h='';
+          if(bd.sumup.amount>0) h+=`<div class="jh-kpi fee"><b>−${euro(bd.sumup.commission)}</b><span>Commission SumUp</span></div>`;
+          if(bd.viva.amount>0) h+=`<div class="jh-kpi fee"><b>−${euro(bd.viva.commission)}</b><span>Commission Viva</span></div>`;
+          if(bd.mollie_be.amount>0) h+=`<div class="jh-kpi fee"><b>−${euro(bd.mollie_be.commission)}</b><span>Commission Mollie Belge</span></div>`;
+          if(bd.mollie_intl.amount>0) h+=`<div class="jh-kpi fee"><b>−${euro(bd.mollie_intl.commission)}</b><span>Commission Mollie Étrangère</span></div>`;
+          return h; })()}
+      </div>
+      <div class="jh-sect">Ventes</div>`;
 
   // Ventes groupées par marché
   groupes.forEach(groupe=>{
@@ -3062,33 +3143,37 @@ function buildJournalHTML(marcheFilter){
       if(gBd.mollie_be.amount>0) gFeeParts.push(`commission Mollie Belge −${euro(gBd.mollie_be.commission)}`);
       if(gBd.mollie_intl.amount>0) gFeeParts.push(`commission Mollie Étrangère −${euro(gBd.mollie_intl.commission)}`);
       const gFeeTxt = gFeeParts.length ? ` (${gFeeParts.join(', ')})` : '';
-      html+=`<div class="marche-hdr">🏪 ${esc(groupe.marche)} — CA : ${euro(gca)}</div>
-      <div class="marche-sub">💶 Espèces : ${euro(gesp)} · 📱 QR : ${euro(gqr)} · 💳 Carte : ${euro(gcarte)}${gFeeTxt}</div>`;
+      html+=`<div class="jh-marche-hdr">🏪 ${esc(groupe.marche)} — CA : ${euro(gca)}</div>
+      <div class="jh-marche-sub">💶 Espèces : ${euro(gesp)} · 📱 QR : ${euro(gqr)} · 💳 Carte : ${euro(gcarte)}${gFeeTxt}</div>`;
     }
-    html+=`<table><thead><tr><th>Réf.</th><th>Articles</th><th>Mode</th><th style="text-align:right">Total</th></tr></thead><tbody>`;
+    html+=`<table class="jh-table"><thead><tr><th>Réf.</th><th>Articles</th><th>Mode</th><th class="r">Total</th></tr></thead><tbody>`;
     groupe.sales.forEach(sale=>{
       const ref=sale.ref||makeRef(sale.num);
       const names=sale.items.map(i=>i.name+(i.qty>1?' ×'+i.qty:'')).join(', ');
       const cancelled=sale.cancelled?' style="text-decoration:line-through;color:#999"':'';
-      html+=`<tr${cancelled}><td>${esc(ref)}</td><td>${esc(names)}</td><td>${METHOD_LABEL[sale.method]}</td><td class="r">${euro(sale.total)}</td></tr>`;
+      html+=`<tr${cancelled}><td>${esc(ref)}</td><td>${esc(names)}</td><td>${METHOD_LABEL[sale.method]}</td><td class="r b">${euro(sale.total)}</td></tr>`;
     });
     html+='</tbody></table>';
   });
-  if(s.length===0) html+='<p style="color:#999">Aucune vente</p>';
+  if(s.length===0) html+='<p class="jh-empty">Aucune vente</p>';
 
   // Mouvements
   if(mvs.length>0){
-    html+=`<div class="sect">Mouvements</div>
-    <table><thead><tr><th>Type</th><th>Motif</th><th>Date</th><th>Mode</th><th style="text-align:right">Montant</th></tr></thead><tbody>`;
+    html+=`<div class="jh-sect">Mouvements</div>
+    <table class="jh-table"><thead><tr><th>Type</th><th>Motif</th><th>Date</th><th>Mode</th><th class="r">Montant</th></tr></thead><tbody>`;
     mvs.forEach(m=>{
       const sign=m.type==='in'?'+':'−';
-      const pm=m.payMode==='card'?'Carte':m.payMode==='cash'?'Liquide':'-';
-      html+=`<tr><td>${sign}</td><td>${esc(m.reason)}</td><td>${m.date.split('-').reverse().join('/')} ${m.time}</td><td>${pm}</td><td class="r" style="color:${m.type==='in'?'green':'red'}">${sign}${euro(m.amount)}</td></tr>`;
+      const pm=m.payMode==='card'?'Carte':m.payMode==='cash'?'Liquide':'—';
+      const cls=m.type==='in'?'jh-plus':'jh-minus';
+      html+=`<tr><td>${sign}</td><td>${esc(m.reason)}</td><td>${m.date.split('-').reverse().join('/')} — ${m.time}</td><td>${pm}</td><td class="r ${cls} b">${sign}${euro(m.amount)}</td></tr>`;
     });
     html+=`</tbody></table>
-    <div style="font-size:11px"><b>Total entrées : +${euro(totalIn)}</b> &nbsp;|&nbsp; <b>Total sorties : −${euro(totalOut)}</b></div>`;
+    <div class="jh-tot">
+      <span class="jh-plus">Total entrées : +${euro(totalIn)}</span>
+      <span class="jh-minus">Total sorties : −${euro(totalOut)}</span>
+    </div>`;
   }
-  html+=`<div class="foot">Généré le ${new Date().toLocaleString('fr-BE')} — ${esc(SELLER.brand)}</div></body></html>`;
+  html+=`<div class="jh-foot">Document généré le ${new Date().toLocaleString('fr-BE')} · ${esc(SELLER.brand)}</div></body></html>`;
   return html;
 }
 /* Vraies clôtures Z (indépendant des ventes — couvre aussi les jours à 0 vente), filtrées comme ventes/mouvements */
@@ -3633,41 +3718,52 @@ function buildVirementDoc(){
   const dateLabel = dateV ? dateV.split('-').reverse().join('/') : todayStr().split('-').reverse().join('/');
   const html=`<!DOCTYPE html><html><head><meta charset="UTF-8">
     <title>${esc(SELLER.brand)} — Versement banque</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Jost:wght@400;500;600&display=swap" rel="stylesheet">
     <style>
-      body{font-family:Arial,sans-serif;font-size:12px;color:#000;padding:30px;max-width:700px;margin:0 auto}
-      h1{color:#6B3FA0;font-size:24px;text-align:center;margin:0 0 4px;font-family:Georgia,serif}
-      .sub{text-align:center;font-size:11px;color:#777;margin-bottom:20px}
-      .titre{font-size:16px;font-weight:600;margin:20px 0 4px;color:#333;border-bottom:2px solid #6B3FA0;padding-bottom:4px}
-      table{width:100%;border-collapse:collapse;margin-bottom:16px}
-      th{background:#f5f0fa;color:#6B3FA0;padding:6px 8px;text-align:left;font-size:11px;border-bottom:2px solid #6B3FA0}
-      td{padding:5px 8px;border-bottom:1px solid #eee;font-size:11px}
-      td.r{text-align:right}
-      .total-box{background:#f5f0fa;border:2px solid #6B3FA0;border-radius:8px;padding:16px;text-align:center;margin:16px 0}
-      .total-label{font-size:13px;color:#555;margin-bottom:4px}
-      .total-amt{font-size:32px;font-weight:600;color:#6B3FA0;font-family:Georgia,serif}
-      .sign-box{display:flex;gap:40px;margin-top:30px}
-      .sign{flex:1;border-top:1px solid #333;padding-top:6px;font-size:11px;color:#555;text-align:center}
-      .foot{text-align:center;font-size:10px;color:#999;margin-top:20px;border-top:1px solid #eee;padding-top:8px}
-    </style></head><body>
-    <h1>${esc(SELLER.brand)}</h1>
-    <div class="sub">${esc(SELLER.legal)} · TVA ${esc(SELLER.vat)}<br>${esc(SELLER.address)}</div>
-    <div class="titre">Document de versement en banque</div>
-    <div style="font-size:12px;margin-bottom:12px">
-      <b>Date du versement :</b> ${dateLabel}${state.marche?' &nbsp;|&nbsp; <b>Marché :</b> '+esc(state.marche):''}
-    </div>
-    <table>
-      <thead><tr><th>Réf.</th><th>Date/Heure</th><th>Marché</th><th>Description</th><th class="r">Montant</th></tr></thead>
-      <tbody>${rows}</tbody>
-    </table>
-    <div class="total-box">
-      <div class="total-label">Montant total à verser en banque</div>
-      <div class="total-amt">${euro(total)}</div>
-    </div>
-    <div class="sign-box">
-      <div class="sign">Signature du responsable<br><br><br></div>
-      <div class="sign">Cachet / Tampon<br><br><br></div>
-    </div>
-    <div class="foot">Document généré le ${new Date().toLocaleString('fr-BE')} — ${esc(SELLER.brand)}</div>
+      @page{margin:14mm;size:A4 portrait}
+      *{box-sizing:border-box}
+      body{font-family:'Jost',Arial,sans-serif;color:#2a2233;margin:0;padding:0}
+      .vb-head{text-align:center;margin-bottom:20px}
+      .vb-head .logo{font-family:'Cormorant Garamond',serif;font-size:34px;color:#6B3FA0;font-weight:700}
+      .vb-head .sub{font-size:11px;letter-spacing:3px;text-transform:uppercase;color:#8b62c0;margin-top:2px}
+      .vb-head .legal{font-size:12px;color:#777;margin-top:10px}
+      .vb-head hr{border:none;border-top:1px solid #e4d9f2;margin:16px 0 0}
+      .vb-titre{font-family:'Cormorant Garamond',serif;font-size:21px;color:#6B3FA0;font-weight:700;text-align:center;margin:24px 0 4px}
+      .vb-meta{text-align:center;font-size:13px;color:#555;margin-bottom:20px}
+      .vb-table{width:100%;border-collapse:collapse;margin-bottom:8px;font-size:13px}
+      .vb-table th{background:#6B3FA0;color:#fff;text-align:left;padding:9px 12px;font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.4px}
+      .vb-table td{padding:9px 12px;border-bottom:1px solid #eee}
+      .vb-table tr:nth-child(even) td{background:#faf7fd}
+      .vb-table .r{text-align:right}
+      .vb-total{background:#faf7fd;border:2px solid #6B3FA0;border-radius:16px;padding:22px;text-align:center;margin:26px 0}
+      .vb-total .lbl{font-size:12px;letter-spacing:2px;text-transform:uppercase;color:#8b62c0;margin-bottom:6px}
+      .vb-total .val{font-family:'Cormorant Garamond',serif;font-size:44px;font-weight:700;color:#6B3FA0}
+      .vb-sign{display:flex;gap:50px;margin-top:44px}
+      .vb-sign div{flex:1;border-top:1px solid #ccc;padding-top:8px;font-size:12px;color:#8b62c0;text-align:center}
+      .vb-foot{margin-top:30px;text-align:center;font-size:10px;color:#aaa;border-top:1px dashed #e4d9f2;padding-top:14px}
+    </style></head>
+    <body>
+      <div class="vb-head">
+        <div class="logo">${esc(SELLER.brand)}</div>
+        <div class="sub">Versement banque</div>
+        <div class="legal">${esc(SELLER.legal)} · TVA ${esc(SELLER.vat)}<br>${esc(SELLER.address)}</div>
+        <hr>
+      </div>
+      <div class="vb-titre">Document de versement en banque</div>
+      <div class="vb-meta"><b>Date du versement :</b> ${dateLabel}${state.marche?' &nbsp;·&nbsp; <b>Marché :</b> '+esc(state.marche):''}</div>
+      <table class="vb-table">
+        <thead><tr><th>Réf.</th><th>Date/Heure</th><th>Marché</th><th>Description</th><th class="r">Montant</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+      <div class="vb-total">
+        <div class="lbl">Montant total à verser en banque</div>
+        <div class="val">${euro(total)}</div>
+      </div>
+      <div class="vb-sign">
+        <div>Signature du responsable</div>
+        <div>Cachet / Tampon</div>
+      </div>
+      <div class="vb-foot">Document généré le ${new Date().toLocaleString('fr-BE')} · ${esc(SELLER.brand)}</div>
     </body></html>`;
   return html;
 }
@@ -3675,7 +3771,8 @@ function buildVirementDoc(){
 window.downloadVirementPDF = function(){
   const html = buildVirementDoc();
   if(!html) return;
-  htmlStringToPDF(html, `versement-banque-${todayStr()}.pdf`);
+  const dateLbl = todayStr().split('-').reverse().join('-');
+  htmlStringToPDF(html, `Versement banque - ${dateLbl}.pdf`);
   closeVirement();
 };
 /* Ouvre la fenêtre d'impression (58mm ou A4) pour le document de versement */
