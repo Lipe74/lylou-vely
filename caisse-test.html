@@ -2406,6 +2406,11 @@ window.setJournalFilter = function(f){
     populateJournalMonthSelect();
   } else {
     rp.style.display='none'; dp.style.display='block'; monthSel.style.display='none';
+    if(f==='day' || f==='week'){
+      // Repart sur aujourd'hui (évite de rester bloqué sur le 1er du mois choisi précédemment en vue Mois)
+      journalDate = todayStr();
+      dp.value = journalDate;
+    }
   }
   document.getElementById('jr-export-closures-btn').style.display = (f==='month') ? 'block' : 'none';
   renderJournal();
@@ -2513,17 +2518,10 @@ function renderJournal(){
       });
   const box = document.getElementById('jr-list');
   const clotBox = document.getElementById('jr-cloture-links');
-  if(filtered.length===0){ box.innerHTML='<div class="empty">Aucune vente</div>'; clotBox.innerHTML=''; return; }
-  box.innerHTML='';
 
-  // Clôtures Z réimprimables (par date+marché réellement vendu, même sans versement banque)
-  const clotSeen = {};
-  const clotList = [];
-  [...filtered].filter(x=>!x.cancelled).forEach(x=>{
-    const key = x.date+'|'+(x.marche||'');
-    if(!clotSeen[key]){ clotSeen[key]=1; clotList.push({date:x.date, marche:x.marche||''}); }
-  });
-  clotList.sort((a,b)=> a.date<b.date?1:(a.date>b.date?-1:0));
+  // Clôtures Z réimprimables : basé sur les vraies clôtures enregistrées (state.closures),
+  // pas sur les ventes — une journée à 0 vente mais bien clôturée reste visible.
+  const clotList = [...getFilteredClosures()].sort((a,b)=> a.date<b.date?1:(a.date>b.date?-1:0));
   if(clotList.length){
     clotBox.innerHTML = `<div style="font-size:13px;font-weight:600;color:var(--violet);margin-bottom:6px">🔒 Clôture de caisse</div>
     <div style="font-size:12px;color:var(--muted);margin:2px 0 10px;padding-bottom:10px;border-bottom:1px solid #eee">
@@ -2536,6 +2534,9 @@ function renderJournal(){
   } else {
     clotBox.innerHTML = '';
   }
+
+  if(filtered.length===0){ box.innerHTML='<div class="empty">Aucune vente</div>'; return; }
+  box.innerHTML='';
   if(clotList.length){
     const ticketsLbl = document.createElement('div');
     ticketsLbl.style.cssText = 'font-size:13px;font-weight:600;color:var(--violet);margin-bottom:6px';
@@ -2956,6 +2957,21 @@ function buildJournalHTML(marcheFilter){
   html+=`<div class="foot">Généré le ${new Date().toLocaleString('fr-BE')} — ${esc(SELLER.brand)}</div></body></html>`;
   return html;
 }
+/* Vraies clôtures Z (indépendant des ventes — couvre aussi les jours à 0 vente), filtrées comme ventes/mouvements */
+function getFilteredClosures(){
+  const today = journalDate||todayStr();
+  const all = state.closures;
+  if(journalFilter==='all') return all;
+  if(journalFilter==='day') return all.filter(c=>c.date===today);
+  if(journalFilter==='week'){ const d=new Date(today);const dow=d.getDay();d.setDate(d.getDate() + (dow===0 ? -6 : 1-dow));const start=d.toISOString().slice(0,10);d.setDate(d.getDate()+6);return all.filter(c=>c.date>=start&&c.date<=d.toISOString().slice(0,10)); }
+  if(journalFilter==='month') return all.filter(c=>c.date.startsWith(today.slice(0,7)));
+  if(journalFilter==='range' && journalRangeStart && journalRangeEnd){
+    const s = journalRangeStart<=journalRangeEnd?journalRangeStart:journalRangeEnd;
+    const e = journalRangeStart<=journalRangeEnd?journalRangeEnd:journalRangeStart;
+    return all.filter(c=>c.date>=s && c.date<=e);
+  }
+  return all;
+}
 function getFilteredMovements(){
   const today = journalDate||todayStr();
   const all = state.movements;
@@ -2994,14 +3010,21 @@ window.downloadJournalPDF = function(){
   htmlStringToPDF(buildJournalHTML(), `journal-${(journalDate||todayStr())}.pdf`);
 };
 
-/* Liste des clôtures (date+marché) réellement vendues sur un mois, à partir des vraies ventes
-   (indépendant de l'historique des clôtures, pour couvrir aussi les mois antérieurs à ce suivi) */
+/* Liste des clôtures (date+marché) d'un mois : vraies clôtures enregistrées (couvre aussi les jours
+   à 0 vente) + ventes réelles en complément (couvre les mois antérieurs à ce suivi des clôtures) */
 function getMonthClosureDates(month){
-  const byMarcheDate = computeMarcheDateStats();
+  const seen = new Set();
   const list = [];
+  state.closures.filter(c=>c.date.slice(0,7)===month).forEach(c=>{
+    const key = c.date+'|'+(c.marche||'');
+    if(!seen.has(key)){ seen.add(key); list.push({date:c.date, marche:c.marche||''}); }
+  });
+  const byMarcheDate = computeMarcheDateStats();
   Object.keys(byMarcheDate).forEach(marche=>{
     Object.keys(byMarcheDate[marche]).forEach(date=>{
-      if(date.slice(0,7)===month) list.push({date, marche});
+      if(date.slice(0,7)!==month) return;
+      const key = date+'|'+marche;
+      if(!seen.has(key)){ seen.add(key); list.push({date, marche}); }
     });
   });
   return list.sort((a,b)=>a.date.localeCompare(b.date) || a.marche.localeCompare(b.marche));
