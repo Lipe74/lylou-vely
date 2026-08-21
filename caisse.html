@@ -3578,7 +3578,7 @@ window.printZ = function(){
   reprintZContext = null;
   document.getElementById('ticket-z-toggle').classList.add('hidden');
   const {ca,esp,qr,carte,cancelledN,theo,inTotal,outTotal,cashOut,cardOut,fondForDay} = buildZHTML(d, state.marche);
-  currentPdfFilename = zPdfName(d, state.marche, 'apres');
+  currentPdfFilename = zPdfName(d, state.marche, 'avant');
   const area=document.getElementById('ticket-area');
   area.innerHTML = buildZTicketHTML(d, state.marche, ca, esp, qr, carte, cancelledN, theo, inTotal, outTotal, cashOut, cardOut, fondForDay);
   document.getElementById('ticket-overlay').classList.remove('hidden');
