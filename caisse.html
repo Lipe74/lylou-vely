@@ -931,7 +931,8 @@ const STORE_PROD = "lylou_caisse_prod_v2";
 const STORE_TEST = "lylou_caisse_test_v2";
 const _filename = location.pathname.split('/').pop().replace('.html','') || 'caisse';
 const MODE_KEY = "lylou_mode_" + _filename;
-let mode = localStorage.getItem(MODE_KEY) || 'prod';
+const FORCE_TEST = (_filename === 'caisse-test'); // caisse-test.html reste toujours en mode Test
+let mode = FORCE_TEST ? 'test' : (localStorage.getItem(MODE_KEY) || 'prod');
 function storeKey(){ return mode==='test' ? STORE_TEST : STORE_PROD; }
 
 const QR_IMAGE = "qr-bancontact.png";
@@ -1346,6 +1347,7 @@ window.doRefresh = async function(){
 /* ============ MODE PROD/TEST ============ */
 window.switchMode = async function(target){
   if(target===mode) return;
+  if(FORCE_TEST && target==='prod'){ toast("🔒 Ce fichier (caisse-test.html) est verrouillé en mode Test"); return; }
   const msg = target==='test'
     ? "Passer en MODE TEST ?\nTu bascules sur une caisse d'essai séparée."
     : "Passer en MODE PRODUCTION ?\nTu reviens sur ta vraie caisse.";
@@ -1368,6 +1370,7 @@ window.switchMode = async function(target){
   checkDayTransition();
 };
 window.toggleMode = function(){
+  if(FORCE_TEST){ toast("🔒 Ce fichier (caisse-test.html) est verrouillé en mode Test"); return; }
   const target = mode==='prod' ? 'test' : 'prod';
   const msg = target==='test'
     ? "Passer en MODE TEST ?\nCaisse d'essai séparée."
@@ -1383,14 +1386,18 @@ function updateModeUI(){
   document.querySelector('header').classList.toggle('test-mode', test);
   // Bouton bascule header
   const btn = document.getElementById('hdr-mode-btn');
-  if(btn){ btn.textContent = test ? 'TEST' : 'PROD'; btn.style.background = test ? 'rgba(255,255,255,0.35)' : 'rgba(255,255,255,0.18)'; }
+  if(btn){
+    btn.textContent = test ? 'TEST' : 'PROD';
+    btn.style.background = test ? 'rgba(255,255,255,0.35)' : 'rgba(255,255,255,0.18)';
+    btn.style.display = FORCE_TEST ? 'none' : '';
+  }
   // Réglages
   const sm = document.getElementById('settings-mode');
-  if(sm){ sm.textContent = test ? 'TEST' : 'PRODUCTION'; sm.className = 'mode-val '+(test?'test':'prod'); }
+  if(sm){ sm.textContent = FORCE_TEST ? 'TEST (verrouillé)' : (test ? 'TEST' : 'PRODUCTION'); sm.className = 'mode-val '+(test?'test':'prod'); }
   const st = document.getElementById('settings-to-test');
   const sp = document.getElementById('settings-to-prod');
-  if(st) st.style.display = test?'none':'block';
-  if(sp) sp.style.display = test?'block':'none';
+  if(st) st.style.display = (test || FORCE_TEST) ? 'none' : 'block';
+  if(sp) sp.style.display = (test && !FORCE_TEST) ? 'block' : 'none';
 }
 
 /* ---- Réglages (modale) ---- */
