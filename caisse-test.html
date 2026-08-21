@@ -3018,6 +3018,11 @@ async function htmlToCanvasViaIframe(fullHtml){
   try{
     const doc = iframe.contentDocument || iframe.contentWindow.document;
     doc.open(); doc.write(fullHtml); doc.close();
+    // Attend le chargement réel des polices (fallback : 350ms si l'API fonts n'existe pas ou traîne)
+    await Promise.race([
+      (doc.fonts && doc.fonts.ready) ? doc.fonts.ready : Promise.resolve(),
+      new Promise(r=>setTimeout(r, 1200))
+    ]);
     await new Promise(r=>setTimeout(r, 350));
     const bodyEl = doc.body;
     iframe.style.height = (bodyEl.scrollHeight + 40) + 'px';
@@ -3037,6 +3042,7 @@ async function htmlToPdfBlobViaIframe(fullHtml){
 
 async function htmlStringToPDF(fullHtml, filename){
   if(!window.html2canvas || !window.jspdf){
+    console.error('htmlStringToPDF: html2canvas/jsPDF non chargés');
     toast("PDF indisponible → impression"); const w=openPrintWindow(fullHtml);  return;
   }
   toast("Génération du PDF…");
@@ -3045,7 +3051,15 @@ async function htmlStringToPDF(fullHtml, filename){
     canvasToPDFPages(canvas, filename);
     toast("PDF téléchargé");
   }catch(e){
-    toast("Erreur PDF → impression"); const w=openPrintWindow(fullHtml); 
+    console.error('htmlStringToPDF: échec 1re tentative, nouvel essai…', e);
+    try{
+      const canvas = await htmlToCanvasViaIframe(fullHtml);
+      canvasToPDFPages(canvas, filename);
+      toast("PDF téléchargé");
+    }catch(e2){
+      console.error('htmlStringToPDF: échec définitif → impression', e2);
+      toast("Erreur PDF → impression"); const w=openPrintWindow(fullHtml);
+    }
   }
 }
 
