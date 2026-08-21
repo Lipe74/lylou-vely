@@ -2100,7 +2100,7 @@ window.downloadPDF = function(){
     const hmm = canvas.height * wmm / canvas.width;
     const pdf = new jsPDF({unit:'mm', format:[wmm, hmm]});
     pdf.addImage(img, 'PNG', 0, 0, wmm, hmm);
-    pdf.save(currentPdfFilename ? `${currentPdfFilename}.pdf` : `recu-${currentTicketRef||'ticket'}.pdf`);
+    pdf.save(currentPdfFilename ? `${currentPdfFilename}.pdf` : `${currentTicketRef||'ticket'}.pdf`);
   }).catch(()=>{ toast("Erreur PDF → impression"); window.print(); });
 };
 
@@ -2758,7 +2758,7 @@ window.quickDownloadTicketPDF = async function(saleId){
   toast("Génération du PDF…");
   try{
     const ref = s.ref || makeRef(s.num);
-    const filename = 'recu-' + ref + '-' + saleModeSuffix(s) + (s.cancelled ? '-Annule' : '');
+    const filename = ref + '-' + saleModeSuffix(s) + (s.cancelled ? '-Annule' : '');
     const blob = await saleTicketToPdfBlob(s);
     downloadBlob(blob, filename+'.pdf');
     toast("PDF téléchargé");
