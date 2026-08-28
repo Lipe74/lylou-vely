@@ -2093,7 +2093,7 @@ window.downloadPDF = function(){
     const hmm = canvas.height * wmm / canvas.width;
     const pdf = new jsPDF({unit:'mm', format:[wmm, hmm]});
     pdf.addImage(img, 'PNG', 0, 0, wmm, hmm);
-    pdf.save(currentPdfFilename ? `${currentPdfFilename}.pdf` : `recu-${currentTicketRef||'ticket'}.pdf`);
+    pdf.save(currentPdfFilename ? `${currentPdfFilename}.pdf` : `${currentTicketRef||'ticket'}.pdf`);
   }).catch(()=>{ toast("Erreur PDF → impression"); window.print(); });
 };
 
@@ -2751,7 +2751,7 @@ window.quickDownloadTicketPDF = async function(saleId){
   toast("Génération du PDF…");
   try{
     const ref = s.ref || makeRef(s.num);
-    const filename = 'recu-' + ref + '-' + saleModeSuffix(s) + (s.cancelled ? '-Annule' : '');
+    const filename = ref + '-' + saleModeSuffix(s) + (s.cancelled ? '-Annule' : '');
     const blob = await saleTicketToPdfBlob(s);
     downloadBlob(blob, filename+'.pdf');
     toast("PDF téléchargé");
@@ -3564,15 +3564,18 @@ window.printZ = function(){
   reprintZContext = null;
   document.getElementById('ticket-z-toggle').classList.add('hidden');
   const {ca,esp,qr,carte,cancelledN,theo,inTotal,outTotal,cashOut,cardOut,fondForDay} = buildZHTML(d, state.marche);
-  currentPdfFilename = zPdfName(d, state.marche, 'apres');
+  // Tant que le versement (si un surplus le déclenche) n'est pas confirmé, le ticket affiché
+  // reflète encore l'état "avant" — le nom du fichier doit le refléter aussi.
+  const surplus = theo - FOND_CIBLE;
+  const suggestion = surplus > 0.01 ? Math.floor(surplus/VERSEMENT_MIN)*VERSEMENT_MIN : 0;
+  const versementPending = suggestion >= VERSEMENT_MIN;
+  currentPdfFilename = zPdfName(d, state.marche, versementPending ? 'avant' : 'apres');
   const area=document.getElementById('ticket-area');
   area.innerHTML = buildZTicketHTML(d, state.marche, ca, esp, qr, carte, cancelledN, theo, inTotal, outTotal, cashOut, cardOut, fondForDay);
   document.getElementById('ticket-overlay').classList.remove('hidden');
   markClosureDone(d, state.marche);
   // Proposer versement banque si surplus
-  const surplus = theo - FOND_CIBLE;
   if(surplus > 0.01){
-    const suggestion = Math.floor(surplus/VERSEMENT_MIN)*VERSEMENT_MIN; // arrondi au multiple de 5 (billets réels)
     if(suggestion < VERSEMENT_MIN){
       // Surplus trop faible pour valoir un déplacement banque : pas de popup, juste un report informatif
       setTimeout(()=>toast(`💡 Surplus de ${euro(surplus)} (sous ${VERSEMENT_MIN}€), reporté au prochain marché`), 400);
@@ -3607,6 +3610,12 @@ window.confirmVersementPrompt = function(){
   renderMovements(); renderHeaderKPIs(); renderCaisse();
   toast("Versement de "+euro(amount)+" enregistré");
   closeVersementPrompt();
+  // Le ticket affiché doit maintenant refléter l'état réel après versement (plus de "À retirer")
+  if(!reprintZContext){
+    const {ca,esp,qr,carte,cancelledN,theo,inTotal,outTotal,cashOut,cardOut,fondForDay} = buildZHTML(state.day, state.marche);
+    document.getElementById('ticket-area').innerHTML = buildZTicketHTML(state.day, state.marche, ca, esp, qr, carte, cancelledN, theo, inTotal, outTotal, cashOut, cardOut, fondForDay);
+    currentPdfFilename = zPdfName(state.day, state.marche, 'apres');
+  }
 };
 
 /* ============ VERSEMENT BANQUE ============ */
