@@ -328,7 +328,7 @@ nav button.on{color:var(--violet)}
       <div class="hdr-kpi"><span>QR Code</span><b id="hdr-qr">0,00 €</b></div>
       <div class="hdr-kpi"><span>SumUp</span><b id="hdr-sumup">0,00 €</b></div>
     </div>
-    <div id="hdr-marche" style="text-align:center;font-size:13px;color:rgba(255,255,255,0.85);margin-top:6px;font-weight:500"></div>
+    <div id="hdr-marche" onclick="promptRenameMarche()" style="text-align:center;font-size:13px;color:rgba(255,255,255,0.85);margin-top:6px;font-weight:500;cursor:pointer" title="Modifier le nom du marché"></div>
   </header>
   <div id="test-banner">⚠ MODE TEST — données fictives, sans valeur comptable</div>
 
@@ -931,8 +931,7 @@ const STORE_PROD = "lylou_caisse_prod_v2";
 const STORE_TEST = "lylou_caisse_test_v2";
 const _filename = location.pathname.split('/').pop().replace('.html','') || 'caisse';
 const MODE_KEY = "lylou_mode_" + _filename;
-const FORCE_TEST = (_filename === 'caisse-test'); // caisse-test.html reste toujours en mode Test
-let mode = FORCE_TEST ? 'test' : (localStorage.getItem(MODE_KEY) || 'prod');
+let mode = localStorage.getItem(MODE_KEY) || 'prod';
 function storeKey(){ return mode==='test' ? STORE_TEST : STORE_PROD; }
 
 const QR_IMAGE = "qr-bancontact.png";
@@ -1347,7 +1346,6 @@ window.doRefresh = async function(){
 /* ============ MODE PROD/TEST ============ */
 window.switchMode = async function(target){
   if(target===mode) return;
-  if(FORCE_TEST && target==='prod'){ toast("🔒 Ce fichier (caisse-test.html) est verrouillé en mode Test"); return; }
   const msg = target==='test'
     ? "Passer en MODE TEST ?\nTu bascules sur une caisse d'essai séparée."
     : "Passer en MODE PRODUCTION ?\nTu reviens sur ta vraie caisse.";
@@ -1370,7 +1368,6 @@ window.switchMode = async function(target){
   checkDayTransition();
 };
 window.toggleMode = function(){
-  if(FORCE_TEST){ toast("🔒 Ce fichier (caisse-test.html) est verrouillé en mode Test"); return; }
   const target = mode==='prod' ? 'test' : 'prod';
   const msg = target==='test'
     ? "Passer en MODE TEST ?\nCaisse d'essai séparée."
@@ -1386,18 +1383,14 @@ function updateModeUI(){
   document.querySelector('header').classList.toggle('test-mode', test);
   // Bouton bascule header
   const btn = document.getElementById('hdr-mode-btn');
-  if(btn){
-    btn.textContent = test ? 'TEST' : 'PROD';
-    btn.style.background = test ? 'rgba(255,255,255,0.35)' : 'rgba(255,255,255,0.18)';
-    btn.style.display = FORCE_TEST ? 'none' : '';
-  }
+  if(btn){ btn.textContent = test ? 'TEST' : 'PROD'; btn.style.background = test ? 'rgba(255,255,255,0.35)' : 'rgba(255,255,255,0.18)'; }
   // Réglages
   const sm = document.getElementById('settings-mode');
-  if(sm){ sm.textContent = FORCE_TEST ? 'TEST (verrouillé)' : (test ? 'TEST' : 'PRODUCTION'); sm.className = 'mode-val '+(test?'test':'prod'); }
+  if(sm){ sm.textContent = test ? 'TEST' : 'PRODUCTION'; sm.className = 'mode-val '+(test?'test':'prod'); }
   const st = document.getElementById('settings-to-test');
   const sp = document.getElementById('settings-to-prod');
-  if(st) st.style.display = (test || FORCE_TEST) ? 'none' : 'block';
-  if(sp) sp.style.display = (test && !FORCE_TEST) ? 'block' : 'none';
+  if(st) st.style.display = test?'none':'block';
+  if(sp) sp.style.display = test?'block':'none';
 }
 
 /* ---- Réglages (modale) ---- */
@@ -2100,7 +2093,7 @@ window.downloadPDF = function(){
     const hmm = canvas.height * wmm / canvas.width;
     const pdf = new jsPDF({unit:'mm', format:[wmm, hmm]});
     pdf.addImage(img, 'PNG', 0, 0, wmm, hmm);
-    pdf.save(currentPdfFilename ? `${currentPdfFilename}.pdf` : `${currentTicketRef||'ticket'}.pdf`);
+    pdf.save(currentPdfFilename ? `${currentPdfFilename}.pdf` : `recu-${currentTicketRef||'ticket'}.pdf`);
   }).catch(()=>{ toast("Erreur PDF → impression"); window.print(); });
 };
 
@@ -2758,7 +2751,7 @@ window.quickDownloadTicketPDF = async function(saleId){
   toast("Génération du PDF…");
   try{
     const ref = s.ref || makeRef(s.num);
-    const filename = ref + '-' + saleModeSuffix(s) + (s.cancelled ? '-Annule' : '');
+    const filename = 'recu-' + ref + '-' + saleModeSuffix(s) + (s.cancelled ? '-Annule' : '');
     const blob = await saleTicketToPdfBlob(s);
     downloadBlob(blob, filename+'.pdf');
     toast("PDF téléchargé");
@@ -3025,11 +3018,6 @@ async function htmlToCanvasViaIframe(fullHtml){
   try{
     const doc = iframe.contentDocument || iframe.contentWindow.document;
     doc.open(); doc.write(fullHtml); doc.close();
-    // Attend le chargement réel des polices (fallback : 350ms si l'API fonts n'existe pas ou traîne)
-    await Promise.race([
-      (doc.fonts && doc.fonts.ready) ? doc.fonts.ready : Promise.resolve(),
-      new Promise(r=>setTimeout(r, 1200))
-    ]);
     await new Promise(r=>setTimeout(r, 350));
     const bodyEl = doc.body;
     iframe.style.height = (bodyEl.scrollHeight + 40) + 'px';
@@ -3049,7 +3037,6 @@ async function htmlToPdfBlobViaIframe(fullHtml){
 
 async function htmlStringToPDF(fullHtml, filename){
   if(!window.html2canvas || !window.jspdf){
-    console.error('htmlStringToPDF: html2canvas/jsPDF non chargés');
     toast("PDF indisponible → impression"); const w=openPrintWindow(fullHtml);  return;
   }
   toast("Génération du PDF…");
@@ -3058,15 +3045,7 @@ async function htmlStringToPDF(fullHtml, filename){
     canvasToPDFPages(canvas, filename);
     toast("PDF téléchargé");
   }catch(e){
-    console.error('htmlStringToPDF: échec 1re tentative, nouvel essai…', e);
-    try{
-      const canvas = await htmlToCanvasViaIframe(fullHtml);
-      canvasToPDFPages(canvas, filename);
-      toast("PDF téléchargé");
-    }catch(e2){
-      console.error('htmlStringToPDF: échec définitif → impression', e2);
-      toast("Erreur PDF → impression"); const w=openPrintWindow(fullHtml);
-    }
+    toast("Erreur PDF → impression"); const w=openPrintWindow(fullHtml); 
   }
 }
 
@@ -3585,7 +3564,7 @@ window.printZ = function(){
   reprintZContext = null;
   document.getElementById('ticket-z-toggle').classList.add('hidden');
   const {ca,esp,qr,carte,cancelledN,theo,inTotal,outTotal,cashOut,cardOut,fondForDay} = buildZHTML(d, state.marche);
-  currentPdfFilename = zPdfName(d, state.marche, 'avant');
+  currentPdfFilename = zPdfName(d, state.marche, 'apres');
   const area=document.getElementById('ticket-area');
   area.innerHTML = buildZTicketHTML(d, state.marche, ca, esp, qr, carte, cancelledN, theo, inTotal, outTotal, cashOut, cardOut, fondForDay);
   document.getElementById('ticket-overlay').classList.remove('hidden');
@@ -3828,10 +3807,39 @@ function renderHeaderKPIs(){
   document.getElementById('hdr-sumup').textContent = euro(sumCarteSales(d));
   // Nom du marché
   const hm = document.getElementById('hdr-marche');
-  if(hm) hm.textContent = state.marche ? '🏪 '+state.marche : '';
+  if(hm) hm.textContent = state.marche ? '🏪 '+state.marche+' ✏️' : '';
 }
 
-/* Télécharge le tableau Statistiques affiché (Par marché ou Par mois) en PDF */
+/* Renomme le marché en cours (ex. faute de frappe) : corrige aussi, rétroactivement, toutes les
+   ventes et mouvements déjà enregistrés AUJOURD'HUI sous l'ancien nom — pour que la clôture Z du
+   soir reste cohérente. Les jours précédents ne sont jamais modifiés. */
+window.promptRenameMarche = async function(){
+  const oldName = state.marche;
+  if(!oldName) return;
+  const input = prompt("Renommer le marché du jour :", oldName);
+  if(input===null) return;
+  const newName = input.trim();
+  if(!newName || newName===oldName) return;
+
+  state.marche = newName;
+  let changed = false;
+  for(const s of state.sales){
+    if(s.date===state.day && s.marche===oldName){
+      s.marche = newName; changed = true;
+      await saveSale(s);
+    }
+  }
+  for(const m of state.movements){
+    if(m.date===state.day && m.marche===oldName){
+      m.marche = newName; changed = true;
+      await saveMovement(m);
+    }
+  }
+  await saveConfig();
+  save();
+  renderAll();
+  toast(changed ? `Marché renommé — ventes/mouvements du jour mis à jour` : `Marché renommé`);
+};
 /* Document HTML complet et soigné pour l'export Statistiques (PDF + impression A4) */
 function buildStatsPrintHTML(){
   const filterLabel = currentStatsFilterLabel().replace(/—/g,'').trim();
