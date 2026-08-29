@@ -438,6 +438,12 @@ nav button.on{color:var(--violet)}
         </div>
         <div id="jr-cloture-links"></div>
         <div id="jr-list"></div>
+        <div id="jr-boutique-wrap" class="card hidden" style="margin-top:12px">
+          <div class="row-btns" style="margin-bottom:6px">
+            <h3 style="font-size:17px;flex:1;color:var(--violet)">🌐 Ventes boutique en ligne <span style="font-size:11px;font-weight:400;color:var(--muted)">(pour info — hors CA caisse)</span></h3>
+          </div>
+          <div id="jr-boutique-list"></div>
+        </div>
       </div>
       <div id="jr-mv-groups"></div>
       <!-- Formulaire entrée/sortie intégré -->
@@ -480,6 +486,7 @@ nav button.on{color:var(--violet)}
           <button class="btn btn-outline" style="width:auto;padding:8px 14px;font-size:13px" onclick="printDayMovements('58mm')">🖨 58mm</button>
           <button class="btn btn-outline" style="width:auto;padding:8px 14px;font-size:13px" onclick="printDayMovements('a4')">🖨 A4</button>
           <button class="btn btn-primary" style="width:auto;padding:8px 14px;font-size:13px" onclick="openVirement()">💰 Versement</button>
+          <button class="btn btn-outline" style="width:auto;padding:8px 14px;font-size:13px" onclick="openEtsyVersement()">🛍 Etsy</button>
         </div>
         <div id="mv-list"></div>
       </div>
@@ -742,6 +749,36 @@ nav button.on{color:var(--violet)}
   </div>
 </div>
 
+<div class="overlay center hidden" id="etsy-overlay">
+  <div class="sheet" style="max-width:400px">
+    <h2>🛍 Versement Etsy</h2>
+    <p style="font-size:13px;color:var(--muted);text-align:center;margin-bottom:14px">Saisis le montant brut affiché sur ton tableau de bord Etsy. La commission (~10,5%) sera calculée automatiquement.</p>
+    <div class="field">
+      <label>Montant brut Etsy (dashboard)</label>
+      <input type="number" inputmode="decimal" id="etsy-brut" step="0.01" placeholder="0,00" oninput="updateEtsyPreview()">
+    </div>
+    <div id="etsy-preview" style="background:var(--violet-wash,#f5f0fa);border-radius:10px;padding:12px;margin:12px 0;font-size:13px;display:none">
+      <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+        <span>Brut Etsy</span><span id="ep-brut" style="font-weight:600"></span>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:4px;color:#a15c00">
+        <span>Commission Etsy (~10,5%)</span><span id="ep-comm"></span>
+      </div>
+      <div style="display:flex;justify-content:space-between;border-top:1px dashed var(--line);padding-top:6px;margin-top:4px;font-weight:700">
+        <span>Net reçu</span><span id="ep-net" style="color:var(--violet)"></span>
+      </div>
+    </div>
+    <div class="field" style="margin-top:4px">
+      <label>Note (optionnel)</label>
+      <input type="text" id="etsy-note" placeholder="Ex. : ventes mars 2025">
+    </div>
+    <div class="row-btns" style="margin-top:14px">
+      <button class="btn btn-outline" onclick="closeEtsyVersement()">Annuler</button>
+      <button class="btn btn-primary" id="etsy-confirm-btn" onclick="confirmEtsyVersement()" disabled>Enregistrer</button>
+    </div>
+  </div>
+</div>
+
 <div class="overlay center hidden" id="variant-overlay">
   <div class="sheet">
     <h2 id="variant-title">Choisir</h2>
@@ -908,7 +945,7 @@ nav button.on{color:var(--violet)}
 
 /* ---- Firebase ---- */
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
-import { getFirestore, doc, getDoc, setDoc, collection, getDocs, deleteDoc } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
+import { getFirestore, doc, getDoc, setDoc, collection, getDocs, deleteDoc, onSnapshot, query, where } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
 
 const firebaseConfig = {
@@ -984,6 +1021,9 @@ const VIVA_MIN_FEE = 0.03; // minimum contractuel par transaction
 /* --- Mollie (Tap to Pay carte) : taux estimés (Mastercard/Visa au même tarif), à ajuster dès le premier relevé réel --- */
 const MOLLIE_DEBIT_RATE = 0.015;  // 1,50% — cartes débit ET crédit belges/domestiques (confirmé grille tarifaire Mollie)
 const MOLLIE_CREDIT_RATE = 0.018; // 1,80% — cartes étrangères ("autres cartes de consommateur")
+const ETSY_TRANSACTION_RATE = 0.065; // 6,5% commission de transaction Etsy
+const ETSY_PAYMENT_RATE    = 0.04;  // ~4% frais de traitement paiement Etsy
+const ETSY_RATE = ETSY_TRANSACTION_RATE + ETSY_PAYMENT_RATE; // ~10,5% total
 const PROVIDER_LABEL = { sumup:'SumUp', viva:'Viva Wallet', mollie_be:'Mollie (Carte belge)', mollie_intl:'Mollie (Carte étrangère/pro)' };
 const KNOWN_PROVIDERS = ['sumup','viva','mollie_be','mollie_intl'];
 /* Normalise le prestataire d'une part de paiement carte : 'sumup' par défaut si absent/inconnu (compat anciennes ventes) */
@@ -1040,6 +1080,7 @@ function cardCommissionLinesHTML(sale, cls){
 
 /* ---- État ---- */
 let state = load();
+let boutiqueOrders = []; // commandes payées de la boutique en ligne (pour info dans journal + clôture Z)
 let cart = [];
 let cartDiscount = null; // {type:'euro'|'percent'|'xplus1', value:number, motif:string, amount:number}
 let countQty = {};
@@ -1221,6 +1262,7 @@ async function openApp(){
   updateModeUI();
   renderAll();
   loadArticlesFromFirebase();
+  subscribeBoutiqueOrders();
   checkSumUpCallback();
   // Nouveau jour → sécurité clôture Z puis confirmation fond
   checkDayTransition();
@@ -2610,6 +2652,7 @@ function renderJournal(){
   renderMvGroup(wrap, 'stand', '🏪 Paiement stand',    stand);
   renderMvGroup(wrap, 'other', '🔁 Autres mouvements', other);
 
+  renderBoutiqueJournal();
   if(filtered.length===0){ box.innerHTML='<div class="empty">Aucune vente</div>'; return; }
   box.innerHTML='';
   if(clotList.length){
@@ -2680,6 +2723,7 @@ function renderJournal(){
 function mvCategory(m){
   const r = m.reason || '';
   if(r.startsWith('Versement banque')) return 'bank';
+  if(r.startsWith('Versement Etsy'))   return 'bank';
   if(r.startsWith('Paiement stand'))   return 'stand';
   return 'other';
 }
@@ -3446,6 +3490,134 @@ window.exportCSV = function(){
   toast("Export CSV généré");
 };
 
+/* ============ BOUTIQUE EN LIGNE ============ */
+
+let boutiqueUnsub = null;
+function subscribeBoutiqueOrders(){
+  try{
+    const q = query(collection(db, "lylou_vely", "commandes", "items"), where("status", "==", "paid"));
+    boutiqueUnsub = onSnapshot(q, snap=>{
+      boutiqueOrders = snap.docs.map(d=>({id:d.id, ...d.data()}));
+      const journalTab = document.getElementById('tab-journal');
+      if(journalTab && !journalTab.classList.contains('hidden')) renderJournal();
+    }, err=>{ console.warn("Boutique orders:", err.message); });
+  }catch(e){ console.warn("subscribeBoutiqueOrders:", e.message); }
+}
+
+function orderDateStr(order){
+  if(!order.createdAt) return '';
+  try{
+    const d = order.createdAt.toDate ? order.createdAt.toDate() : new Date(order.createdAt);
+    return d.toISOString().slice(0,10);
+  }catch(e){ return ''; }
+}
+
+function getFilteredBoutiqueOrders(){
+  return boutiqueOrders.filter(o=>{
+    const d = orderDateStr(o);
+    if(!d) return false;
+    if(journalFilter==='day') return d===(journalDate||todayStr());
+    if(journalFilter==='all') return true;
+    if(journalFilter==='week'){
+      const ref = new Date(journalDate||todayStr());
+      const dow = ref.getDay();
+      ref.setDate(ref.getDate() + (dow===0 ? -6 : 1-dow));
+      const start = ref.toISOString().slice(0,10);
+      ref.setDate(ref.getDate()+6);
+      return d>=start && d<=ref.toISOString().slice(0,10);
+    }
+    if(journalFilter==='month') return d.startsWith((journalDate||todayStr()).slice(0,7));
+    if(journalFilter==='range' && journalRangeStart && journalRangeEnd){
+      const s=journalRangeStart<=journalRangeEnd?journalRangeStart:journalRangeEnd;
+      const e=journalRangeStart<=journalRangeEnd?journalRangeEnd:journalRangeStart;
+      return d>=s && d<=e;
+    }
+    return false;
+  });
+}
+
+function renderBoutiqueJournal(){
+  const wrap = document.getElementById('jr-boutique-wrap');
+  const box  = document.getElementById('jr-boutique-list');
+  if(!wrap || !box) return;
+  const orders = getFilteredBoutiqueOrders().sort((a,b)=>{
+    return orderDateStr(b).localeCompare(orderDateStr(a));
+  });
+  if(orders.length===0){ wrap.classList.add('hidden'); return; }
+  wrap.classList.remove('hidden');
+  const total = orders.reduce((a,o)=>a+(o.total||0),0);
+  box.innerHTML = `
+    <div style="font-size:12px;color:var(--muted);margin-bottom:8px">${orders.length} commande${orders.length>1?'s':''} · Total : <b style="color:var(--violet)">${euro(total)}</b></div>
+    ${orders.map(o=>{
+      const d = orderDateStr(o);
+      const dFmt = d ? d.split('-').reverse().join('/') : '—';
+      const items = (o.items||[]).map(i=>`${esc(i.name||'')}${i.qty>1?' ×'+i.qty:''}`).join(', ');
+      const pickup = o.pickupMethod==='livraison' ? '🚚 Livraison' : o.pickupMethod==='marche' ? `🏪 Retrait marché${o.pickupMarche?' '+esc(o.pickupMarche):''}` : '📦 Retrait';
+      return `<div class="mv-line" style="align-items:flex-start;gap:10px;padding:6px 0;border-bottom:1px solid #f2f2f2">
+        <div class="pill" style="background:#e8f4fd;color:#1a6fb5;font-size:11px;flex-shrink:0">🌐</div>
+        <div class="m-info" style="flex:1">
+          <div class="t">${esc(o.customerName||'Client')} · ${items}</div>
+          <div class="d">${dFmt} · ${pickup} · Mollie</div>
+        </div>
+        <div class="amt plus">+${euro(o.total||0)}</div>
+      </div>`;
+    }).join('')}`;
+}
+
+function buildZBoutiqueSection(day){
+  const orders = boutiqueOrders.filter(o=>orderDateStr(o)===day);
+  if(orders.length===0) return '';
+  const total = orders.reduce((a,o)=>a+(o.total||0),0);
+  return `
+    <div class="t-sep"></div>
+    <div style="font-size:11px;font-weight:600;color:#1a6fb5;margin-bottom:4px">🌐 Ventes boutique en ligne (pour info)</div>
+    <div class="t-item" style="font-size:12px;color:#555"><span>Commandes payées</span><span>${orders.length}</span></div>
+    <div class="t-item" style="font-size:12px;color:#555"><span>Total boutique</span><span>${euro(total)}</span></div>
+    <div style="font-size:9px;color:#999;text-align:center;margin-top:2px">Non inclus dans le CA — comptabilité séparée</div>`;
+}
+
+/* ============ VERSEMENT ETSY ============ */
+window.openEtsyVersement = function(){
+  document.getElementById('etsy-brut').value = '';
+  document.getElementById('etsy-note').value = '';
+  document.getElementById('etsy-preview').style.display = 'none';
+  document.getElementById('etsy-confirm-btn').disabled = true;
+  document.getElementById('etsy-overlay').classList.remove('hidden');
+  setTimeout(()=>document.getElementById('etsy-brut').focus(),150);
+};
+window.closeEtsyVersement = function(){
+  document.getElementById('etsy-overlay').classList.add('hidden');
+};
+window.updateEtsyPreview = function(){
+  const brut = parseNum(document.getElementById('etsy-brut').value);
+  const preview = document.getElementById('etsy-preview');
+  const btn = document.getElementById('etsy-confirm-btn');
+  if(!brut || brut<=0){ preview.style.display='none'; btn.disabled=true; return; }
+  const comm = Math.round(brut*ETSY_RATE*100)/100;
+  const net  = Math.round((brut - comm)*100)/100;
+  document.getElementById('ep-brut').textContent = euro(brut);
+  document.getElementById('ep-comm').textContent = '−'+euro(comm);
+  document.getElementById('ep-net').textContent  = euro(net);
+  preview.style.display = 'block';
+  btn.disabled = false;
+};
+window.confirmEtsyVersement = function(){
+  const brut = parseNum(document.getElementById('etsy-brut').value);
+  if(!brut || brut<=0){ toast("Montant invalide"); return; }
+  const note = document.getElementById('etsy-note').value.trim();
+  const comm = Math.round(brut*ETSY_RATE*100)/100;
+  const net  = Math.round((brut - comm)*100)/100;
+  const reason = 'Versement Etsy'+(note?' — '+note:'')
+    +` (Brut ${euro(brut)} · Commission ${euro(comm)})`;
+  const mv = {id:Date.now(), type:'in', amount:net,
+    reason, payMode:'card',
+    time:nowTime(), date:state.day, marche: state.marche || ''};
+  state.movements.push(mv); save(); saveMovement(mv);
+  renderMovements(); renderHeaderKPIs(); renderCaisse();
+  toast("Versement Etsy de "+euro(net)+" enregistré");
+  closeEtsyVersement();
+};
+
 /* ============ CLÔTURE Z ============ */
 function buildZHTML(day, marche, excludeClosureVersement){
   const valid = state.sales.filter(x=>x.date===day && !x.cancelled);
@@ -3525,6 +3697,7 @@ function buildZTicketHTML(day, marche, ca, esp, qr, carte, cancelledN, theo, inT
           ${extra>0.01?`<div style="font-size:9px;color:#2e7d32;margin-top:1px">Le restant de ${euro(extra)} est ajouté au fond de caisse (sous le seuil de ${euro(VERSEMENT_MIN)})</div>`:''}
         </div>`;
     })()}
+    ${buildZBoutiqueSection(day)}
     <div class="t-foot">Clôture générée le ${new Date().toLocaleString('fr-BE')}</div>`;
 }
 
@@ -3856,9 +4029,9 @@ function buildStatsPrintHTML(){
   const genDate = new Date().toLocaleString('fr-BE');
 
   const rowsTot = (rows)=> rows.reduce((a,d)=>{a.ca+=d.ca;a.esp+=d.esp;a.qr+=d.qr;a.carte+=d.carte;a.count+=d.count;return a;},{ca:0,esp:0,qr:0,carte:0,count:0});
-  const tblHead = (label)=>`<thead><tr><th>${label}</th><th class="r">CA</th><th class="r">💶 Espèces</th><th class="r">📱 QR</th><th class="r">💳 Carte</th><th class="r">🏪 Stand</th><th class="r">Ventes</th></tr></thead>`;
-  const tblRow = (label,d,stand)=>`<tr><td>${label}</td><td class="r b">${euro(d.ca)}</td><td class="r">${euro(d.esp)}</td><td class="r">${euro(d.qr)}</td><td class="r">${euro(d.carte)}</td><td class="r" style="color:#a15c00">${stand?'−'+euro(stand):'—'}</td><td class="r">${d.count}</td></tr>`;
-  const tblTotRow = (tot,standTot,label)=>`<tr class="tot"><td>${label||'Total'}</td><td class="r">${euro(tot.ca)}</td><td class="r">${euro(tot.esp)}</td><td class="r">${euro(tot.qr)}</td><td class="r">${euro(tot.carte)}</td><td class="r" style="color:#a15c00">${standTot?'−'+euro(standTot):'—'}</td><td class="r">${tot.count}</td></tr>`;
+  const tblHead = (label)=>`<thead><tr><th>${label}</th><th class="r">CA</th><th class="r">💶 Espèces</th><th class="r">📱 QR</th><th class="r">💳 Carte</th><th class="r">🏪 Stand</th><th class="r">Ventes</th><th class="r">Panier moyen</th></tr></thead>`;
+  const tblRow = (label,d,stand)=>`<tr><td>${label}</td><td class="r b">${euro(d.ca)}</td><td class="r">${euro(d.esp)}</td><td class="r">${euro(d.qr)}</td><td class="r">${euro(d.carte)}</td><td class="r" style="color:#a15c00">${stand?'−'+euro(stand):'—'}</td><td class="r">${d.count}</td><td class="r" style="color:#6B3FA0">${euro(d.count?d.ca/d.count:0)}</td></tr>`;
+  const tblTotRow = (tot,standTot,label)=>`<tr class="tot"><td>${label||'Total'}</td><td class="r">${euro(tot.ca)}</td><td class="r">${euro(tot.esp)}</td><td class="r">${euro(tot.qr)}</td><td class="r">${euro(tot.carte)}</td><td class="r" style="color:#a15c00">${standTot?'−'+euro(standTot):'—'}</td><td class="r">${tot.count}</td><td class="r" style="color:#6B3FA0">${euro(tot.count?tot.ca/tot.count:0)}</td></tr>`;
 
   let tableHTML;
   if(statsTableMode==='mois'){
@@ -4223,12 +4396,13 @@ function renderStatsTableByMarche(){
     const standDates = standByMarche[marche] || {};
     const sortedDates = Object.keys(dates).sort().reverse();
     html += `<div style="font-weight:600;color:var(--violet);margin:14px 0 6px;font-size:13px">🏪 ${esc(marche)}</div>
-      <table style="width:100%;min-width:560px;border-collapse:collapse;font-size:12px">
+      <table style="width:100%;min-width:600px;border-collapse:collapse;font-size:12px">
         <thead><tr style="border-bottom:2px solid #eee;text-align:left">
           <th style="padding:4px">Date</th><th style="padding:4px;text-align:right">CA</th>
           <th style="padding:4px;text-align:right">💶 Espèces</th><th style="padding:4px;text-align:right">📱 QR</th>
           <th style="padding:4px;text-align:right">💳 Carte</th><th style="padding:4px;text-align:right">🏪 Stand</th>
           <th style="padding:4px;text-align:right">Ventes</th>
+          <th style="padding:4px;text-align:right">Panier moyen</th>
         </tr></thead><tbody>`;
     sortedDates.forEach(dt=>{
       const d = dates[dt];
@@ -4240,6 +4414,7 @@ function renderStatsTableByMarche(){
         <td style="padding:4px;text-align:right">${euro(d.carte)}</td>
         <td style="padding:4px;text-align:right;color:#a15c00">${standDates[dt] ? '−'+euro(standDates[dt]) : '—'}</td>
         <td style="padding:4px;text-align:right">${d.count}</td>
+        <td style="padding:4px;text-align:right;color:var(--violet)">${euro(d.count ? d.ca/d.count : 0)}</td>
       </tr>`;
     });
     html += '</tbody></table>';
@@ -4279,12 +4454,13 @@ function renderStatsTableByMonth(){
     const standMarches = standByMonth[m] || {};
     const marcheNames = Object.keys(marches).sort((a,b)=>marches[b].ca-marches[a].ca);
     html += `<div style="font-weight:600;color:var(--violet);margin:14px 0 6px;font-size:13px">📅 ${monthLabel(m)}</div>
-      <table style="width:100%;min-width:560px;border-collapse:collapse;font-size:12px">
+      <table style="width:100%;min-width:600px;border-collapse:collapse;font-size:12px">
         <thead><tr style="border-bottom:2px solid #eee;text-align:left">
           <th style="padding:4px">Marché</th><th style="padding:4px;text-align:right">CA</th>
           <th style="padding:4px;text-align:right">💶 Espèces</th><th style="padding:4px;text-align:right">📱 QR</th>
           <th style="padding:4px;text-align:right">💳 Carte</th><th style="padding:4px;text-align:right">🏪 Stand</th>
           <th style="padding:4px;text-align:right">Ventes</th>
+          <th style="padding:4px;text-align:right">Panier moyen</th>
         </tr></thead><tbody>`;
     marcheNames.forEach(marche=>{
       const d = marches[marche];
@@ -4296,6 +4472,7 @@ function renderStatsTableByMonth(){
         <td style="padding:4px;text-align:right">${euro(d.carte)}</td>
         <td style="padding:4px;text-align:right;color:#a15c00">${standMarches[marche] ? '−'+euro(standMarches[marche]) : '—'}</td>
         <td style="padding:4px;text-align:right">${d.count}</td>
+        <td style="padding:4px;text-align:right;color:var(--violet)">${euro(d.count ? d.ca/d.count : 0)}</td>
       </tr>`;
     });
     // Ligne total du mois (somme de tous les marchés)
@@ -4313,6 +4490,7 @@ function renderStatsTableByMonth(){
       <td style="padding:5px;text-align:right;font-weight:600">${euro(tot.carte)}</td>
       <td style="padding:5px;text-align:right;font-weight:600;color:#a15c00">${totStand ? '−'+euro(totStand) : '—'}</td>
       <td style="padding:5px;text-align:right;font-weight:700">${tot.count}</td>
+      <td style="padding:5px;text-align:right;font-weight:700;color:var(--violet)">${euro(tot.count ? tot.ca/tot.count : 0)}</td>
     </tr>`;
     html += '</tbody></table>';
   });
