@@ -64,7 +64,8 @@ header.test-mode{background:linear-gradient(160deg,#e65c00 0%,#c44b00 100%);box-
 main{max-width:820px;margin:0 auto;padding:16px}
 .tab{display:none;animation:fade .25s ease}.tab.active{display:block}
 @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
-.section-title{font-size:22px;margin-bottom:2px}
+.section-title{font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:600;margin-bottom:2px;color:var(--ink)}
+.section-brand{font-size:11px;letter-spacing:3px;text-transform:uppercase;color:var(--violet);font-weight:600;margin-bottom:4px;opacity:.85}
 .section-sub{color:var(--muted);font-size:13px;margin-bottom:16px}
 .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px;margin-bottom:16px}
 @media (min-width:900px){
@@ -72,11 +73,26 @@ main{max-width:820px;margin:0 auto;padding:16px}
 }
 
 /* Prod grid */
-.prod-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:10px}
-.prod-btn{background:var(--card);border:1.5px solid var(--line);border-radius:14px;padding:14px 8px;text-align:center;transition:.12s;min-height:74px;display:flex;flex-direction:column;justify-content:center;gap:4px}
-.prod-btn:active{transform:scale(.96);border-color:var(--violet);background:var(--violet-wash)}
-.prod-btn .n{font-weight:500;font-size:13px;line-height:1.15}.prod-btn .p{color:var(--violet);font-weight:600;font-size:14px}
-.prod-btn.free{border-style:dashed;color:var(--violet)}.prod-btn.free .n{color:var(--violet)}
+.prod-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:12px}
+.prod-btn{background:var(--card);border:1.5px solid var(--line);border-radius:16px;padding:18px 10px 14px;text-align:center;transition:.15s;min-height:92px;display:flex;flex-direction:column;justify-content:center;gap:6px;box-shadow:0 2px 10px rgba(107,63,160,.07);position:relative;overflow:hidden}
+.prod-btn::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--violet),var(--violet-l));opacity:0;transition:.15s}
+.prod-btn:hover{box-shadow:0 6px 20px rgba(107,63,160,.14);border-color:var(--violet-l);transform:translateY(-1px)}
+.prod-btn:hover::before{opacity:1}
+.prod-btn:active{transform:scale(.96) translateY(0);border-color:var(--violet);background:var(--violet-wash);box-shadow:none}
+.prod-btn:active::before{opacity:1}
+.prod-btn .n{font-weight:500;font-size:13.5px;line-height:1.2;color:var(--ink)}
+.prod-btn .p{color:var(--violet);font-weight:700;font-size:18px;font-family:'Cormorant Garamond',serif;letter-spacing:.3px}
+.prod-btn.free{border-style:dashed;border-color:var(--violet-l);background:var(--violet-wash)}
+.prod-btn.free .n{color:var(--violet)}.prod-btn.free .p{font-size:14px;font-family:inherit;font-weight:500}
+.prod-btn.free::before{display:none}
+/* Catégorie scroll */
+.cat-scroll{display:flex;gap:8px;overflow-x:auto;padding-bottom:10px;margin-bottom:14px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.cat-scroll::-webkit-scrollbar{display:none}
+.cat-pill{flex-shrink:0;padding:7px 16px;border-radius:30px;font-size:13px;font-weight:500;border:1.5px solid var(--line);background:var(--card);color:var(--muted);transition:.13s;cursor:pointer}
+.cat-pill:active{transform:scale(.95)}
+.cat-pill.active{background:var(--violet);color:#fff;border-color:var(--violet);box-shadow:0 3px 12px rgba(107,63,160,.30)}
+.cat-pill.lv{border-color:var(--violet-l);color:var(--violet)}
+.cat-pill.lv.active{background:var(--violet);color:#fff}
 
 /* Cart */
 #cart-empty{color:var(--muted);text-align:center;padding:18px 0;font-size:14px}
@@ -335,10 +351,11 @@ nav button.on{color:var(--violet)}
   <main>
     <!-- ===== VENTE ===== -->
     <section class="tab active" id="tab-vente">
+      <div class="section-brand">✦ Lylou-Vely ✦</div>
       <h1 class="section-title">Nouvelle vente</h1>
       <p class="section-sub">Touche un article pour l'ajouter au panier.</p>
       <div class="card">
-        <div id="cat-tabs" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px"></div>
+        <div class="cat-scroll" id="cat-tabs"></div>
         <div class="prod-grid" id="prod-grid"></div>
       </div>
       <div class="card">
@@ -1470,14 +1487,22 @@ function initProducts(){ renderProdGrid(); }
 
 function renderCatTabs(){
   const tabsBox = document.getElementById('cat-tabs');
-  // Catégories réellement utilisées par au moins un article (+ "Autres" si des articles sans catégorie existent)
+  // Catégories réellement utilisées + tri : Lylou-Vely en premier
   const usedCats = [...new Set(state.products.map(p=>p.category).filter(Boolean))];
   const hasUncat = state.products.some(p=>!p.category);
-  const cats = ['Tous', ...usedCats, ...(hasUncat ? ['Autres'] : [])];
+  const isLV = c => c && c.toLowerCase().includes('lylou');
+  const lvCats  = usedCats.filter(isLV).sort();
+  const othCats = usedCats.filter(c=>!isLV(c)).sort();
+  const cats = ['Tous', ...lvCats, ...othCats, ...(hasUncat ? ['Autres'] : [])];
   if(!cats.includes(selectedCategory)) selectedCategory = 'Tous';
-  tabsBox.innerHTML = cats.map(c=>
-    `<button class="btn ${c===selectedCategory?'btn-primary':'btn-outline'}" style="width:auto;padding:6px 14px;font-size:13px" onclick="setCategory('${esc(c).replace(/'/g,"\\'")}')">${esc(c)}</button>`
-  ).join('');
+  tabsBox.innerHTML = cats.map(c=>{
+    const active = c===selectedCategory ? ' active' : '';
+    const lv     = isLV(c) ? ' lv' : '';
+    return `<button class="cat-pill${lv}${active}" onclick="setCategory('${esc(c).replace(/'/g,"\\'")}')">${esc(c)}</button>`;
+  }).join('');
+  // Scroll automatique vers la pill active
+  const activePill = tabsBox.querySelector('.cat-pill.active');
+  if(activePill) activePill.scrollIntoView({inline:'nearest',block:'nearest',behavior:'smooth'});
 }
 window.setCategory = function(cat){ selectedCategory = cat; renderProdGrid(); };
 
