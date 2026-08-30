@@ -348,7 +348,7 @@ nav{display:none}
     <div class="hdr-top">
       <div class="title">Lylou-Vely<small>Caisse · Build 3.0</small></div>
       <div style="display:flex;gap:6px;align-items:center">
-        <a href="admin.html" class="refresh-btn" style="font-size:12px;padding:6px 10px;font-weight:600;text-decoration:none;color:#fff" title="Accueil Admin">⚏</a>
+        <button class="refresh-btn" onclick="openSettings()" style="font-size:12px;padding:6px 10px;font-weight:600" title="Réglages">⚙︎</button>
         <button id="hdr-mode-btn" class="refresh-btn" onclick="toggleMode()" title="Basculer Prod/Test" style="font-size:12px;padding:6px 10px;font-weight:600;letter-spacing:.5px">PROD</button>
         <button class="refresh-btn" onclick="doRefresh()" title="Recharger les données">🔄</button>
       </div>
@@ -377,9 +377,9 @@ nav{display:none}
         <svg viewBox="0 0 24 24"><path d="M4 20V10M12 20V4M20 20v-7"/></svg>
         Stats
       </button>
-      <button id="nav-settings" onclick="openSettings()">
-        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v2m0 16v2M4.22 4.22l1.42 1.42m12.72 12.72 1.42 1.42M2 12h2m16 0h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
-        Réglages
+      <button id="nav-ca" onclick="go('journal')" title="CA du jour — voir le journal" style="min-width:72px">
+        <svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20A10 10 0 0 0 12 2z"/><path d="M14.5 8H10a2 2 0 0 0 0 4h4a2 2 0 0 1 0 4H9.5M12 6v2m0 8v2"/></svg>
+        <span id="nav-ca-val" style="font-size:11px;font-weight:600;letter-spacing:0">CA</span>
       </button>
     </div>
   </header>
@@ -4081,6 +4081,12 @@ function renderHeaderKPIs(){
   document.getElementById('hdr-cash').textContent = euro(sumCashSales(d));
   document.getElementById('hdr-qr').textContent = euro(sumQRSales(d));
   document.getElementById('hdr-sumup').textContent = euro(sumCarteSales(d));
+  // CA nav
+  const navCA = document.getElementById('nav-ca-val');
+  if(navCA){
+    const ca = sumCashSales(d) + sumQRSales(d) + sumCarteSales(d);
+    navCA.textContent = euro(ca);
+  }
   // Nom du marché
   const hm = document.getElementById('hdr-marche');
   if(hm) hm.textContent = state.marche ? '🏪 '+state.marche+' ✏️' : '';
