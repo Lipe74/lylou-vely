@@ -190,7 +190,8 @@ main{max-width:820px;margin:0 auto;padding:16px}
 /* Nav (bottom supprimée, nav déplacée dans le header) */
 nav{display:none}
 /* Header nav */
-.hdr-nav{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;margin-top:10px;border-top:1px solid rgba(255,255,255,.15);padding-top:8px}
+.hdr-nav{display:flex;align-items:center;gap:2px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;margin-top:10px;border-top:1px solid rgba(255,255,255,.15);padding-top:8px}
+.hdr-logo{height:38px;width:auto;object-fit:contain;flex-shrink:0;margin-right:8px;border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,.18)}
 .hdr-nav::-webkit-scrollbar{display:none}
 .hdr-nav button{flex:1;min-width:54px;padding:6px 4px 5px;display:flex;flex-direction:column;align-items:center;gap:2px;color:rgba(255,255,255,.62);font-size:10px;letter-spacing:.3px;border-radius:10px;transition:.13s;position:relative}
 .hdr-nav button svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.7}
@@ -355,6 +356,7 @@ nav{display:none}
     </div>
     <div id="hdr-marche" onclick="promptRenameMarche()" style="text-align:center;font-size:13px;color:rgba(255,255,255,0.85);margin-top:6px;font-weight:500;cursor:pointer" title="Modifier le nom du marché"></div>
     <div class="hdr-nav" id="hdr-nav">
+      <img src="images/logo.png" class="hdr-logo" alt="Lylou-Vely">
       <button class="on" id="nav-vente" onclick="go('vente')">
         <svg viewBox="0 0 24 24"><path d="M3 6h18l-1.5 11a2 2 0 0 1-2 1.7H6.5a2 2 0 0 1-2-1.7L3 6z"/><path d="M8 6V4.5A2.5 2.5 0 0 1 10.5 2h3A2.5 2.5 0 0 1 16 4.5V6"/></svg>
         Vente
