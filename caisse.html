@@ -73,26 +73,30 @@ main{max-width:820px;margin:0 auto;padding:16px}
 }
 
 /* Prod grid */
-.prod-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:12px}
-.prod-btn{background:linear-gradient(145deg,#f0e8f9 0%,#fff 65%);border:1.5px solid #e2d4f0;border-radius:16px;padding:18px 10px 14px;text-align:center;transition:.15s;min-height:92px;display:flex;flex-direction:column;justify-content:center;gap:6px;box-shadow:0 2px 10px rgba(107,63,160,.09);position:relative;overflow:hidden}
+.prod-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px}
+.prod-btn{border-radius:18px;padding:22px 12px 18px;text-align:center;transition:.15s;min-height:108px;display:flex;flex-direction:column;justify-content:center;gap:8px;position:relative;overflow:hidden;border-width:1.5px;border-style:solid;box-shadow:0 3px 14px rgba(107,63,160,.11)}
 .prod-btn::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--violet),var(--violet-l));opacity:0;transition:.15s}
-.prod-btn:hover{box-shadow:0 6px 20px rgba(107,63,160,.14);border-color:var(--violet-l);transform:translateY(-1px)}
-.prod-btn:hover::before{opacity:1}
-.prod-btn:active{transform:scale(.96) translateY(0);border-color:var(--violet);background:var(--violet-wash);box-shadow:none}
-.prod-btn:active::before{opacity:1}
-.prod-btn .n{font-weight:500;font-size:13.5px;line-height:1.2;color:var(--ink)}
-.prod-btn .p{color:var(--violet);font-weight:700;font-size:18px;font-family:'Cormorant Garamond',serif;letter-spacing:.3px}
-.prod-btn.free{border-style:dashed;border-color:var(--violet-l);background:var(--violet-wash)}
+.prod-btn:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(107,63,160,.18)}
+.prod-btn:hover::before,.prod-btn:active::before{opacity:1}
+.prod-btn:active{transform:scale(.95) translateY(0);box-shadow:none}
+.prod-btn .n{font-weight:500;font-size:14px;line-height:1.3;color:var(--ink)}
+.prod-btn .p{color:var(--violet);font-weight:700;font-size:21px;font-family:'Cormorant Garamond',serif;letter-spacing:.3px}
+.prod-btn.free{border-style:dashed}
 .prod-btn.free .n{color:var(--violet)}.prod-btn.free .p{font-size:14px;font-family:inherit;font-weight:500}
 .prod-btn.free::before{display:none}
 /* Catégorie scroll */
-.cat-scroll{display:flex;gap:8px;overflow-x:auto;padding-bottom:10px;margin-bottom:14px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.cat-scroll{display:flex;gap:8px;overflow-x:auto;padding-bottom:10px;margin-bottom:12px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
 .cat-scroll::-webkit-scrollbar{display:none}
 .cat-pill{flex-shrink:0;padding:7px 16px;border-radius:30px;font-size:13px;font-weight:500;border:1.5px solid var(--line);background:var(--card);color:var(--muted);transition:.13s;cursor:pointer}
 .cat-pill:active{transform:scale(.95)}
 .cat-pill.active{background:var(--violet);color:#fff;border-color:var(--violet);box-shadow:0 3px 12px rgba(107,63,160,.30)}
 .cat-pill.lv{border-color:var(--violet-l);color:var(--violet)}
 .cat-pill.lv.active{background:var(--violet);color:#fff}
+/* Recherche produits */
+.prod-search-wrap{position:relative;margin-bottom:14px}
+.prod-search-wrap .s-icon{position:absolute;left:14px;top:50%;transform:translateY(-50%);font-size:16px;pointer-events:none;opacity:.55}
+#prod-search{width:100%;padding:11px 14px 11px 42px;border:1.5px solid var(--line);border-radius:30px;font-size:14px;font-family:inherit;background:#faf7fd;color:var(--ink);transition:.13s}
+#prod-search:focus{outline:none;border-color:var(--violet);background:#fff;box-shadow:0 0 0 3px rgba(107,63,160,.09)}
 
 /* Cart */
 #cart-empty{color:var(--muted);text-align:center;padding:18px 0;font-size:14px}
@@ -356,6 +360,10 @@ nav button.on{color:var(--violet)}
       <p class="section-sub">Touche un article pour l'ajouter au panier.</p>
       <div class="card">
         <div class="cat-scroll" id="cat-tabs"></div>
+        <div class="prod-search-wrap">
+          <span class="s-icon">🔍</span>
+          <input type="search" id="prod-search" placeholder="Rechercher un article…" oninput="setSearchQuery(this.value)" autocomplete="off">
+        </div>
         <div class="prod-grid" id="prod-grid"></div>
       </div>
       <div class="card">
@@ -1483,6 +1491,18 @@ async function loadArticlesFromFirebase(){
 
 /* ============ ARTICLES ============ */
 let selectedCategory = 'Tous';
+let searchQuery = '';
+/* Palette couleurs par catégorie — ton Lylou-Vely */
+const PROD_COLORS = [
+  {bg:'linear-gradient(145deg,#e0cdf5,#f8f4fd)',bd:'#c9aee8'},  // violet LV
+  {bg:'linear-gradient(145deg,#f5ccde,#fdf3f8)',bd:'#e8b0cc'},  // rose
+  {bg:'linear-gradient(145deg,#ccd8f5,#f3f5fd)',bd:'#afc2e8'},  // bleu lavande
+  {bg:'linear-gradient(145deg,#f5e6c8,#fdf9f2)',bd:'#e8d0a0'},  // or chaud
+  {bg:'linear-gradient(145deg,#cbf0e3,#f3fdf8)',bd:'#a0e0cc'},  // vert sauge
+  {bg:'linear-gradient(145deg,#f5d4c8,#fdf6f3)',bd:'#e8bfb0'},  // pêche
+  {bg:'linear-gradient(145deg,#e5ccf5,#faf3fd)',bd:'#d0aee8'},  // mauve
+  {bg:'linear-gradient(145deg,#c8f0ee,#f3fdfc)',bd:'#a0d8d5'},  // menthe
+];
 function initProducts(){ renderProdGrid(); }
 
 function renderCatTabs(){
@@ -1504,24 +1524,53 @@ function renderCatTabs(){
   const activePill = tabsBox.querySelector('.cat-pill.active');
   if(activePill) activePill.scrollIntoView({inline:'nearest',block:'nearest',behavior:'smooth'});
 }
-window.setCategory = function(cat){ selectedCategory = cat; renderProdGrid(); };
+window.setCategory = function(cat){
+  selectedCategory = cat;
+  searchQuery = '';
+  const si = document.getElementById('prod-search');
+  if(si) si.value = '';
+  renderProdGrid();
+};
+window.setSearchQuery = function(v){
+  searchQuery = v.trim().toLowerCase();
+  renderProdGrid();
+};
 
 function renderProdGrid(){
   renderCatTabs();
   const g = document.getElementById('prod-grid'); g.innerHTML = '';
-  const filtered = state.products.filter(p=>{
-    if(selectedCategory==='Tous') return true;
-    if(selectedCategory==='Autres') return !p.category;
-    return p.category===selectedCategory;
+
+  // Palette couleurs : une couleur stable par catégorie (ordre alphabétique, LV toujours violet)
+  const allCats = [...new Set(state.products.map(p=>p.category).filter(Boolean))].sort();
+  const catColorIdx = {};
+  let colorI = 1; // index 0 = violet LV réservé
+  allCats.forEach(c=>{
+    if(c.toLowerCase().includes('lylou')) catColorIdx[c] = 0;
+    else { catColorIdx[c] = colorI % PROD_COLORS.length; colorI++; }
   });
-  filtered.forEach((p,i)=>{
+
+  const filtered = state.products.filter(p=>{
+    const catOk = selectedCategory==='Tous' ? true : selectedCategory==='Autres' ? !p.category : p.category===selectedCategory;
+    const searchOk = !searchQuery || p.name.toLowerCase().includes(searchQuery);
+    return catOk && searchOk;
+  });
+
+  if(filtered.length===0 && searchQuery){
+    const empty = document.createElement('div');
+    empty.style.cssText = 'grid-column:1/-1;text-align:center;padding:32px 0;color:var(--muted);font-size:14px';
+    empty.textContent = `Aucun article trouvé pour « ${searchQuery} »`;
+    g.appendChild(empty);
+  }
+
+  filtered.forEach(p=>{
+    const col = p.category ? (PROD_COLORS[catColorIdx[p.category]] || PROD_COLORS[0]) : PROD_COLORS[0];
     const hasInfo = p.photo || p.fournisseur || p.ean || p.description;
     const hasVariants = p.variants && p.variants.length;
     const outOfStock = p.trackStock && !hasVariants && (p.stock==null || p.stock<=0);
     const wrap = document.createElement('div');
     wrap.style.cssText = 'position:relative';
     const b = document.createElement('button'); b.className = 'prod-btn';
-    b.style.width = '100%';
+    b.style.cssText = `width:100%;background:${col.bg};border-color:${col.bd}`;
     b.innerHTML = `<span class="n">${esc(p.name)}</span><span class="p">${p.price?euro(p.price):'Libre'}</span>${outOfStock?'<span style="color:var(--red);font-size:10px;font-weight:700">RUPTURE</span>':''}`;
     b.onclick = ()=>{
       if(!p.price){ addFreeItem(p.name); return; }
@@ -1533,16 +1582,21 @@ function renderProdGrid(){
       const info = document.createElement('button');
       info.textContent = 'ℹ️';
       info.title = 'Voir la fiche article';
-      info.style.cssText = 'position:absolute;top:2px;right:2px;width:22px;height:22px;border:none;background:rgba(255,255,255,.9);border-radius:50%;font-size:12px;line-height:1;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.15)';
+      info.style.cssText = 'position:absolute;top:4px;right:4px;width:22px;height:22px;border:none;background:rgba(255,255,255,.85);border-radius:50%;font-size:12px;line-height:1;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.12)';
       info.onclick = (e)=>{ e.stopPropagation(); window.showArticleInfo(p.name); };
       wrap.appendChild(info);
     }
     g.appendChild(wrap);
   });
-  const free = document.createElement('button'); free.className='prod-btn free';
-  free.innerHTML = `<span class="n">＋ Article libre</span><span class="p">Prix au choix</span>`;
-  free.onclick = ()=> addFreeItem();
-  g.appendChild(free);
+
+  // Article libre toujours en dernier si pas de recherche active
+  if(!searchQuery){
+    const free = document.createElement('button'); free.className='prod-btn free';
+    free.style.cssText = `background:${PROD_COLORS[0].bg};border-color:${PROD_COLORS[0].bd}`;
+    free.innerHTML = `<span class="n">＋ Article libre</span><span class="p">Prix au choix</span>`;
+    free.onclick = ()=> addFreeItem();
+    g.appendChild(free);
+  }
 }
 /* Affiche la fiche d'un article en lecture seule (photo, fournisseur, EAN, description) */
 window.showArticleInfo = function(name){
