@@ -1306,6 +1306,7 @@ async function openApp(){
   checkSumUpCallback();
   // Nouveau jour → sécurité clôture Z puis confirmation fond
   checkDayTransition();
+  startAutoRefresh();
 }
 
 /* Récupère le marché des anciens mouvements (créés avant le champ "marche") à partir du motif texte,
@@ -1423,6 +1424,49 @@ window.doRefresh = async function(){
   renderAll();
   toast("✅ Données rechargées depuis Firebase");
 };
+
+/* ---- Refresh automatique (silencieux) ----
+   Recharge ventes/stock/config en tâche de fond pour que tous les appareils
+   restent synchronisés sans devoir appuyer sur 🔄. Ne touche jamais au fond
+   de caisse en cours de comptage (countQty/initDenoms) ni au panier en cours. */
+const AUTO_REFRESH_MS = 45000; // toutes les 45 secondes
+let autoRefreshTimer = null;
+let autoRefreshBusy = false;
+
+async function silentAutoRefresh(){
+  if(autoRefreshBusy) return;
+  const gate = document.getElementById('gate');
+  const payOverlay = document.getElementById('pay-overlay');
+  if(gate && !gate.classList.contains('hidden')) return; // pas encore connecté
+  if(payOverlay && !payOverlay.classList.contains('hidden')) return; // encaissement en cours
+  autoRefreshBusy = true;
+  try{
+    await loadConfig();
+    await loadSales();
+    await loadMovements();
+    save();
+    loadArticlesFromFirebase();
+    renderAll();
+  }catch(e){
+    console.error('Auto-refresh échoué :', e);
+  }finally{
+    autoRefreshBusy = false;
+  }
+}
+
+window.startAutoRefresh = function(){
+  if(autoRefreshTimer) clearInterval(autoRefreshTimer);
+  autoRefreshTimer = setInterval(()=>{
+    if(document.visibilityState==='visible') silentAutoRefresh();
+  }, AUTO_REFRESH_MS);
+};
+
+// Retour au premier plan (tablette réveillée, onglet réactivé, reconnexion réseau)
+document.addEventListener('visibilitychange', ()=>{
+  if(document.visibilityState==='visible') silentAutoRefresh();
+});
+window.addEventListener('focus', silentAutoRefresh);
+window.addEventListener('online', silentAutoRefresh);
 
 
 /* ============ MODE PROD/TEST ============ */
