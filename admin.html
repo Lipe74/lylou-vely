@@ -59,6 +59,8 @@
   .variant-row .vr-ean{flex:2}
   .variant-row .vr-stock{flex:1;text-align:right}
   .variant-row .vr-price{flex:1;text-align:right}
+  .variant-asbl-row{display:flex;align-items:center;gap:8px;margin-top:6px;font-size:12px;color:#666}
+  .variant-asbl-row input{width:90px;padding:6px 8px;border:1.5px solid #ddd;border-radius:8px;font-size:13px;text-align:right}
   .variant-row .vr-rm{color:var(--red);font-size:18px;padding:4px 8px;cursor:pointer;border:none;background:none}
   .variant-row-block{border:1px solid #eee;border-radius:10px;padding:8px;margin-bottom:8px;background:#fafafa}
   .cmd-filter{background:#fff;border:1.5px solid #ddd;color:#555;padding:8px 16px;border-radius:24px;font-size:13px;font-weight:600;cursor:pointer}
@@ -300,6 +302,11 @@
         <div class="form-group" id="article-stock-row" style="display:none">
           <label>Quantité en stock</label>
           <input type="number" step="1" min="0" id="article-stock" placeholder="Ex. 10">
+        </div>
+        <div class="form-group">
+          <label>🐾 Reversement ASBL (€ par article vendu) — articles sans déclinaison</label>
+          <input type="number" step="0.01" min="0" id="article-reversement" placeholder="Laisse vide si aucun reversement">
+          <p style="font-size:12px;color:#888;margin-top:6px">Si l'article a des déclinaisons, renseigne le reversement sur chaque déclinaison.</p>
         </div>
         <div class="form-group">
           <label>Déclinaisons (même prix pour toutes — laisse vide si aucune)</label>
@@ -663,7 +670,7 @@ window.handleArticleCategoryChange = function(sel){
   renderArticleCategorySelect(name);
 };
 
-window.addVariantRow = function(name='', ean='', stock='', photoUrl='', price=''){
+window.addVariantRow = function(name='', ean='', stock='', photoUrl='', price='', reversement=''){
   const ed = document.getElementById('variants-editor');
   const row = document.createElement('div'); row.className = 'variant-row-block';
   row._existingPhoto = photoUrl || '';
@@ -678,6 +685,10 @@ window.addVariantRow = function(name='', ean='', stock='', photoUrl='', price=''
     <div class="variant-photo-row">
       <input type="file" class="vr-photo-input" accept="image/*" onchange="window.previewVariantPhoto(event)">
       <div class="vr-photo-preview">${photoUrl?`<img src="${photoUrl}" style="width:36px;height:36px;object-fit:cover;border-radius:6px">`:''}</div>
+    </div>
+    <div class="variant-asbl-row">
+      <span>🐾 Reversement ASBL (€)</span>
+      <input class="vr-reverse" type="number" step="0.01" min="0" placeholder="0,00" value="${reversement!==''&&reversement!=null?reversement:''}">
     </div>
     <p style="font-size:11px;color:#999;margin:2px 0 0">Laisse "Prix" vide pour utiliser le prix général de l'article.</p>`;
   ed.appendChild(row);
@@ -703,6 +714,7 @@ async function readVariantRows(articleId){
     const ean = row.querySelector('.vr-ean').value.trim();
     const stockVal = parseInt(row.querySelector('.vr-stock').value, 10);
     const priceVal = parseFloat(row.querySelector('.vr-price').value);
+    const reverseVal = parseFloat(row.querySelector('.vr-reverse').value);
     let photo = row._existingPhoto || '';
     if(row._pendingPhotoFile){
       const file = row._pendingPhotoFile;
@@ -713,7 +725,7 @@ async function readVariantRows(articleId){
       await uploadBytes(sRef, file);
       photo = await getDownloadURL(sRef);
     }
-    list.push({ name, ean, stock: isNaN(stockVal) ? 0 : stockVal, photo, price: isNaN(priceVal) ? null : priceVal });
+    list.push({ name, ean, stock: isNaN(stockVal) ? 0 : stockVal, photo, price: isNaN(priceVal) ? null : priceVal, reversement: (isNaN(reverseVal) || reverseVal<=0) ? null : reverseVal });
   }
   return list;
 }
@@ -746,6 +758,7 @@ window.resetArticleForm = function(){
   document.getElementById('article-photo-input').value = '';
   document.getElementById('article-photo-preview').innerHTML = '';
   document.getElementById('variants-editor').innerHTML = '';
+  document.getElementById('article-reversement').value = '';
   document.getElementById('article-online').checked = false;
   document.getElementById('article-track-stock').checked = false;
   document.getElementById('article-stock').value = '';
@@ -809,6 +822,7 @@ window.saveArticle = async function(){
     photo: photoUrl,
     online: document.getElementById('article-online').checked,
     variants,
+    reversement: (parseFloat(document.getElementById('article-reversement').value) > 0) ? parseFloat(document.getElementById('article-reversement').value) : null,
     trackStock,
     stock: (trackStock && variants.length===0) ? (isNaN(stockVal) ? (existing.stock||0) : stockVal) : null,
   };
@@ -841,8 +855,9 @@ window.editArticle = function(id){
   document.getElementById('variants-editor').innerHTML = '';
   (it.variants||[]).forEach(v=>{
     if(typeof v === 'string') window.addVariantRow(v, '', ''); // migration ancien format (texte simple)
-    else window.addVariantRow(v.name||'', v.ean||'', v.stock!=null?v.stock:'', v.photo||'', v.price!=null?v.price:'');
+    else window.addVariantRow(v.name||'', v.ean||'', v.stock!=null?v.stock:'', v.photo||'', v.price!=null?v.price:'', v.reversement!=null?v.reversement:'');
   });
+  document.getElementById('article-reversement').value = it.reversement!=null ? it.reversement : '';
   document.getElementById('article-online').checked = !!it.online;
   document.getElementById('article-track-stock').checked = !!it.trackStock;
   document.getElementById('article-stock').value = (it.trackStock && it.stock!=null) ? it.stock : '';
@@ -962,7 +977,8 @@ function renderArticlesList(){
           else tag = ` (${s})`;
         }
         const priceTag = (v.price!=null) ? ` · <b>${v.price.toFixed(2).replace('.',',')} €</b>` : '';
-        return `🎨 ${v.name}${v.ean?' · '+v.ean:''}${priceTag}${it.trackStock?tag:''}`;
+        const asblTag = (v.reversement>0) ? ` · 🐾 ${v.reversement.toFixed(2).replace('.',',')} € reversés` : '';
+        return `🎨 ${v.name}${v.ean?' · '+v.ean:''}${priceTag}${asblTag}${it.trackStock?tag:''}`;
       }).join('<br>') + `</div>`;
     } else if(it.variants && it.variants.length){
       // Ancien format (texte simple), pas encore migré
@@ -979,7 +995,7 @@ function renderArticlesList(){
         ${it.category ? `<span class="badge" style="background:var(--violet-wash);color:var(--violet)">${it.category}</span>` : ''}
         ${it.online ? `<span class="badge" style="background:#e6f4ea;color:#2e9e6b">🌐 En ligne</span>` : `<span class="badge" style="background:#eee;color:#888">Masqué</span>`}
         <div class="nom">${it.name}</div>
-        <div class="meta">${prixTxt}${it.fournisseur ? ' · 🏭 '+it.fournisseur : ''}${it.ean ? ' · '+it.ean : ''}${stockTxt}</div>
+        <div class="meta">${prixTxt}${it.fournisseur ? ' · 🏭 '+it.fournisseur : ''}${it.ean ? ' · '+it.ean : ''}${(!hasVariants && it.reversement>0) ? ' · 🐾 '+it.reversement.toFixed(2).replace('.',',')+' € reversés' : ''}${stockTxt}</div>
         ${variantsTxt}
       </div>
       <div class="actions">

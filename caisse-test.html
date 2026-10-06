@@ -334,7 +334,7 @@ nav{display:none}
 <div id="gate">
   <div class="box">
     <div class="mark">Lylou-Vely</div>
-    <div class="sub">Caisse · Build 3.1</div>
+    <div class="sub">Caisse · Build 3.3</div>
     <input type="email" id="gate-email" placeholder="Email" autocomplete="email" value="infos@lylou-vely.be" style="letter-spacing:0">
     <input type="password" id="gate-pw" placeholder="Mot de passe" autocomplete="current-password">
     <button onclick="doLogin()">Connexion</button>
@@ -346,7 +346,7 @@ nav{display:none}
 <div id="app" class="hidden">
   <header>
     <div class="hdr-top">
-      <div class="title">Lylou-Vely<small>Caisse · Build 3.1</small></div>
+      <div class="title">Lylou-Vely<small>Caisse · Build 3.3</small></div>
       <div style="display:flex;gap:6px;align-items:center">
         <button class="refresh-btn" onclick="openSettings()" style="font-size:12px;padding:6px 10px;font-weight:600" title="Réglages">⚙︎</button>
         <button id="hdr-mode-btn" class="refresh-btn" onclick="toggleMode()" title="Basculer Prod/Test" style="font-size:12px;padding:6px 10px;font-weight:600;letter-spacing:.5px">PROD</button>
@@ -376,6 +376,10 @@ nav{display:none}
       <button id="nav-stats" onclick="go('stats')">
         <svg viewBox="0 0 24 24"><path d="M4 20V10M12 20V4M20 20v-7"/></svg>
         Stats
+      </button>
+      <button id="nav-asbl" onclick="go('asbl')" title="Reversements Animal Rescue">
+        <svg viewBox="0 0 24 24"><path d="M12 21s-7-4.5-9.5-9A5.5 5.5 0 0 1 12 6a5.5 5.5 0 0 1 9.5 6c-2.5 4.5-9.5 9-9.5 9z"/></svg>
+        Asso
       </button>
       <button id="nav-ca" onclick="go('journal')" title="CA du jour — voir le journal" style="min-width:72px">
         <svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20A10 10 0 0 0 12 2z"/><path d="M14.5 8H10a2 2 0 0 0 0 4h4a2 2 0 0 1 0 4H9.5M12 6v2m0 8v2"/></svg>
@@ -491,6 +495,7 @@ nav{display:none}
           <div class="s"><div class="k">Panier moyen</div><div class="v" id="jr-avg">0,00 €</div></div>
           <div class="s"><div class="k">Caisse</div><div class="v" id="jr-cash">0,00 €</div></div>
         </div>
+        <div id="jr-asbl" style="display:none;justify-content:space-between;align-items:center;margin-top:12px;padding:10px 14px;background:#eef8f2;border:1px solid #cfe9da;border-radius:10px;font-size:14px"></div>
       </div>
       <div class="card">
         <div class="row-btns" style="margin-bottom:10px">
@@ -623,6 +628,19 @@ nav{display:none}
           <div id="stats-legend" style="display:flex;gap:14px;justify-content:center;margin-top:10px;font-size:12px;flex-wrap:wrap"></div>
         </div>
       </div>
+    </section>
+
+    <section class="tab" id="tab-asbl">
+      <h1 class="section-title">Animal Rescue</h1>
+      <p class="section-sub">Reversements à l'ASBL — virement mensuel, sans impact sur la caisse</p>
+      <div class="card">
+        <div class="big-total"><div class="k">Reste à verser</div><div class="v" id="asbl-due">0,00 €</div></div>
+        <div class="summary">
+          <div class="s"><div class="k">Déjà versé</div><div class="v" id="asbl-paid">0,00 €</div></div>
+          <div class="s"><div class="k">Total collecté</div><div class="v" id="asbl-total">0,00 €</div></div>
+        </div>
+      </div>
+      <div id="asbl-months"></div>
     </section>
   </main>
 
@@ -1150,6 +1168,7 @@ function normalise(s){
     sales: s.sales || [],
     movements: s.movements || [],
     closures: s.closures || [],
+    asblPayouts: s.asblPayouts || {},
     lastCount: s.lastCount || null,
     ticketCounter: (typeof s.ticketCounter === 'number') ? s.ticketCounter : (TICKET_START - 1),
   };
@@ -1169,6 +1188,7 @@ async function loadConfig(){
       if(typeof d.ticketCounter === 'number') state.ticketCounter = d.ticketCounter;
       if(d.day) state.day = d.day;
       if(d.marche !== undefined) state.marche = d.marche;
+      if(d.asblPayouts && typeof d.asblPayouts === 'object') state.asblPayouts = d.asblPayouts;
     }
   }catch(e){ console.warn('loadConfig:', e.message); }
 }
@@ -1410,6 +1430,7 @@ window.go = function(tab){
   if(tab==='caisse') renderCaisse();
   if(tab==='journal'){ renderJournal(); renderMovements(); }
   if(tab==='stats') renderStats();
+  if(tab==='asbl') renderAsbl();
 };
 
 /* ---- Refresh ---- */
@@ -2105,7 +2126,12 @@ async function finalizeSale(){
   const sale = {
     id: Date.now(), num: state.ticketCounter, ref,
     time: nowTime(), date: state.day, marche: state.marche || '',
-    items: cart.map(l=>({name:l.name,price:l.price,qty:l.qty,baseName:l.baseName||l.name,variant:l.variant||null})),
+    items: cart.map(l=>{
+      const it = {name:l.name,price:l.price,qty:l.qty,baseName:l.baseName||l.name,variant:l.variant||null};
+      const rev = asblUnitFor(l);
+      if(rev>0) it.reversement = rev; // figé au moment de la vente (virement mensuel Animal Rescue)
+      return it;
+    }),
     subtotal: cartSubtotal(),
     discount: cartDiscount ? {type:cartDiscount.type, value:cartDiscount.value, motif:cartDiscount.motif, amount:cartDiscount.amount} : null,
     total, method: saleMethod,
@@ -2198,6 +2224,8 @@ function buildSaleTicketBodyHTML(sale){
     : `<div style="text-align:center"><span class="paid">✓ PAYÉ</span></div>`;
 
   const footer = TICKET_FOOTER.map(l=>esc(l)).join('<br>');
+  const asblTotal = sale.cancelled ? 0 : asblOfSale(sale);
+  const asblBlock = asblTotal>0 ? `<div class="t-pay" style="text-align:center;font-weight:600;margin-top:4px">Dont ${euro(asblTotal)} reversés à ${ASBL_NAME}</div>` : '';
 
   return `
     ${testMark}
@@ -2213,6 +2241,7 @@ function buildSaleTicketBodyHTML(sale){
     ${discountBlock}
     ${tvaBlock}
     <div class="t-tot"><span>Total TVAC</span><span>${euro(totalTVAC)}</span></div>
+    ${asblBlock}
     ${payInfo}
     ${sumupBlock}
     ${cashExtra}
@@ -2330,6 +2359,229 @@ function sumIn(d){ return dayMovements(d||state.day).filter(m=>m.type==='in').re
 function sumOut(d){ return dayMovements(d||state.day).filter(m=>m.type==='out').reduce((a,m)=>a+m.amount,0); }
 function sumCashOut(d){ return dayMovements(d||state.day).filter(m=>m.type==='out' && m.payMode!=='card').reduce((a,m)=>a+m.amount,0); }
 function theoreticalCash(){ return state.fond + sumCashSales() + sumIn() - sumCashOut(); }
+
+/* ============ ANIMAL RESCUE (reversement ASBL — virement mensuel, sans impact sur la caisse) ============ */
+const ASBL_NAME = 'Animal Rescue';
+/* Reversement unitaire d'une ligne de panier, lu dans le catalogue (déclinaison, sinon article sans déclinaison) */
+function asblUnitFor(line){
+  const baseName = line.baseName || line.name;
+  const prod = state.products.find(p=>p.name===baseName);
+  if(!prod) return 0;
+  if(line.variant && prod.variants && prod.variants.length && typeof prod.variants[0]==='object'){
+    const v = prod.variants.find(x=>x.name===line.variant);
+    return (v && v.reversement>0) ? v.reversement : 0;
+  }
+  return prod.reversement>0 ? prod.reversement : 0;
+}
+/* Montant à reverser pour une vente (valeur figée au moment de la vente) */
+function asblOfSale(sale){
+  return (sale.items||[]).reduce((a,it)=>a+(it.reversement>0 ? it.reversement*it.qty : 0),0);
+}
+/* Détail agrégé par article/déclinaison — les ventes annulées sont exclues */
+function asblBreakdown(salesArr){
+  const map = {};
+  (salesArr||[]).filter(x=>!x.cancelled).forEach(sale=>{
+    (sale.items||[]).forEach(it=>{
+      if(!(it.reversement>0)) return;
+      const key = it.name+'|'+it.reversement;
+      if(!map[key]) map[key] = {name:it.name, unit:it.reversement, qty:0, total:0};
+      map[key].qty += it.qty;
+      map[key].total += it.reversement*it.qty;
+    });
+  });
+  const rows = Object.values(map).sort((a,b)=>b.total-a.total);
+  return {rows, total: rows.reduce((a,r)=>a+r.total,0)};
+}
+/* Mois ayant des reversements, du plus récent au plus ancien */
+function asblMonths(){
+  const byMonth = {};
+  state.sales.filter(x=>!x.cancelled && asblOfSale(x)>0).forEach(x=>{
+    const m = x.date.slice(0,7);
+    (byMonth[m] = byMonth[m] || []).push(x);
+  });
+  return Object.keys(byMonth).sort().reverse().map(m=>({month:m, ...asblBreakdown(byMonth[m])}));
+}
+/* Versements enregistrés pour un mois : [{amount, date, rows:[{name,unit,qty,total}]}] (compat ancien format {paid,paidAt}) */
+function asblPayments(month){
+  const p = state.asblPayouts[month];
+  if(!p) return [];
+  if(Array.isArray(p.payments)) return p.payments;
+  return p.paid>0 ? [{amount:p.paid, date:p.paidAt||'', rows:[]}] : [];
+}
+function asblPaidAmount(month){
+  return Math.round(asblPayments(month).reduce((a,x)=>a+x.amount,0)*100)/100;
+}
+/* Lignes du mois pas encore couvertes par un versement précédent (détail du reçu) */
+function asblUnpaidRows(month, monthRows){
+  const covered = {};
+  asblPayments(month).forEach(p=>(p.rows||[]).forEach(r=>{ const k=r.name+'|'+r.unit; covered[k]=(covered[k]||0)+r.qty; }));
+  return monthRows.map(r=>{
+    const q = r.qty - (covered[r.name+'|'+r.unit]||0);
+    return {name:r.name, unit:r.unit, qty:q, total:Math.round(q*r.unit*100)/100};
+  }).filter(r=>r.qty>0);
+}
+async function saveAsblPayout(month, entry){
+  try{ await setDoc(doc(db, basePath()), {asblPayouts:{[month]:entry}, updatedAt:new Date().toISOString()}, {merge:true}); }
+  catch(e){ console.warn('saveAsblPayout:', e.message); }
+}
+function monthLongLabel(ym){
+  const [y,m] = ym.split('-');
+  return new Date(parseInt(y,10), parseInt(m,10)-1, 1).toLocaleDateString('fr-BE',{month:'long', year:'numeric'});
+}
+window.markAsblPaid = function(month){
+  const m = asblMonths().find(x=>x.month===month);
+  if(!m) return;
+  const reste = Math.round((m.total - asblPaidAmount(month))*100)/100;
+  if(reste<=0) return;
+  if(!confirm(`Marquer ${monthLabel(month)} comme versé à ${ASBL_NAME} ?\n\nMontant : ${euro(reste)}\n\n(Simple suivi du virement — aucun impact sur la caisse.)`)) return;
+  const payments = asblPayments(month).slice();
+  payments.push({amount:reste, date:todayStr(), rows:asblUnpaidRows(month, m.rows)});
+  const entry = {payments};
+  state.asblPayouts[month] = entry; save(); saveAsblPayout(month, entry);
+  renderAsbl(); toast('✓ Versement de '+euro(reste)+' enregistré');
+};
+window.undoAsblPaid = function(month){
+  const payments = asblPayments(month).slice();
+  if(!payments.length) return;
+  const last = payments[payments.length-1];
+  if(!confirm(`Annuler le dernier versement de ${euro(last.amount)} (${(last.date||'').split('-').reverse().join('/')}) ?`)) return;
+  payments.pop();
+  const entry = {payments};
+  state.asblPayouts[month] = entry; save(); saveAsblPayout(month, entry);
+  renderAsbl(); toast('Versement annulé');
+};
+
+/* ---- Reçu de versement (à remettre / garder comme justificatif) ---- */
+function asblReceiptData(month, idx){
+  const pay = asblPayments(month)[idx];
+  if(!pay) return null;
+  const rows = (pay.rows && pay.rows.length) ? pay.rows : [{name:'Reversement des ventes de '+monthLongLabel(month), unit:pay.amount, qty:1, total:pay.amount}];
+  return {pay, rows, dateLbl:(pay.date||todayStr()).split('-').reverse().join('/'), periode:monthLongLabel(month)};
+}
+function buildAsblReceiptA4(month, idx){
+  const d = asblReceiptData(month, idx); if(!d) return '';
+  const rowsHTML = d.rows.map(r=>`<tr><td>${esc(r.name)}</td><td class="r">${r.qty}</td><td class="r">${euro(r.unit)}</td><td class="r"><b>${euro(r.total)}</b></td></tr>`).join('');
+  const testMark = (mode==='test') ? `<div style="text-align:center;font-weight:700;color:#c0475e;border:1px dashed #c0475e;padding:6px;margin-bottom:14px">⚠ REÇU DE TEST — SANS VALEUR</div>` : '';
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8">
+    <title>${esc(SELLER.brand)} — Reçu de versement ${ASBL_NAME}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Jost:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+      @page{margin:14mm;size:A4 portrait}
+      *{box-sizing:border-box}
+      body{font-family:'Jost',Arial,sans-serif;color:#2a2233;margin:0;padding:0}
+      .rv-head{text-align:center;margin-bottom:20px}
+      .rv-head .logo{font-family:'Cormorant Garamond',serif;font-size:34px;color:#6B3FA0;font-weight:700}
+      .rv-head .sub{font-size:11px;letter-spacing:3px;text-transform:uppercase;color:#8b62c0;margin-top:2px}
+      .rv-head .legal{font-size:12px;color:#777;margin-top:10px;line-height:1.5}
+      .rv-head hr{border:none;border-top:1px solid #e4d9f2;margin:16px 0 0}
+      .rv-titre{font-family:'Cormorant Garamond',serif;font-size:24px;color:#6B3FA0;font-weight:700;text-align:center;margin:24px 0 4px}
+      .rv-meta{text-align:center;font-size:13px;color:#555;margin-bottom:20px;line-height:1.7}
+      .rv-table{width:100%;border-collapse:collapse;margin-bottom:8px;font-size:13px}
+      .rv-table th{background:#6B3FA0;color:#fff;text-align:left;padding:9px 12px;font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.4px}
+      .rv-table td{padding:9px 12px;border-bottom:1px solid #eee}
+      .rv-table tr:nth-child(even) td{background:#faf7fd}
+      .rv-table .r{text-align:right}
+      .rv-total{background:#faf7fd;border:2px solid #6B3FA0;border-radius:16px;padding:22px;text-align:center;margin:26px 0}
+      .rv-total .lbl{font-size:12px;letter-spacing:2px;text-transform:uppercase;color:#8b62c0;margin-bottom:6px}
+      .rv-total .val{font-family:'Cormorant Garamond',serif;font-size:44px;font-weight:700;color:#6B3FA0}
+      .rv-note{text-align:center;font-size:13px;color:#555;margin-top:6px}
+      .rv-sign{display:flex;gap:50px;margin-top:44px}
+      .rv-sign div{flex:1;border-top:1px solid #999;padding-top:6px;font-size:12px;color:#777;text-align:center}
+      .rv-foot{margin-top:34px;text-align:center;font-size:10px;color:#aaa;border-top:1px dashed #e4d9f2;padding-top:14px}
+    </style></head>
+    <body>
+      <div class="rv-head">
+        <div class="logo">${esc(SELLER.brand)}</div>
+        <div class="sub">${esc(SELLER.tagline)}</div>
+        <div class="legal">${esc(SELLER.legal)}<br>${esc(SELLER.address)} · TVA ${esc(SELLER.vat)}</div>
+        <hr>
+      </div>
+      ${testMark}
+      <div class="rv-titre">Reçu de versement</div>
+      <div class="rv-meta">Bénéficiaire : <b>${ASBL_NAME} (ASBL)</b><br>Période : <b>${esc(d.periode)}</b> · Date du versement : <b>${d.dateLbl}</b></div>
+      <table class="rv-table">
+        <thead><tr><th>Article</th><th class="r">Qté</th><th class="r">Reversé / pièce</th><th class="r">Montant</th></tr></thead>
+        <tbody>${rowsHTML}</tbody>
+      </table>
+      <div class="rv-total"><div class="lbl">Montant versé</div><div class="val">${euro(d.pay.amount)}</div></div>
+      <div class="rv-note">Versé à ${ASBL_NAME} par virement bancaire.</div>
+      <div class="rv-sign"><div>Pour ${esc(SELLER.brand)}</div><div>Pour ${ASBL_NAME} (pour réception)</div></div>
+      <div class="rv-foot">Merci pour votre engagement envers les animaux · Reçu généré le ${new Date().toLocaleString('fr-BE')}</div>
+    </body></html>`;
+}
+function buildAsblReceipt58(month, idx){
+  const d = asblReceiptData(month, idx); if(!d) return '';
+  const rowsHTML = d.rows.map(r=>`<div class="t-item"><span>${esc(r.name)} <span class="q">×${r.qty}</span></span><span>${euro(r.total)}</span></div>`).join('');
+  const testMark = (mode==='test') ? `<div class="t-testmark">⚠ REÇU DE TEST — SANS VALEUR</div>` : '';
+  return `${testMark}
+    <div class="t-head"><div class="lg">${esc(SELLER.brand)}</div><div class="sl">Reçu de versement</div>
+      <div class="t-legal">${esc(SELLER.legal)}<br>TVA ${esc(SELLER.vat)}</div></div>
+    <div style="text-align:center;font-weight:600;margin-bottom:3px">${ASBL_NAME} (ASBL)</div>
+    <div class="t-meta"><span>Date</span><span>${d.dateLbl}</span></div>
+    <div class="t-meta"><span>Période</span><span>${esc(d.periode)}</span></div>
+    <div class="t-sep"></div>
+    ${rowsHTML}
+    <div class="t-tot"><span>Total versé</span><span>${euro(d.pay.amount)}</span></div>
+    <div class="t-pay" style="text-align:center">Versé par virement bancaire</div>
+    <div class="t-foot">Merci pour votre engagement<br>envers les animaux</div>`;
+}
+window.printAsblReceipt = function(month, idx, mode){
+  const html = mode==='58mm' ? buildAsblReceipt58(month, idx) : buildAsblReceiptA4(month, idx);
+  if(!html){ toast('Reçu introuvable'); return; }
+  openPrintWindow(html, mode);
+};
+window.downloadAsblReceiptPDF = function(month, idx){
+  const html = buildAsblReceiptA4(month, idx);
+  const d = asblReceiptData(month, idx);
+  if(!html || !d){ toast('Reçu introuvable'); return; }
+  htmlStringToPDF(html, `Reversement ${ASBL_NAME} - ${d.dateLbl.replace(/\//g,'-')}.pdf`);
+};
+
+function renderAsbl(){
+  const box = document.getElementById('asbl-months');
+  if(!box) return;
+  const months = asblMonths();
+  const total = months.reduce((a,m)=>a+m.total,0);
+  const paid = months.reduce((a,m)=>a+Math.min(asblPaidAmount(m.month), m.total),0);
+  document.getElementById('asbl-due').textContent = euro(Math.max(0,total-paid));
+  document.getElementById('asbl-paid').textContent = euro(paid);
+  document.getElementById('asbl-total').textContent = euro(total);
+  if(!months.length){
+    box.innerHTML = `<div class="card"><p style="color:var(--muted);text-align:center;margin:6px 0">Aucune vente avec reversement pour l'instant.</p></div>`;
+    return;
+  }
+  const btnS = 'width:auto;padding:5px 10px;font-size:12px';
+  box.innerHTML = months.map(m=>{
+    const payments = asblPayments(m.month);
+    const paidAmt = asblPaidAmount(m.month);
+    const reste = Math.round((m.total - paidAmt)*100)/100;
+    let badge;
+    if(paidAmt>0 && reste<=0) badge = `<span style="background:#e6f4ea;color:#2e9e6b;padding:3px 10px;border-radius:99px;font-size:12px;font-weight:600">✓ Versé</span>`;
+    else if(paidAmt>0) badge = `<span style="background:#fdf3e6;color:#a15c00;padding:3px 10px;border-radius:99px;font-size:12px;font-weight:600">Partiel — reste ${euro(reste)}</span>`;
+    else badge = `<span style="background:#fdeaea;color:#c0475e;padding:3px 10px;border-radius:99px;font-size:12px;font-weight:600">À verser</span>`;
+    const lines = m.rows.map(r=>`<div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0;border-bottom:1px dashed var(--line)"><span>${esc(r.name)} <span style="color:var(--muted)">×${r.qty} · ${euro(r.unit)}</span></span><b>${euro(r.total)}</b></div>`).join('');
+    const payLines = payments.map((p,i)=>`<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;padding:6px 0;border-bottom:1px dashed var(--line)">
+        <span style="font-size:13px">✓ Versé le ${esc((p.date||'').split('-').reverse().join('/'))} · <b>${euro(p.amount)}</b></span>
+        <span style="display:flex;gap:6px;flex-wrap:wrap">
+          <button class="btn btn-outline" style="${btnS}" onclick="downloadAsblReceiptPDF('${m.month}',${i})">🧾 Reçu PDF</button>
+          <button class="btn btn-outline" style="${btnS}" onclick="printAsblReceipt('${m.month}',${i},'58mm')">🖨 58mm</button>
+          <button class="btn btn-outline" style="${btnS}" onclick="printAsblReceipt('${m.month}',${i},'a4')">🖨 A4</button>
+        </span></div>`).join('');
+    const actions = [
+      reste>0 ? `<button class="btn btn-primary" style="${btnS}" onclick="markAsblPaid('${m.month}')">${paidAmt>0?'Marquer le reste comme versé':'Marquer comme versé'}</button>` : '',
+      payments.length ? `<button class="btn btn-outline" style="${btnS}" onclick="undoAsblPaid('${m.month}')">Annuler le dernier versement</button>` : ''
+    ].join('');
+    return `<div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:8px">
+        <h3 style="font-size:19px;margin:0">${monthLabel(m.month)}</h3>${badge}
+      </div>
+      ${lines}
+      <div style="display:flex;justify-content:space-between;font-size:15px;font-weight:700;margin:8px 0 10px"><span>Total du mois</span><span>${euro(m.total)}</span></div>
+      ${payLines}
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">${actions}</div>
+    </div>`;
+  }).join('');
+}
 
 // helpers paiements mixtes
 function hasCash(s){ return s.payments ? s.payments.some(p=>p.method==='especes') : s.method==='especes'; }
@@ -2742,6 +2994,10 @@ function renderJournal(){
   document.getElementById('jr-count').textContent = s.length;
   document.getElementById('jr-avg').textContent = euro(s.length?ca/s.length:0);
   document.getElementById('jr-cash').textContent = euro(theoreticalCash());
+  const jrAsbl = document.getElementById('jr-asbl');
+  const asblBd = asblBreakdown(s);
+  if(asblBd.total>0){ jrAsbl.style.display='flex'; jrAsbl.innerHTML = `<span>🐾 À reverser à ${ASBL_NAME}</span><b>${euro(asblBd.total)}</b>`; }
+  else { jrAsbl.style.display='none'; jrAsbl.innerHTML=''; }
 
   // tickets list (all including cancelled for the filter)
   const filtered = journalFilter==='day'
@@ -3276,6 +3532,8 @@ function buildJournalHTML(marcheFilter){
       .jh-kpi b{display:block;font-size:17px;color:#6B3FA0;font-family:'Cormorant Garamond',serif}
       .jh-kpi.fee{background:#fdf3e6;border-color:#f3e0c4}
       .jh-kpi.fee b{color:#a15c00}
+      .jh-kpi.asbl{background:#eef8f2;border-color:#cfe9da}
+      .jh-kpi.asbl b{color:#2e7d5b}
       .jh-kpi span{font-size:10px;color:#777;text-transform:uppercase;letter-spacing:.3px}
       .jh-sect{font-family:'Cormorant Garamond',serif;font-size:21px;color:#6B3FA0;font-weight:700;margin:30px 0 6px}
       .jh-table{width:100%;border-collapse:collapse;margin-bottom:10px;font-size:13px}
@@ -3311,6 +3569,7 @@ function buildJournalHTML(marcheFilter){
           if(bd.mollie_be.amount>0) h+=`<div class="jh-kpi fee"><b>−${euro(bd.mollie_be.commission)}</b><span>Commission Mollie Belge</span></div>`;
           if(bd.mollie_intl.amount>0) h+=`<div class="jh-kpi fee"><b>−${euro(bd.mollie_intl.commission)}</b><span>Commission Mollie Étrangère</span></div>`;
           return h; })()}
+        ${(()=>{ const a=asblBreakdown(s); return a.total>0 ? `<div class="jh-kpi asbl"><b>${euro(a.total)}</b><span>À reverser ${ASBL_NAME}</span></div>` : ''; })()}
       </div>
       <div class="jh-sect">Ventes</div>`;
 
@@ -3609,14 +3868,14 @@ window.downloadMarchePDF = function(marche){
 
 /* ============ CSV EXPORT ============ */
 window.exportCSV = function(){
-  let rows = [["Reçu n°","Date","Heure","Articles","HTVA","TVA","Total TVAC","Paiement"]];
+  let rows = [["Reçu n°","Date","Heure","Articles","HTVA","TVA","Total TVAC","Paiement","Reversement Animal Rescue"]];
   state.sales.forEach(s=>{
     const ref = s.ref||makeRef(s.num);
     const arts = s.items.map(i=>`${i.name} x${i.qty}`).join(' + ');
     const pay = METHOD_LABEL[s.method] + (s.cancelled ? ' (ANNULÉ)' : '');
     rows.push([ref, s.date.split('-').reverse().join('/'), s.time, arts,
       htva(s.total).toFixed(2).replace('.',','), tvaAmount(s.total).toFixed(2).replace('.',','),
-      s.total.toFixed(2).replace('.',','), pay]);
+      s.total.toFixed(2).replace('.',','), pay, (s.cancelled ? 0 : asblOfSale(s)).toFixed(2).replace('.',',')]);
   });
   rows.push([]);
   rows.push(["Fond de caisse","","","","","",state.fond.toFixed(2).replace('.',','),""]);
@@ -3784,6 +4043,17 @@ function buildZHTML(day, marche, excludeClosureVersement){
   return {ca,esp,qr,carte,cancelledN,valid,theo,inTotal,outTotal,cashOut,cardOut,mvs,fondForDay};
 }
 
+function buildZAsblSection(day){
+  const bd = asblBreakdown(state.sales.filter(x=>x.date===day));
+  if(bd.total<=0) return '';
+  return `
+    <div class="t-sep"></div>
+    <div style="font-size:11px;font-weight:600;margin-bottom:4px">Reversement ${ASBL_NAME} (à virer)</div>
+    ${bd.rows.map(r=>`<div class="t-item" style="font-size:12px"><span>${esc(r.name)} ×${r.qty}</span><span>${euro(r.total)}</span></div>`).join('')}
+    <div class="t-sub"><span>Total à reverser</span><span>${euro(bd.total)}</span></div>
+    <div style="font-size:9px;color:#999;text-align:center;margin-top:2px">Virement mensuel — sans impact sur la caisse</div>`;
+}
+
 function buildZTicketHTML(day, marche, ca, esp, qr, carte, cancelledN, theo, inTotal, outTotal, cashOut, cardOut, fondForDay){
   const valid = state.sales.filter(x=>x.date===day && !x.cancelled);
   const fond = typeof fondForDay==='number' ? fondForDay : state.fond;
@@ -3838,6 +4108,7 @@ function buildZTicketHTML(day, marche, ca, esp, qr, carte, cancelledN, theo, inT
           ${extra>0.01?`<div style="font-size:9px;color:#2e7d32;margin-top:1px">Le restant de ${euro(extra)} est ajouté au fond de caisse (sous le seuil de ${euro(VERSEMENT_MIN)})</div>`:''}
         </div>`;
     })()}
+    ${buildZAsblSection(day)}
     ${buildZBoutiqueSection(day)}
     <div class="t-foot">Clôture générée le ${new Date().toLocaleString('fr-BE')}</div>`;
 }
@@ -4115,6 +4386,8 @@ window.resetAll = async function(){
   if(!confirm("Dernière confirmation : tout effacer ?")) return;
   for(const s of state.sales) await deleteSaleFB(s.id).catch(()=>{});
   for(const m of state.movements) await deleteMovementFB(m.id).catch(()=>{});
+  for(const m of Object.keys(state.asblPayouts||{})) await saveAsblPayout(m, {payments:[]});
+  state.asblPayouts = {};
   state.day = todayStr(); state.sales = []; state.movements = [];
   state.fond = 0; state.ticketCounter = TICKET_START - 1;
   countQty = {}; save(); await saveConfig(); initDenoms(); renderAll();
@@ -4764,7 +5037,7 @@ window.printStatsBank = function(mode){
 function renderAll(){
   renderProdGrid(); renderCart(); renderCaisse();
   renderMovements(); renderJournal(); renderHeaderKPIs();
-  updateCountTotals();
+  updateCountTotals(); renderAsbl();
 }
 
 /* Fermeture overlays en cliquant sur le fond */
