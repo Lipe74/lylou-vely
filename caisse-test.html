@@ -52,10 +52,15 @@ header.test-mode{background:linear-gradient(160deg,#e65c00 0%,#c44b00 100%);box-
 .hdr-top .title{font-family:'Cormorant Garamond',serif;font-size:22px;line-height:1}
 .hdr-top .title small{display:block;font-family:'Jost';font-size:10px;letter-spacing:3px;opacity:.8;text-transform:uppercase;margin-top:2px}
 .hdr-top .refresh-btn{background:rgba(255,255,255,.18);border-radius:10px;padding:8px 10px;font-size:15px;line-height:1}
-.hdr-kpis{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px;margin-top:10px}
+.hdr-kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:10px}
 .hdr-kpi{background:rgba(255,255,255,.12);border-radius:10px;padding:6px 10px;text-align:center}
 .hdr-kpi span{display:block;font-size:9px;letter-spacing:1px;text-transform:uppercase;opacity:.8}
 .hdr-kpi b{font-size:16px;font-weight:500}
+@media (max-width:700px){
+  .hdr-kpis{grid-template-columns:repeat(6,1fr)}
+  .hdr-kpi{grid-column:span 2}
+  .hdr-kpi:nth-child(n+4){grid-column:span 3}
+}
 
 /* Test banner */
 #test-banner{background:#f6a623;color:#4a2e00;text-align:center;font-size:12px;font-weight:500;letter-spacing:.3px;padding:7px 12px;position:sticky;top:0;z-index:45;display:none}
@@ -198,7 +203,8 @@ nav{display:none}
 .vente-header-text .section-title{margin-bottom:2px}
 .vente-header-text .section-sub{margin-bottom:0}
 .hdr-nav::-webkit-scrollbar{display:none}
-.hdr-nav button{flex:1;min-width:54px;padding:6px 4px 5px;display:flex;flex-direction:column;align-items:center;gap:2px;color:rgba(255,255,255,.62);font-size:10px;letter-spacing:.3px;border-radius:10px;transition:.13s;position:relative}
+.hdr-nav button{flex:1;min-width:66px;padding:6px 4px 5px;display:flex;flex-direction:column;align-items:center;gap:2px;color:rgba(255,255,255,.62);font-size:10px;letter-spacing:.3px;text-align:center;line-height:1.15;border-radius:10px;transition:.13s;position:relative}
+.hdr-nav .nav-sub{font-size:9px;letter-spacing:.2px;opacity:.85}
 .hdr-nav button svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.7}
 .hdr-nav button.on{color:#fff;background:rgba(255,255,255,.18)}
 .hdr-nav button.on::after{content:'';position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:20px;height:2px;border-radius:2px;background:#fff;opacity:.8}
@@ -334,7 +340,7 @@ nav{display:none}
 <div id="gate">
   <div class="box">
     <div class="mark">Lylou-Vely</div>
-    <div class="sub">Caisse · Build 3.3</div>
+    <div class="sub">Caisse · Build 3.4</div>
     <input type="email" id="gate-email" placeholder="Email" autocomplete="email" value="infos@lylou-vely.be" style="letter-spacing:0">
     <input type="password" id="gate-pw" placeholder="Mot de passe" autocomplete="current-password">
     <button onclick="doLogin()">Connexion</button>
@@ -346,7 +352,7 @@ nav{display:none}
 <div id="app" class="hidden">
   <header>
     <div class="hdr-top">
-      <div class="title">Lylou-Vely<small>Caisse · Build 3.3</small></div>
+      <div class="title">Lylou-Vely<small>Caisse · Build 3.4</small></div>
       <div style="display:flex;gap:6px;align-items:center">
         <button class="refresh-btn" onclick="openSettings()" style="font-size:12px;padding:6px 10px;font-weight:600" title="Réglages">⚙︎</button>
         <button id="hdr-mode-btn" class="refresh-btn" onclick="toggleMode()" title="Basculer Prod/Test" style="font-size:12px;padding:6px 10px;font-weight:600;letter-spacing:.5px">PROD</button>
@@ -354,36 +360,42 @@ nav{display:none}
       </div>
     </div>
     <div class="hdr-kpis">
-      <div class="hdr-kpi"><span>Fond</span><b id="hdr-fond">0,00 €</b></div>
-      <div class="hdr-kpi"><span>Espèces</span><b id="hdr-cash">0,00 €</b></div>
-      <div class="hdr-kpi"><span>QR Code</span><b id="hdr-qr">0,00 €</b></div>
-      <div class="hdr-kpi"><span>SumUp</span><b id="hdr-sumup">0,00 €</b></div>
+      <div class="hdr-kpi"><span>Fond de caisse</span><b id="hdr-fond">0,00 €</b></div>
+      <div class="hdr-kpi"><span>Vente Cash</span><b id="hdr-cash">0,00 €</b></div>
+      <div class="hdr-kpi"><span>Vente QR Code</span><b id="hdr-qr">0,00 €</b></div>
+      <div class="hdr-kpi"><span>Vente SumUp</span><b id="hdr-sumup">0,00 €</b></div>
+      <div class="hdr-kpi" onclick="go('etsy')" style="cursor:pointer" title="Total Etsy du mois en cours"><span>Vente Etsy · mois</span><b id="hdr-etsy">0,00 €</b></div>
     </div>
     <div id="hdr-marche" onclick="promptRenameMarche()" style="text-align:center;font-size:13px;color:rgba(255,255,255,0.85);margin-top:6px;font-weight:500;cursor:pointer" title="Modifier le nom du marché"></div>
     <div class="hdr-nav" id="hdr-nav">
       <button class="on" id="nav-vente" onclick="go('vente')">
         <svg viewBox="0 0 24 24"><path d="M3 6h18l-1.5 11a2 2 0 0 1-2 1.7H6.5a2 2 0 0 1-2-1.7L3 6z"/><path d="M8 6V4.5A2.5 2.5 0 0 1 10.5 2h3A2.5 2.5 0 0 1 16 4.5V6"/></svg>
-        Vente
+        Vente Comptoir
       </button>
       <button id="nav-caisse" onclick="go('caisse')">
         <svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/></svg>
-        Caisse
+        Fond de caisse
       </button>
       <button id="nav-journal" onclick="go('journal')">
         <svg viewBox="0 0 24 24"><path d="M5 3h11l3 3v15H5z"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>
-        Journal
+        Journal des Ventes
       </button>
       <button id="nav-stats" onclick="go('stats')">
         <svg viewBox="0 0 24 24"><path d="M4 20V10M12 20V4M20 20v-7"/></svg>
-        Stats
+        Statistiques
       </button>
       <button id="nav-asbl" onclick="go('asbl')" title="Reversements Animal Rescue">
         <svg viewBox="0 0 24 24"><path d="M12 21s-7-4.5-9.5-9A5.5 5.5 0 0 1 12 6a5.5 5.5 0 0 1 9.5 6c-2.5 4.5-9.5 9-9.5 9z"/></svg>
-        Asso
+        Asso Animal Rescue
       </button>
-      <button id="nav-ca" onclick="go('journal')" title="CA du jour — voir le journal" style="min-width:72px">
+      <button id="nav-etsy" onclick="go('etsy')" title="Ventes Etsy (hors caisse)">
+        <svg viewBox="0 0 24 24"><path d="M3 9h18v2a3 3 0 0 1-6 0 3 3 0 0 1-6 0 3 3 0 0 1-6 0V9z"/><path d="M3 9l1.5-5h15L21 9"/><path d="M5 13v7h14v-7"/><path d="M10 20v-4h4v4"/></svg>
+        Vente Etsy
+      </button>
+      <button id="nav-ca" onclick="go('journal')" title="CA du jour — voir le journal" style="min-width:84px">
         <svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20A10 10 0 0 0 12 2z"/><path d="M14.5 8H10a2 2 0 0 0 0 4h4a2 2 0 0 1 0 4H9.5M12 6v2m0 8v2"/></svg>
         <span id="nav-ca-val" style="font-size:11px;font-weight:600;letter-spacing:0">CA</span>
+        <span class="nav-sub">Chiffre d'affaires</span>
       </button>
     </div>
   </header>
@@ -513,6 +525,10 @@ nav{display:none}
           <div id="jr-boutique-list"></div>
         </div>
       </div>
+      <div id="jr-etsy-wrap" class="card hidden">
+        <h3 style="font-size:17px;color:var(--violet);margin-bottom:6px">🛍 Ventes Etsy <span style="font-size:11px;font-weight:400;color:var(--muted)">(hors caisse — pour info)</span></h3>
+        <div id="jr-etsy-list"></div>
+      </div>
       <div id="jr-mv-groups"></div>
       <!-- Formulaire entrée/sortie intégré -->
       <div class="card">
@@ -631,8 +647,8 @@ nav{display:none}
     </section>
 
     <section class="tab" id="tab-asbl">
-      <h1 class="section-title">Animal Rescue</h1>
-      <p class="section-sub">Reversements à l'ASBL — virement mensuel, sans impact sur la caisse</p>
+      <h1 class="section-title">Asso Animal Rescue</h1>
+      <p class="section-sub">Reversements à l'ASBL (comptoir + Etsy) — virement, sans impact sur la caisse</p>
       <div class="card">
         <div class="big-total"><div class="k">Reste à verser</div><div class="v" id="asbl-due">0,00 €</div></div>
         <div class="summary">
@@ -641,6 +657,24 @@ nav{display:none}
         </div>
       </div>
       <div id="asbl-months"></div>
+    </section>
+
+    <section class="tab" id="tab-etsy">
+      <h1 class="section-title">Vente Etsy</h1>
+      <p class="section-sub">Ventes en ligne — hors caisse : aucun impact sur le CA, la TVA ni la clôture Z</p>
+      <div class="card" id="etsy-form-card">
+        <h3 id="etsy-form-title" style="font-size:19px;margin-bottom:12px">Nouvelle vente Etsy</h3>
+        <div class="field"><label>Date</label><input type="date" id="etsy-date"></div>
+        <div id="etsy-items"></div>
+        <div class="field"><label>Montant encaissé sur Etsy (€) — pour info</label><input type="number" inputmode="decimal" step="0.01" min="0" id="etsy-montant" placeholder="Ex. : 50,00"></div>
+        <div id="etsy-rev-preview" style="padding:10px 14px;background:#eef8f2;border:1px solid #cfe9da;border-radius:10px;font-size:14px;margin-bottom:12px"></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-primary" id="etsy-save-btn" style="flex:1" onclick="saveEtsyEntry()">Enregistrer</button>
+          <button class="btn btn-outline" id="etsy-cancel-btn" style="display:none;width:auto" onclick="cancelEtsyEdit()">Annuler</button>
+        </div>
+      </div>
+      <div id="etsy-summary"></div>
+      <div id="etsy-list"></div>
     </section>
   </main>
 
@@ -1169,6 +1203,7 @@ function normalise(s){
     movements: s.movements || [],
     closures: s.closures || [],
     asblPayouts: s.asblPayouts || {},
+    etsy: s.etsy || [],
     lastCount: s.lastCount || null,
     ticketCounter: (typeof s.ticketCounter === 'number') ? s.ticketCounter : (TICKET_START - 1),
   };
@@ -1189,6 +1224,7 @@ async function loadConfig(){
       if(d.day) state.day = d.day;
       if(d.marche !== undefined) state.marche = d.marche;
       if(d.asblPayouts && typeof d.asblPayouts === 'object') state.asblPayouts = d.asblPayouts;
+      if(Array.isArray(d.etsy)) state.etsy = d.etsy;
     }
   }catch(e){ console.warn('loadConfig:', e.message); }
 }
@@ -1431,6 +1467,7 @@ window.go = function(tab){
   if(tab==='journal'){ renderJournal(); renderMovements(); }
   if(tab==='stats') renderStats();
   if(tab==='asbl') renderAsbl();
+  if(tab==='etsy'){ renderEtsyForm(); renderEtsyList(); }
 };
 
 /* ---- Refresh ---- */
@@ -2392,15 +2429,193 @@ function asblBreakdown(salesArr){
   const rows = Object.values(map).sort((a,b)=>b.total-a.total);
   return {rows, total: rows.reduce((a,r)=>a+r.total,0)};
 }
-/* Mois ayant des reversements, du plus récent au plus ancien */
+/* Mois ayant des reversements (ventes comptoir + ventes Etsy), du plus récent au plus ancien */
 function asblMonths(){
   const byMonth = {};
-  state.sales.filter(x=>!x.cancelled && asblOfSale(x)>0).forEach(x=>{
-    const m = x.date.slice(0,7);
-    (byMonth[m] = byMonth[m] || []).push(x);
+  const slot = m => (byMonth[m] = byMonth[m] || {sales:[], etsy:[]});
+  state.sales.filter(x=>!x.cancelled && asblOfSale(x)>0).forEach(x=>slot(x.date.slice(0,7)).sales.push(x));
+  (state.etsy||[]).filter(e=>etsyReversement(e)>0).forEach(e=>slot(e.date.slice(0,7)).etsy.push(e));
+  return Object.keys(byMonth).sort().reverse().map(m=>{
+    const mk = asblBreakdown(byMonth[m].sales);
+    const et = etsyBreakdown(byMonth[m].etsy);
+    const map = {};
+    mk.rows.concat(et.rows).forEach(r=>{
+      const k = r.name+'|'+r.unit;
+      if(!map[k]) map[k] = {name:r.name, unit:r.unit, qty:0, total:0};
+      map[k].qty += r.qty; map[k].total += r.total;
+    });
+    const rows = Object.values(map).sort((a,b)=>b.total-a.total);
+    return {month:m, rows, total: Math.round((mk.total+et.total)*100)/100,
+            marketRows:mk.rows, marketTotal:mk.total, etsyRows:et.rows, etsyTotal:et.total};
   });
-  return Object.keys(byMonth).sort().reverse().map(m=>({month:m, ...asblBreakdown(byMonth[m])}));
 }
+
+/* ============ VENTES ETSY (hors caisse — alimente uniquement le reversement Animal Rescue) ============ */
+let etsyEditId = null;
+let etsyFormItems = [];
+/* Enregistre dans Firestore en refusionnant avec la liste distante (par id) : deux appareils qui saisissent
+   en même temps ne s'écrasent pas. op : 'upsert' (arg = entrée) · 'delete' (arg = id) · 'clear' */
+async function saveEtsy(op, arg){
+  try{
+    const snap = await getDoc(doc(db, basePath()));
+    let list = (snap.exists() && Array.isArray(snap.data().etsy)) ? snap.data().etsy.slice() : state.etsy.slice();
+    if(op==='upsert'){ const i = list.findIndex(x=>x.id===arg.id); if(i>=0) list[i] = arg; else list.push(arg); }
+    else if(op==='delete') list = list.filter(x=>x.id!==arg);
+    else if(op==='clear') list = [];
+    state.etsy = list; save();
+    await setDoc(doc(db, basePath()), {etsy: list, updatedAt:new Date().toISOString()}, {merge:true});
+    renderAll();
+  }catch(e){ console.warn('saveEtsy:', e.message); toast('⚠ Enregistrement Firebase impossible — gardé sur cet appareil'); }
+}
+function etsyDateLbl(d){ return (d||'').split('-').reverse().join('/'); }
+function etsyReversement(e){ return Math.round((e.items||[]).reduce((a,it)=>a+it.unit*it.qty,0)*100)/100; }
+function etsyItemsLabel(e){ return (e.items||[]).filter(it=>it.qty>0).map(it=>`${it.label||it.name} ×${it.qty}`).join(' · '); }
+function etsyBreakdown(entries){
+  const map = {};
+  (entries||[]).forEach(e=>(e.items||[]).forEach(it=>{
+    if(!(it.qty>0) || !(it.unit>0)) return;
+    const k = it.name+'|'+it.unit;
+    if(!map[k]) map[k] = {name:it.name, unit:it.unit, qty:0, total:0};
+    map[k].qty += it.qty; map[k].total += it.unit*it.qty;
+  }));
+  const rows = Object.values(map).sort((a,b)=>b.total-a.total);
+  return {rows, total: Math.round(rows.reduce((a,r)=>a+r.total,0)*100)/100};
+}
+/* Montant encaissé sur Etsy pour un mois (AAAA-MM) — information seulement */
+function etsyMonthAmount(month){
+  return (state.etsy||[]).filter(e=>e.date.startsWith(month)).reduce((a,e)=>a+(e.montant>0?e.montant:0),0);
+}
+/* Articles du catalogue qui ont un reversement ASBL (déclinaisons ou article simple) */
+function asblCatalogItems(){
+  const out = [];
+  state.products.forEach(p=>{
+    if(p.variants && p.variants.length){
+      p.variants.forEach(v=>{
+        if(v && typeof v==='object' && v.reversement>0) out.push({name:`${p.name} (${v.name})`, label:v.name, unit:v.reversement});
+      });
+    } else if(p.reversement>0){
+      out.push({name:p.name, label:p.name, unit:p.reversement});
+    }
+  });
+  return out;
+}
+/* Lignes du formulaire : catalogue actuel + (en modification) lignes de l'entrée, avec leur montant figé */
+function etsyFormItemsFor(entry){
+  const list = asblCatalogItems();
+  if(entry){
+    (entry.items||[]).forEach(it=>{
+      const i = list.findIndex(x=>x.name===it.name);
+      if(i>=0) list[i] = {...list[i], unit: it.unit};
+      else list.push({name:it.name, label:it.label||it.name, unit:it.unit});
+    });
+  }
+  return list;
+}
+function renderEtsyForm(entry){
+  const box = document.getElementById('etsy-items');
+  if(!box) return;
+  etsyEditId = entry ? entry.id : null;
+  etsyFormItems = etsyFormItemsFor(entry);
+  box.innerHTML = etsyFormItems.length ? etsyFormItems.map((it,i)=>{
+    const found = entry ? (entry.items||[]).find(x=>x.name===it.name) : null;
+    const q = found ? found.qty : '';
+    return `<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+      <div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:500">${esc(it.label)}</div><div style="font-size:12px;color:var(--muted)">${euro(it.unit)} reversés / pièce</div></div>
+      <input type="number" inputmode="numeric" min="0" step="1" id="etsy-q-${i}" value="${q}" placeholder="0" oninput="etsyUpdatePreview()" style="width:90px;padding:11px;border:1.5px solid var(--line);border-radius:10px;font-size:15px;text-align:center">
+    </div>`;
+  }).join('') : `<p style="font-size:13px;color:var(--muted);margin-bottom:10px">Aucun article avec reversement ASBL dans le catalogue. Renseigne le « Reversement ASBL » dans l'admin, puis appuie sur 🔄.</p>`;
+  document.getElementById('etsy-date').value = entry ? entry.date : todayStr();
+  document.getElementById('etsy-montant').value = (entry && entry.montant>0) ? entry.montant : '';
+  document.getElementById('etsy-form-title').textContent = entry ? 'Modifier la vente Etsy' : 'Nouvelle vente Etsy';
+  document.getElementById('etsy-save-btn').textContent = entry ? 'Mettre à jour' : 'Enregistrer';
+  document.getElementById('etsy-cancel-btn').style.display = entry ? 'block' : 'none';
+  window.etsyUpdatePreview();
+}
+function etsyCollectItems(){
+  return etsyFormItems.map((it,i)=>{
+    const el = document.getElementById('etsy-q-'+i);
+    return {name:it.name, label:it.label, unit:it.unit, qty: el ? (parseInt(el.value,10)||0) : 0};
+  }).filter(it=>it.qty>0);
+}
+window.etsyUpdatePreview = function(){
+  const pv = document.getElementById('etsy-rev-preview');
+  if(pv) pv.innerHTML = `🐾 Reversement ${ASBL_NAME} : <b>${euro(etsyReversement({items:etsyCollectItems()}))}</b>`;
+};
+window.saveEtsyEntry = function(){
+  const date = document.getElementById('etsy-date').value || todayStr();
+  const items = etsyCollectItems();
+  if(!items.length){ toast('Indique au moins une peluche vendue'); return; }
+  const mRaw = parseFloat(String(document.getElementById('etsy-montant').value).replace(',','.'));
+  const montant = (mRaw>0) ? Math.round(mRaw*100)/100 : null;
+  const entry = {id: etsyEditId || ('e'+Date.now().toString(36)+Math.random().toString(36).slice(2,6)), date, items, montant};
+  const i = etsyEditId ? state.etsy.findIndex(x=>x.id===etsyEditId) : -1;
+  const wasEdit = i>=0;
+  if(wasEdit) state.etsy[i] = entry; else state.etsy.push(entry);
+  save(); saveEtsy('upsert', entry);
+  renderEtsyForm(); renderAll();
+  toast(wasEdit ? '✓ Vente Etsy mise à jour' : '✓ Vente Etsy enregistrée — reversement '+euro(etsyReversement(entry)));
+};
+window.editEtsyEntry = function(id){
+  const e = state.etsy.find(x=>x.id===id);
+  if(!e) return;
+  renderEtsyForm(e); window.scrollTo(0,0);
+};
+window.cancelEtsyEdit = function(){ renderEtsyForm(); };
+window.deleteEtsyEntry = function(id){
+  const e = state.etsy.find(x=>x.id===id);
+  if(!e) return;
+  if(!confirm(`Supprimer cette vente Etsy du ${etsyDateLbl(e.date)} ?\n\n${etsyItemsLabel(e)}\nReversement concerné : ${euro(etsyReversement(e))}`)) return;
+  state.etsy = state.etsy.filter(x=>x.id!==id);
+  save(); saveEtsy('delete', id);
+  if(etsyEditId===id) renderEtsyForm();
+  renderAll(); toast('Vente Etsy supprimée');
+};
+function renderEtsyList(){
+  const sum = document.getElementById('etsy-summary'), box = document.getElementById('etsy-list');
+  if(!sum || !box) return;
+  const entries = (state.etsy||[]).slice().sort((a,b)=>b.date.localeCompare(a.date));
+  const cm = todayStr().slice(0,7);
+  const cur = entries.filter(e=>e.date.startsWith(cm));
+  sum.innerHTML = `<div class="card">
+    <div class="big-total"><div class="k">Vente Etsy — ${monthLabel(cm)}</div><div class="v">${euro(etsyMonthAmount(cm))}</div></div>
+    <div class="summary">
+      <div class="s"><div class="k">À reverser (Etsy)</div><div class="v">${euro(etsyBreakdown(cur).total)}</div></div>
+      <div class="s"><div class="k">Saisies</div><div class="v">${cur.length}</div></div>
+    </div></div>`;
+  if(!entries.length){
+    box.innerHTML = `<div class="card"><p style="color:var(--muted);text-align:center;margin:6px 0">Aucune vente Etsy enregistrée pour l'instant.</p></div>`;
+    return;
+  }
+  const byMonth = {};
+  entries.forEach(e=>(byMonth[e.date.slice(0,7)] = byMonth[e.date.slice(0,7)] || []).push(e));
+  const btnS = 'width:auto;padding:5px 9px;font-size:12px';
+  box.innerHTML = Object.keys(byMonth).sort().reverse().map(m=>{
+    const list = byMonth[m];
+    const rows = list.map(e=>`<div style="padding:8px 0;border-bottom:1px dashed var(--line)">
+        <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center">
+          <span style="font-size:13px"><b>${etsyDateLbl(e.date)}</b> · ${esc(etsyItemsLabel(e))}</span>
+          <span style="display:flex;gap:6px"><button class="btn btn-outline" style="${btnS}" onclick="editEtsyEntry('${e.id}')">✏️</button><button class="btn btn-outline" style="${btnS}" onclick="deleteEtsyEntry('${e.id}')">🗑</button></span>
+        </div>
+        <div style="font-size:12px;color:var(--muted);margin-top:2px">Encaissé : ${e.montant>0 ? euro(e.montant) : '—'} · À reverser : <b style="color:#2e7d5b">${euro(etsyReversement(e))}</b></div>
+      </div>`).join('');
+    return `<div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:6px;margin-bottom:4px">
+        <h3 style="font-size:19px;margin:0">${monthLabel(m)}</h3>
+        <span style="font-size:13px;color:var(--muted)">Encaissé ${euro(etsyMonthAmount(m))} · À reverser <b>${euro(etsyBreakdown(list).total)}</b></span>
+      </div>${rows}</div>`;
+  }).join('');
+}
+/* Bloc « Ventes Etsy » du journal, sur la période affichée */
+function renderJournalEtsy(entries){
+  const wrap = document.getElementById('jr-etsy-wrap'), list = document.getElementById('jr-etsy-list');
+  if(!wrap || !list) return;
+  if(!entries.length){ wrap.classList.add('hidden'); list.innerHTML = ''; return; }
+  wrap.classList.remove('hidden');
+  const enc = entries.reduce((a,e)=>a+(e.montant>0?e.montant:0),0);
+  list.innerHTML = entries.slice().sort((a,b)=>a.date.localeCompare(b.date)).map(e=>`<div style="display:flex;justify-content:space-between;gap:8px;padding:7px 0;border-bottom:1px dashed var(--line);font-size:13px"><span><b>${etsyDateLbl(e.date)}</b> · ${esc(etsyItemsLabel(e))}</span><span style="text-align:right;white-space:nowrap">${e.montant>0 ? euro(e.montant) : '—'}<br><small style="color:#2e7d5b">🐾 ${euro(etsyReversement(e))}</small></span></div>`).join('')
+    + `<div style="display:flex;justify-content:space-between;font-weight:600;font-size:14px;padding-top:8px"><span>Total Etsy</span><span>${euro(enc)} · 🐾 ${euro(etsyBreakdown(entries).total)}</span></div>`;
+}
+
 /* Versements enregistrés pour un mois : [{amount, date, rows:[{name,unit,qty,total}]}] (compat ancien format {paid,paidAt}) */
 function asblPayments(month){
   const p = state.asblPayouts[month];
@@ -2559,7 +2774,11 @@ function renderAsbl(){
     if(paidAmt>0 && reste<=0) badge = `<span style="background:#e6f4ea;color:#2e9e6b;padding:3px 10px;border-radius:99px;font-size:12px;font-weight:600">✓ Versé</span>`;
     else if(paidAmt>0) badge = `<span style="background:#fdf3e6;color:#a15c00;padding:3px 10px;border-radius:99px;font-size:12px;font-weight:600">Partiel — reste ${euro(reste)}</span>`;
     else badge = `<span style="background:#fdeaea;color:#c0475e;padding:3px 10px;border-radius:99px;font-size:12px;font-weight:600">À verser</span>`;
-    const lines = m.rows.map(r=>`<div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0;border-bottom:1px dashed var(--line)"><span>${esc(r.name)} <span style="color:var(--muted)">×${r.qty} · ${euro(r.unit)}</span></span><b>${euro(r.total)}</b></div>`).join('');
+    const rowHTML = r=>`<div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0;border-bottom:1px dashed var(--line)"><span>${esc(r.name)} <span style="color:var(--muted)">×${r.qty} · ${euro(r.unit)}</span></span><b>${euro(r.total)}</b></div>`;
+    const sect = (title, rows, sub)=>`<div style="font-size:11px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;color:var(--violet);margin:8px 0 2px">${title}</div>`
+      + (rows.length ? rows.map(rowHTML).join('') : `<div style="font-size:13px;color:var(--muted);padding:4px 0;border-bottom:1px dashed var(--line)">Aucune vente</div>`)
+      + `<div style="display:flex;justify-content:space-between;font-size:13px;font-weight:600;padding:5px 0 2px"><span>Sous-total</span><span>${euro(sub)}</span></div>`;
+    const lines = sect('Vente comptoir (marchés)', m.marketRows, m.marketTotal) + sect('Vente Etsy', m.etsyRows, m.etsyTotal);
     const payLines = payments.map((p,i)=>`<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;padding:6px 0;border-bottom:1px dashed var(--line)">
         <span style="font-size:13px">✓ Versé le ${esc((p.date||'').split('-').reverse().join('/'))} · <b>${euro(p.amount)}</b></span>
         <span style="display:flex;gap:6px;flex-wrap:wrap">
@@ -2576,7 +2795,7 @@ function renderAsbl(){
         <h3 style="font-size:19px;margin:0">${monthLabel(m.month)}</h3>${badge}
       </div>
       ${lines}
-      <div style="display:flex;justify-content:space-between;font-size:15px;font-weight:700;margin:8px 0 10px"><span>Total du mois</span><span>${euro(m.total)}</span></div>
+      <div style="display:flex;justify-content:space-between;font-size:15px;font-weight:700;margin:8px 0 10px"><span>Total du mois à verser</span><span>${euro(m.total)}</span></div>
       ${payLines}
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">${actions}</div>
     </div>`;
@@ -2917,7 +3136,7 @@ window.setJournalFilter = function(f){
 /* Remplit le menu déroulant "Mois" du Journal avec tous les mois où il y a eu des ventes */
 function populateJournalMonthSelect(){
   const sel = document.getElementById('jr-month-select');
-  const months = [...new Set(state.sales.map(s=>s.date.slice(0,7)))].sort().reverse();
+  const months = [...new Set(state.sales.map(s=>s.date.slice(0,7)).concat((state.etsy||[]).map(e=>e.date.slice(0,7))))].sort().reverse();
   const prev = sel.value;
   sel.innerHTML = months.map(m=>`<option value="${m}">${monthLabel(m)}</option>`).join('');
   if(months.includes(prev)) sel.value = prev;
@@ -2960,6 +3179,28 @@ function getFilteredSales(){
   return all.filter(s=>!s.cancelled);
 }
 
+/* Filtre de date du journal sous forme de prédicat (même logique que les ventes) — utilisé pour Etsy */
+function journalPeriodPred(){
+  const today = journalDate || todayStr();
+  if(journalFilter==='day') return d=>d===today;
+  if(journalFilter==='week'){
+    const dt = new Date(today); const dow = dt.getDay();
+    dt.setDate(dt.getDate() + (dow===0 ? -6 : 1-dow));
+    const start = dt.toISOString().slice(0,10);
+    dt.setDate(dt.getDate()+6);
+    const end = dt.toISOString().slice(0,10);
+    return d=>d>=start && d<=end;
+  }
+  if(journalFilter==='month'){ const mo = today.slice(0,7); return d=>d.startsWith(mo); }
+  if(journalFilter==='range' && journalRangeStart && journalRangeEnd){
+    const a = journalRangeStart<=journalRangeEnd ? journalRangeStart : journalRangeEnd;
+    const b = journalRangeStart<=journalRangeEnd ? journalRangeEnd : journalRangeStart;
+    return d=>d>=a && d<=b;
+  }
+  return ()=>true;
+}
+function getFilteredEtsy(){ const pred = journalPeriodPred(); return (state.etsy||[]).filter(e=>pred(e.date)); }
+
 function renderJournal(){
   const s = getFilteredSales();
   const allSales = state.sales.filter(x=>journalFilter==='day' ? x.date===(journalDate||todayStr()) : true);
@@ -2996,8 +3237,14 @@ function renderJournal(){
   document.getElementById('jr-cash').textContent = euro(theoreticalCash());
   const jrAsbl = document.getElementById('jr-asbl');
   const asblBd = asblBreakdown(s);
-  if(asblBd.total>0){ jrAsbl.style.display='flex'; jrAsbl.innerHTML = `<span>🐾 À reverser à ${ASBL_NAME}</span><b>${euro(asblBd.total)}</b>`; }
-  else { jrAsbl.style.display='none'; jrAsbl.innerHTML=''; }
+  const etsyE = getFilteredEtsy();
+  const etsyBd = etsyBreakdown(etsyE);
+  const asblSum = asblBd.total + etsyBd.total;
+  if(asblSum>0){
+    jrAsbl.style.display='flex';
+    jrAsbl.innerHTML = `<span>🐾 À reverser à ${ASBL_NAME}${etsyBd.total>0 ? `<br><small style="color:var(--muted)">comptoir ${euro(asblBd.total)} + Etsy ${euro(etsyBd.total)}</small>` : ''}</span><b>${euro(asblSum)}</b>`;
+  } else { jrAsbl.style.display='none'; jrAsbl.innerHTML=''; }
+  renderJournalEtsy(etsyE);
 
   // tickets list (all including cancelled for the filter)
   const filtered = journalFilter==='day'
@@ -3505,6 +3752,7 @@ function buildJournalHTML(marcheFilter){
   const totalIn = mvs.filter(m=>m.type==='in').reduce((a,m)=>a+m.amount,0);
   const totalOut = mvs.filter(m=>m.type==='out').reduce((a,m)=>a+m.amount,0);
   const dateLabel = document.getElementById('journal-date').textContent + (marcheFilter ? ' — ' + marcheFilter : '');
+  const etsyE = marcheFilter ? [] : getFilteredEtsy(); // Etsy : hors caisse, absent des PDF par marché
 
   // Grouper les ventes par marché
   const groupes = [];
@@ -3569,7 +3817,7 @@ function buildJournalHTML(marcheFilter){
           if(bd.mollie_be.amount>0) h+=`<div class="jh-kpi fee"><b>−${euro(bd.mollie_be.commission)}</b><span>Commission Mollie Belge</span></div>`;
           if(bd.mollie_intl.amount>0) h+=`<div class="jh-kpi fee"><b>−${euro(bd.mollie_intl.commission)}</b><span>Commission Mollie Étrangère</span></div>`;
           return h; })()}
-        ${(()=>{ const a=asblBreakdown(s); return a.total>0 ? `<div class="jh-kpi asbl"><b>${euro(a.total)}</b><span>À reverser ${ASBL_NAME}</span></div>` : ''; })()}
+        ${(()=>{ const t=asblBreakdown(s).total+etsyBreakdown(etsyE).total; return t>0 ? `<div class="jh-kpi asbl"><b>${euro(t)}</b><span>À reverser ${ASBL_NAME}</span></div>` : ''; })()}
       </div>
       <div class="jh-sect">Ventes</div>`;
 
@@ -3600,6 +3848,18 @@ function buildJournalHTML(marcheFilter){
     html+='</tbody></table>';
   });
   if(s.length===0) html+='<p class="jh-empty">Aucune vente</p>';
+
+  // Ventes Etsy (hors caisse)
+  if(etsyE.length>0){
+    const encaisse = etsyE.reduce((a,e)=>a+(e.montant>0?e.montant:0),0);
+    html+=`<div class="jh-sect">Ventes Etsy <span style="font-size:13px;color:#777;font-weight:400">(hors caisse — pour info)</span></div>
+    <table class="jh-table"><thead><tr><th>Date</th><th>Articles</th><th class="r">Encaissé</th><th class="r">À reverser</th></tr></thead><tbody>`;
+    etsyE.slice().sort((a,b)=>a.date.localeCompare(b.date)).forEach(e=>{
+      html+=`<tr><td>${etsyDateLbl(e.date)}</td><td>${esc(etsyItemsLabel(e))}</td><td class="r">${e.montant>0 ? euro(e.montant) : '—'}</td><td class="r b">${euro(etsyReversement(e))}</td></tr>`;
+    });
+    html+=`</tbody></table>
+    <div class="jh-tot"><span>Total Etsy encaissé : ${euro(encaisse)}</span><span class="jh-plus">À reverser : ${euro(etsyBreakdown(etsyE).total)}</span></div>`;
+  }
 
   // Mouvements
   if(mvs.length>0){
@@ -3883,6 +4143,12 @@ window.exportCSV = function(){
   rows.push(["Entrées","","","","","",sumIn().toFixed(2).replace('.',','),""]);
   rows.push(["Sorties","","","","","",sumOut().toFixed(2).replace('.',','),""]);
   rows.push(["Espèces théoriques","","","","","",theoreticalCash().toFixed(2).replace('.',','),""]);
+  if((state.etsy||[]).length){
+    rows.push([]);
+    state.etsy.slice().sort((a,b)=>a.date.localeCompare(b.date)).forEach(e=>{
+      rows.push(["ETSY (hors caisse)", etsyDateLbl(e.date), "", etsyItemsLabel(e), "", "", (e.montant>0?e.montant:0).toFixed(2).replace('.',','), "Etsy", etsyReversement(e).toFixed(2).replace('.',',')]);
+    });
+  }
   const csv = rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(';')).join('\n');
   const blob = new Blob(["\ufeff"+csv],{type:'text/csv;charset=utf-8'});
   const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
@@ -4388,6 +4654,7 @@ window.resetAll = async function(){
   for(const m of state.movements) await deleteMovementFB(m.id).catch(()=>{});
   for(const m of Object.keys(state.asblPayouts||{})) await saveAsblPayout(m, {payments:[]});
   state.asblPayouts = {};
+  state.etsy = []; await saveEtsy('clear');
   state.day = todayStr(); state.sales = []; state.movements = [];
   state.fond = 0; state.ticketCounter = TICKET_START - 1;
   countQty = {}; save(); await saveConfig(); initDenoms(); renderAll();
@@ -4401,6 +4668,8 @@ function renderHeaderKPIs(){
   document.getElementById('hdr-cash').textContent = euro(sumCashSales(d));
   document.getElementById('hdr-qr').textContent = euro(sumQRSales(d));
   document.getElementById('hdr-sumup').textContent = euro(sumCarteSales(d));
+  const hEtsy = document.getElementById('hdr-etsy');
+  if(hEtsy) hEtsy.textContent = euro(etsyMonthAmount(todayStr().slice(0,7)));
   // CA nav
   const navCA = document.getElementById('nav-ca-val');
   if(navCA){
@@ -5037,7 +5306,7 @@ window.printStatsBank = function(mode){
 function renderAll(){
   renderProdGrid(); renderCart(); renderCaisse();
   renderMovements(); renderJournal(); renderHeaderKPIs();
-  updateCountTotals(); renderAsbl();
+  updateCountTotals(); renderAsbl(); renderEtsyList();
 }
 
 /* Fermeture overlays en cliquant sur le fond */
