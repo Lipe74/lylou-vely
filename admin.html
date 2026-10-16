@@ -125,6 +125,8 @@
     .iframe-wrap{height:calc(100vh - 210px)}
   }
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 </head>
 <body>
 
@@ -153,6 +155,7 @@
     <button class="nav-item" data-panel="avis" onclick="window.showPanel('avis')"><span class="ic">⭐</span> Avis Google</button>
     <button class="nav-item" data-panel="fidelite" onclick="window.showPanel('fidelite')"><span class="ic">💎</span> Fidélité</button>
     <button class="nav-item" data-panel="caisse" onclick="window.showPanel('caisse')"><span class="ic">🛒</span> Caisse</button>
+    <button class="nav-item" data-panel="etsy" onclick="window.showPanel('etsy')"><span class="ic">📄</span> Etsy → PDF</button>
 
     <div class="sidebar-foot">
       <button class="logout-btn" onclick="window.doLogout()">↩ Déconnexion</button>
@@ -426,6 +429,45 @@
       <div class="panel-title">Caisse</div>
       <div class="panel-sub">Ventes, paiements, journal, clôture Z</div>
       <div class="iframe-wrap"><iframe id="iframe-caisse" src="" loading="lazy"></iframe></div>
+    </div>
+
+    <!-- PANEL ETSY PDF -->
+    <div class="panel" id="panel-etsy">
+      <div class="panel-title">Etsy → Justificatif PDF</div>
+      <div class="panel-sub">Convertit un relevé CSV Etsy en document PDF à joindre dans Billit</div>
+
+      <div class="card">
+        <h3>Importer le relevé Etsy</h3>
+        <div class="form-group">
+          <label>Fichier CSV Etsy (relevé mensuel téléchargé depuis Etsy)</label>
+          <input type="file" id="etsy-csv-input" accept=".csv" onchange="window.parseEtsyCSV(event)">
+        </div>
+        <div id="etsy-preview" style="display:none">
+          <div id="etsy-period" style="font-size:13px;color:var(--muted);margin-bottom:14px;padding:10px 14px;background:var(--violet-wash);border-radius:10px"></div>
+          <div style="overflow-x:auto">
+            <table style="width:100%;border-collapse:collapse;font-size:13px">
+              <thead>
+                <tr style="border-bottom:2px solid var(--line)">
+                  <th style="text-align:left;padding:8px 6px;color:var(--muted);font-weight:600;font-size:11px;letter-spacing:.4px;text-transform:uppercase">Date</th>
+                  <th style="text-align:left;padding:8px 6px;color:var(--muted);font-weight:600;font-size:11px;letter-spacing:.4px;text-transform:uppercase">Type</th>
+                  <th style="text-align:left;padding:8px 6px;color:var(--muted);font-weight:600;font-size:11px;letter-spacing:.4px;text-transform:uppercase">Description</th>
+                  <th style="text-align:right;padding:8px 6px;color:var(--muted);font-weight:600;font-size:11px;letter-spacing:.4px;text-transform:uppercase">Net</th>
+                </tr>
+              </thead>
+              <tbody id="etsy-table-body"></tbody>
+              <tfoot>
+                <tr style="border-top:2px solid var(--line)">
+                  <td colspan="3" style="padding:10px 6px;font-weight:700;color:var(--violet-d)">Total frais nets</td>
+                  <td id="etsy-total" style="padding:10px 6px;text-align:right;font-weight:700;font-size:15px"></td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+          <div class="btn-row" style="margin-top:18px">
+            <button class="btn btn-primary" onclick="window.generateEtsyPDF()">📥 Générer le PDF pour Billit</button>
+          </div>
+        </div>
+      </div>
     </div>
 
   </div>
@@ -1323,6 +1365,208 @@ onSnapshot(query(avisCol, orderBy("date","desc")), snap=>{
 window.updateMarcheTypeFields();
 document.getElementById('avis-date').value = new Date().toISOString().slice(0,10);
 document.getElementById('marche-photo').value = 'images/marches.png';
+</script>
+
+<script>
+/* ========== Etsy CSV → PDF Billit ========== */
+let etsyData = [];
+
+function parseCSVLine(line) {
+  const result = [];
+  let current = '';
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (ch === '"') { inQuotes = !inQuotes; }
+    else if (ch === ',' && !inQuotes) { result.push(current.trim()); current = ''; }
+    else { current += ch; }
+  }
+  result.push(current.trim());
+  return result;
+}
+
+function parseEuroAmt(str) {
+  if (!str || str === '--') return null;
+  const clean = str.replace(/€/g, '').replace(',', '.').trim();
+  return parseFloat(clean);
+}
+
+function fmtEuro(val) {
+  if (val === null) return '—';
+  return (val >= 0 ? '+' : '') + val.toFixed(2).replace('.', ',') + ' €';
+}
+
+window.parseEtsyCSV = function(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const lines = e.target.result.split('\n').filter(l => l.trim());
+    if (lines.length < 2) return;
+    etsyData = [];
+    for (let i = 1; i < lines.length; i++) {
+      const c = parseCSVLine(lines[i]);
+      if (c.length < 5) continue;
+      etsyData.push({ date: c[0]||'', type: c[1]||'', titre: c[2]||'', info: c[3]||'', devise: c[4]||'EUR', montant: parseEuroAmt(c[5]), frais: parseEuroAmt(c[6]), net: parseEuroAmt(c[7]) });
+    }
+    renderEtsyPreview();
+  };
+  reader.readAsText(file, 'UTF-8');
+};
+
+function renderEtsyPreview() {
+  if (!etsyData.length) return;
+  const dates = etsyData.map(r => r.date).filter(Boolean);
+  document.getElementById('etsy-period').innerHTML = `<b>Période détectée :</b> ${dates[dates.length-1] || ''} → ${dates[0] || ''} &nbsp;·&nbsp; <b>${etsyData.length}</b> transactions`;
+
+  const tbody = document.getElementById('etsy-table-body');
+  tbody.innerHTML = '';
+  let total = 0;
+  etsyData.forEach(row => {
+    const net = row.net;
+    if (net !== null) total += net;
+    const color = net !== null && net < 0 ? 'color:var(--red)' : net !== null && net > 0 ? 'color:var(--green)' : '';
+    const tr = document.createElement('tr');
+    tr.style.borderBottom = '1px solid #f0edf7';
+    tr.innerHTML = `
+      <td style="padding:8px 6px;white-space:nowrap">${row.date}</td>
+      <td style="padding:8px 6px"><span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;background:var(--violet-wash);color:var(--violet)">${row.type}</span></td>
+      <td style="padding:8px 6px">${row.titre}${row.info ? '<br><span style="font-size:11px;color:#aaa">'+row.info+'</span>' : ''}</td>
+      <td style="padding:8px 6px;text-align:right;font-weight:600;${color}">${fmtEuro(net)}</td>`;
+    tbody.appendChild(tr);
+  });
+  const totEl = document.getElementById('etsy-total');
+  totEl.textContent = fmtEuro(total);
+  totEl.style.color = total < 0 ? 'var(--red)' : 'var(--green)';
+  document.getElementById('etsy-preview').style.display = 'block';
+}
+
+window.generateEtsyPDF = function() {
+  if (!etsyData.length || !window.jspdf) { alert('jsPDF non chargé — recharge la page et réessaie.'); return; }
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
+  const V  = [107, 63, 160];
+  const VL = [243, 238, 255];
+  const DK = [44, 34, 51];
+  const MU = [140, 128, 155];
+  const RD = [192, 71, 94];
+  const GR = [26, 143, 94];
+
+  /* period label */
+  const MONTH_FR = { January:'Janvier',February:'Février',March:'Mars',April:'Avril',May:'Mai',June:'Juin',July:'Juillet',August:'Août',September:'Septembre',October:'Octobre',November:'Novembre',December:'Décembre' };
+  const dates = etsyData.map(r => r.date).filter(Boolean);
+  let periodLabel = 'Relevé';
+  if (dates.length) {
+    const p = dates[0].split(' ');
+    if (p.length >= 3) periodLabel = (MONTH_FR[p[1]]||p[1]) + ' ' + p[2];
+  }
+  const periodRange = dates.length ? `${dates[dates.length-1]} – ${dates[0]}` : periodLabel;
+  const today = new Date().toLocaleDateString('fr-BE');
+  const refNum = 'ETSY-' + new Date().getFullYear() + '-' + String(new Date().getMonth()+1).padStart(2,'0');
+
+  /* ─── Header band ─── */
+  doc.setFillColor(...V);
+  doc.rect(0, 0, 210, 38, 'F');
+
+  doc.setTextColor(255,255,255);
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(22);
+  doc.text('Lylou-Vely', 20, 17);
+  doc.setFont('helvetica','normal');
+  doc.setFontSize(9.5);
+  doc.text('Note de frais fournisseur — Etsy', 20, 25);
+  doc.setFontSize(8);
+  doc.setTextColor(255,255,255,180);
+  doc.text('ZEN CONNECT SRL', 20, 32);
+
+  /* period badge */
+  doc.setFillColor(255,255,255);
+  doc.roundedRect(136, 11, 58, 16, 3, 3, 'F');
+  doc.setTextColor(...V);
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(11);
+  doc.text(periodLabel, 165, 20.5, { align:'center' });
+
+  /* ─── Info blocks ─── */
+  let y = 50;
+  /* Fournisseur */
+  doc.setFillColor(...VL);
+  doc.roundedRect(14, y, 86, 42, 3, 3, 'F');
+  doc.setFont('helvetica','bold'); doc.setFontSize(7.5); doc.setTextColor(...V);
+  doc.text('FOURNISSEUR', 20, y+8);
+  doc.setFont('helvetica','bold'); doc.setFontSize(10); doc.setTextColor(...DK);
+  doc.text('Etsy Ireland UC', 20, y+16);
+  doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(...MU);
+  doc.text('66/67 Great Strand Street', 20, y+23);
+  doc.text('Dublin 1, D01 Y8W6 — Irlande', 20, y+29);
+  doc.text('N° TVA UE : EU372026406', 20, y+35);
+
+  /* Acheteur */
+  doc.setFillColor(...VL);
+  doc.roundedRect(110, y, 86, 42, 3, 3, 'F');
+  doc.setFont('helvetica','bold'); doc.setFontSize(7.5); doc.setTextColor(...V);
+  doc.text('ACHETEUR', 116, y+8);
+  doc.setFont('helvetica','bold'); doc.setFontSize(10); doc.setTextColor(...DK);
+  doc.text('Lylou-Vely', 116, y+16);
+  doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(...MU);
+  doc.text('ZEN CONNECT SRL', 116, y+23);
+  doc.text('infos@lylou-vely.be', 116, y+29);
+  doc.text('Belgique', 116, y+35);
+
+  /* ─── Meta ligne ─── */
+  y = 101;
+  doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(...MU);
+  doc.text(`Réf. : ${refNum}   ·   Période : ${periodRange}   ·   Généré le ${today}`, 14, y);
+
+  /* ─── Table ─── */
+  let total = 0;
+  etsyData.forEach(r => { if (r.net !== null) total += r.net; });
+
+  const rows = etsyData.map(r => [
+    r.date,
+    r.type,
+    r.titre + (r.info ? '\n' + r.info : ''),
+    r.net !== null ? fmtEuro(r.net) : '—'
+  ]);
+
+  doc.autoTable({
+    startY: y + 8,
+    head: [['Date', 'Type', 'Description', 'Net (EUR)']],
+    body: rows,
+    foot: [[
+      { content:'', colSpan:2, styles:{ fillColor:VL } },
+      { content:'TOTAL FRAIS NETS', styles:{ fontStyle:'bold', fillColor:VL, textColor:V } },
+      { content: fmtEuro(total), styles:{ fontStyle:'bold', fillColor:VL, textColor: total<0?RD:GR, halign:'right' } }
+    ]],
+    margin: { left:14, right:14 },
+    styles: { font:'helvetica', fontSize:8.5, textColor:DK, cellPadding:4 },
+    headStyles: { fillColor:V, textColor:[255,255,255], fontStyle:'bold', fontSize:8 },
+    footStyles: { fontSize:9.5 },
+    columnStyles: {
+      0: { cellWidth:32, valign:'top' },
+      1: { cellWidth:22, valign:'top' },
+      2: { cellWidth:104, valign:'top' },
+      3: { cellWidth:24, halign:'right', fontStyle:'bold', valign:'top' }
+    },
+    alternateRowStyles: { fillColor:[251,249,254] },
+    didParseCell: function(data) {
+      if (data.section === 'body' && data.column.index === 3) {
+        const raw = String(data.cell.raw||'').replace(/ €/,'').replace(',','.').replace('+','');
+        const v = parseFloat(raw);
+        if (!isNaN(v)) data.cell.styles.textColor = v < 0 ? RD : GR;
+      }
+    }
+  });
+
+  /* ─── Footer note ─── */
+  const fy = doc.lastAutoTable.finalY + 10;
+  doc.setFontSize(7.5); doc.setTextColor(...MU); doc.setFont('helvetica','italic');
+  doc.text('Document généré depuis le relevé CSV Etsy — justificatif comptable à joindre dans Billit.', 14, fy);
+  doc.text('Frais facturés par Etsy Ireland UC à Lylou-Vely (ZEN CONNECT SRL) pour la période indiquée.', 14, fy+5);
+
+  doc.save(`lylou-vely_frais_etsy_${refNum.toLowerCase()}.pdf`);
+};
 </script>
 </body>
 </html>
