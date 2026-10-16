@@ -160,7 +160,7 @@
 
     <div class="sidebar-foot">
       <button class="logout-btn" onclick="window.doLogout()">↩ Déconnexion</button>
-      <div style="text-align:center;margin-top:10px;font-size:10px;opacity:.5;letter-spacing:.5px">Build 3.6</div>
+      <div style="text-align:center;margin-top:10px;font-size:10px;opacity:.5;letter-spacing:.5px">Build 3.8</div>
     </div>
   </div>
 
@@ -459,7 +459,7 @@
               <tbody id="etsy-table-body"></tbody>
               <tfoot>
                 <tr style="border-top:2px solid var(--line)">
-                  <td colspan="3" style="padding:10px 6px;font-weight:700;color:var(--violet-d)">Total frais nets</td>
+                  <td colspan="3" style="padding:10px 6px;font-weight:700;color:var(--violet-d)">Total payé</td>
                   <td id="etsy-total" style="padding:10px 6px;text-align:right;font-weight:700;font-size:15px"></td>
                 </tr>
               </tfoot>
@@ -1491,7 +1491,7 @@ function renderEtsyPreview() {
   etsyData.forEach(row => {
     const net = row.net;
     const isPayment = row.type === 'Payment';
-    if (net !== null && !isPayment) total += net;
+    if (net !== null && isPayment) total += net;
     const color = net !== null && net < 0 ? 'color:var(--red)' : net !== null && net > 0 ? 'color:var(--green)' : '';
     const tr = document.createElement('tr');
     tr.style.borderBottom = '1px solid #f0edf7';
@@ -1504,8 +1504,8 @@ function renderEtsyPreview() {
     tbody.appendChild(tr);
   });
   const totEl = document.getElementById('etsy-total');
-  totEl.textContent = fmtEuro(total);
-  totEl.style.color = total < 0 ? 'var(--red)' : 'var(--green)';
+  totEl.textContent = total.toFixed(2).replace('.',',') + ' €';
+  totEl.style.color = 'var(--red)';
   document.getElementById('etsy-preview').style.display = 'block';
 }
 
@@ -1589,7 +1589,7 @@ window.generateEtsyPDF = function() {
 
   /* ─── Table ─── */
   let total = 0;
-  etsyData.forEach(r => { if (r.net !== null && r.type !== 'Payment') total += r.net; });
+  etsyData.forEach(r => { if (r.net !== null && r.type === 'Payment') total += r.net; });
 
   const rows = etsyData.map(r => [
     r.date,
@@ -1604,8 +1604,8 @@ window.generateEtsyPDF = function() {
     body: rows,
     foot: [[
       { content:'', colSpan:2, styles:{ fillColor:VL } },
-      { content:'TOTAL FRAIS NETS', styles:{ fontStyle:'bold', fillColor:VL, textColor:V } },
-      { content: fmtEuro(total), styles:{ fontStyle:'bold', fillColor:VL, textColor: total<0?RD:GR, halign:'right' } }
+      { content:'TOTAL PAYÉ', styles:{ fontStyle:'bold', fillColor:VL, textColor:V } },
+      { content: total.toFixed(2).replace('.',',') + ' €', styles:{ fontStyle:'bold', fillColor:VL, textColor:RD, halign:'right' } }
     ]],
     margin: { left:14, right:14 },
     styles: { font:'helvetica', fontSize:8.5, textColor:DK, cellPadding:4 },
