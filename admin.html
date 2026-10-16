@@ -156,10 +156,11 @@
     <button class="nav-item" data-panel="fidelite" onclick="window.showPanel('fidelite')"><span class="ic">💎</span> Fidélité</button>
     <button class="nav-item" data-panel="caisse" onclick="window.showPanel('caisse')"><span class="ic">🛒</span> Caisse</button>
     <button class="nav-item" data-panel="etsy" onclick="window.showPanel('etsy')"><span class="ic">📄</span> Etsy → PDF</button>
+    <button class="nav-item" data-panel="notedfrais" onclick="window.showPanel('notedfrais')"><span class="ic">🧾</span> Note de frais</button>
 
     <div class="sidebar-foot">
       <button class="logout-btn" onclick="window.doLogout()">↩ Déconnexion</button>
-      <div style="text-align:center;margin-top:10px;font-size:10px;opacity:.5;letter-spacing:.5px">Build 3.5</div>
+      <div style="text-align:center;margin-top:10px;font-size:10px;opacity:.5;letter-spacing:.5px">Build 3.6</div>
     </div>
   </div>
 
@@ -468,6 +469,70 @@
             <button class="btn btn-primary" onclick="window.generateEtsyPDF()">📥 Générer le PDF pour Billit</button>
           </div>
         </div>
+      </div>
+    </div>
+
+    <!-- PANEL NOTE DE FRAIS ZEN CONNECT -->
+    <div class="panel" id="panel-notedfrais">
+      <div class="panel-title">Note de frais</div>
+      <div class="panel-sub">Génère un justificatif PDF pour une dépense sans facture officielle — Amazon, AXA, abonnements…</div>
+
+      <div class="card">
+        <h3>Document source (optionnel)</h3>
+        <div class="form-group">
+          <label>Importer une image, PDF ou CSV (bon de commande, capture, relevé…)</label>
+          <input type="file" id="ndf-file" accept="image/*,.pdf,.csv" onchange="window.ndfLoadFile(event)" style="margin-bottom:10px">
+        </div>
+        <div id="ndf-file-preview" style="display:none;margin-top:10px"></div>
+      </div>
+
+      <div class="card">
+        <h3>Fournisseur</h3>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Nom du fournisseur *</label>
+            <input type="text" id="ndf-fournisseur" class="form-input" placeholder="ex: Amazon, AXA, …">
+          </div>
+          <div class="form-group">
+            <label>N° TVA (optionnel)</label>
+            <input type="text" id="ndf-tva" class="form-input" placeholder="ex: BE0123456789">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Adresse (optionnel)</label>
+          <input type="text" id="ndf-adresse" class="form-input" placeholder="ex: Rue de la Loi 1, 1000 Bruxelles">
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Dépense</h3>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Date de la dépense *</label>
+            <input type="date" id="ndf-date" class="form-input">
+          </div>
+          <div class="form-group">
+            <label>Montant payé (€ TVAC) *</label>
+            <input type="number" id="ndf-montant" class="form-input" placeholder="0.00" step="0.01" min="0">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Description / motif *</label>
+          <input type="text" id="ndf-description" class="form-input" placeholder="ex: Abonnement Amazon Prime — octobre 2026">
+        </div>
+        <div class="form-group">
+          <label>Acheteur</label>
+          <select id="ndf-acheteur" class="form-input">
+            <option value="zen">Zen Connect SRL (Lylou-Vely)</option>
+            <option value="phil">Phil Mobile</option>
+            <option value="philfixit">Phil-Fixit</option>
+            <option value="animal">Animal Rescue (ASBL)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="card">
+        <button class="btn btn-primary" onclick="window.generateNdfPDF()">📥 Générer le justificatif PDF</button>
       </div>
     </div>
 
@@ -1570,6 +1635,187 @@ window.generateEtsyPDF = function() {
   doc.text('(*) Les lignes "Payment" sont des règlements de factures Etsy et ne sont pas incluses dans le total des frais.', 14, fy+10);
 
   doc.save(`lylou-vely_frais_etsy_${refNum.toLowerCase()}.pdf`);
+};
+</script>
+
+<script>
+/* ========== Note de frais Zen Connect ========== */
+(function(){
+  const d = document.getElementById('ndf-date');
+  if(d) d.value = new Date().toISOString().split('T')[0];
+})();
+
+let ndfFileData = null; // { type:'image'|'pdf'|'csv', dataUrl, name, csvRows }
+
+window.ndfLoadFile = function(event) {
+  const file = event.target.files[0];
+  if(!file) return;
+  const preview = document.getElementById('ndf-file-preview');
+  preview.style.display = 'block';
+  const ext = file.name.split('.').pop().toLowerCase();
+
+  if(['jpg','jpeg','png','gif','webp','bmp'].includes(ext)) {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      ndfFileData = { type:'image', dataUrl: e.target.result, name: file.name };
+      preview.innerHTML = `<div style="font-size:12px;color:var(--muted);margin-bottom:6px">📷 ${file.name}</div>
+        <img src="${e.target.result}" style="max-width:100%;max-height:260px;border-radius:8px;border:1px solid var(--line)">`;
+    };
+    reader.readAsDataURL(file);
+
+  } else if(ext === 'pdf') {
+    ndfFileData = { type:'pdf', name: file.name };
+    preview.innerHTML = `<div style="padding:14px;background:var(--violet-wash);border-radius:10px;font-size:13px">
+      📄 <strong>${file.name}</strong><br><span style="color:var(--muted);font-size:12px">PDF joint — référencé dans le justificatif généré</span></div>`;
+
+  } else if(ext === 'csv') {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      const lines = e.target.result.split('\n').filter(l => l.trim());
+      const rows = lines.slice(0,6).map(l => l.split(',').map(c => c.replace(/^"|"$/g,'').trim()));
+      ndfFileData = { type:'csv', name: file.name, csvRows: rows };
+      let html = `<div style="font-size:12px;color:var(--muted);margin-bottom:8px">📊 ${file.name} — aperçu :</div>
+        <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:11px">`;
+      rows.forEach((row,i) => {
+        html += `<tr style="background:${i===0?'var(--violet-wash)':'transparent'}">`;
+        row.forEach(c => { html += `<td style="padding:4px 8px;border:1px solid var(--line);${i===0?'font-weight:600':''}">${c}</td>`; });
+        html += '</tr>';
+      });
+      if(lines.length > 6) html += `<tr><td colspan="${rows[0]?.length||1}" style="padding:4px 8px;color:var(--muted);font-size:11px;text-align:center">… ${lines.length - 6} lignes supplémentaires</td></tr>`;
+      html += '</table></div>';
+      preview.innerHTML = html;
+    };
+    reader.readAsText(file);
+  }
+};
+
+window.generateNdfPDF = function() {
+  const { jsPDF } = window.jspdf;
+  const fournisseur = (document.getElementById('ndf-fournisseur').value||'').trim();
+  const tva        = (document.getElementById('ndf-tva').value||'').trim();
+  const adresse    = (document.getElementById('ndf-adresse').value||'').trim();
+  const dateVal    = document.getElementById('ndf-date').value;
+  const montant    = parseFloat(document.getElementById('ndf-montant').value)||0;
+  const description= (document.getElementById('ndf-description').value||'').trim();
+  const acheteurSel= document.getElementById('ndf-acheteur').value;
+
+  if(!fournisseur || !dateVal || !montant || !description) {
+    alert('Veuillez remplir tous les champs obligatoires (*)');
+    return;
+  }
+
+  const ACHETEURS = {
+    zen:      { nom:'Zen Connect SRL',   sub:'Lylou-Vely', email:'lylou.vely@gmail.com',  pays:'Belgique' },
+    phil:     { nom:'Phil Mobile',       sub:'',           email:'formaphil@gmail.com',   pays:'Belgique' },
+    philfixit:{ nom:'Phil-Fixit',        sub:'',           email:'formaphil@gmail.com',   pays:'Belgique' },
+    animal:   { nom:'Animal Rescue',     sub:'ASBL',       email:'formaphil@gmail.com',   pays:'Belgique' }
+  };
+  const ach = ACHETEURS[acheteurSel];
+
+  const [yr,mo,dy] = dateVal.split('-');
+  const MONTHS = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
+  const dateFr = `${parseInt(dy)} ${MONTHS[parseInt(mo)-1]} ${yr}`;
+  const refNum = `NDF-${yr}-${mo}-${fournisseur.replace(/\s+/g,'-').toUpperCase().substring(0,10)}`;
+  const now    = new Date();
+  const genDate= `${now.getDate().toString().padStart(2,'0')}/${(now.getMonth()+1).toString().padStart(2,'0')}/${now.getFullYear()}`;
+
+  const doc = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
+  const PW  = doc.internal.pageSize.getWidth();
+  const VIO = [107,63,160];
+  const MU  = [140,130,155];
+  const WH  = [255,255,255];
+
+  /* ── Header ── */
+  doc.setFillColor(...VIO);
+  doc.rect(0, 0, PW, 38, 'F');
+  doc.setFontSize(11); doc.setTextColor(...WH); doc.setFont('helvetica','bold');
+  doc.text(ach.nom + (ach.sub ? ' / '+ach.sub : ''), 14, 13);
+  doc.setFontSize(16);
+  doc.text('Justificatif de dépense', 14, 23);
+  doc.setFontSize(9); doc.setFont('helvetica','normal');
+  doc.text('Document établi en l\'absence de facture officielle', 14, 31);
+
+  // Badge date
+  doc.setFontSize(9); doc.setFont('helvetica','bold'); doc.setTextColor(...WH);
+  const bw = doc.getTextWidth(dateFr) + 12;
+  doc.roundedRect(PW - bw - 10, 13, bw, 12, 3, 3, 'S');
+  doc.text(dateFr, PW - bw - 4, 21);
+
+  /* ── Fournisseur / Acheteur ── */
+  let y = 46;
+  doc.setFillColor(243,238,255);
+  doc.roundedRect(12, y, 84, 44, 4, 4, 'F');
+  doc.roundedRect(110, y, 84, 44, 4, 4, 'F');
+
+  doc.setFontSize(7.5); doc.setFont('helvetica','bold'); doc.setTextColor(...VIO);
+  doc.text('FOURNISSEUR', 18, y+8);
+  doc.text('ACHETEUR', 116, y+8);
+
+  doc.setFontSize(9); doc.setFont('helvetica','bold'); doc.setTextColor(44,34,51);
+  doc.text(fournisseur, 18, y+16);
+  doc.text(ach.nom, 116, y+16);
+
+  doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(80,70,95);
+  let fy2 = y+22;
+  if(adresse){ doc.text(adresse, 18, fy2); fy2 += 5; }
+  if(tva)    { doc.text('TVA : '+tva, 18, fy2); }
+
+  let ay = y+22;
+  if(ach.sub)  { doc.text(ach.sub,   116, ay); ay += 5; }
+  if(ach.email){ doc.text(ach.email, 116, ay); ay += 5; }
+  doc.text(ach.pays, 116, ay);
+
+  /* ── Référence ── */
+  y += 52;
+  doc.setFontSize(8); doc.setFont('helvetica','normal'); doc.setTextColor(...MU);
+  doc.text(`Réf. ${refNum}   ·   Date : ${dateFr}   ·   Généré le : ${genDate}`, 14, y);
+  y += 8;
+
+  /* ── Tableau ── */
+  // Mention fichier joint si présent
+  const fileNote = ndfFileData ? `Pièce jointe : ${ndfFileData.name}` : '';
+  const bodyRow = [description + (fileNote ? `\n${fileNote}` : ''), montant.toFixed(2).replace('.',',') + ' €'];
+
+  doc.autoTable({
+    startY: y,
+    head: [['Description / Motif', 'Montant (EUR)']],
+    body: [bodyRow],
+    foot: [['TOTAL PAYÉ', montant.toFixed(2).replace('.',',') + ' €']],
+    headStyles:{ fillColor:VIO, textColor:WH, fontSize:9, fontStyle:'bold' },
+    footStyles:{ fillColor:[240,235,250], textColor:VIO, fontSize:10, fontStyle:'bold' },
+    bodyStyles:{ fontSize:9 },
+    columnStyles:{ 1:{ halign:'right', fontStyle:'bold', textColor:[192,71,94] } },
+    margin:{ left:14, right:14 },
+    theme:'grid'
+  });
+
+  /* ── Image source (si image importée) ── */
+  if(ndfFileData && ndfFileData.type === 'image') {
+    const imgY = doc.lastAutoTable.finalY + 10;
+    doc.setFontSize(8); doc.setFont('helvetica','bold'); doc.setTextColor(...VIO);
+    doc.text('Document source :', 14, imgY);
+    try {
+      const maxW = PW - 28;
+      const img = new Image();
+      img.src = ndfFileData.dataUrl;
+      const ratio = img.naturalHeight / img.naturalWidth || 1;
+      const iw = Math.min(maxW, 120);
+      const ih = Math.min(iw * ratio, 80);
+      doc.addImage(ndfFileData.dataUrl, 'JPEG', 14, imgY + 4, iw, ih);
+    } catch(e){}
+  }
+
+  /* ── Note pied ── */
+  const fn = doc.lastAutoTable.finalY + (ndfFileData && ndfFileData.type === 'image' ? 90 : 12);
+  doc.setFontSize(7.5); doc.setTextColor(...MU); doc.setFont('helvetica','italic');
+  doc.text(`Ce document est un justificatif de dépense établi par ${ach.nom} en l'absence de facture officielle.`, 14, fn);
+  doc.text('À joindre dans Billit comme pièce justificative pour la transaction bancaire correspondante.', 14, fn+5);
+  if(ndfFileData && ndfFileData.type === 'pdf'){
+    doc.text(`Fichier joint séparé : ${ndfFileData.name}`, 14, fn+10);
+  }
+
+  const fname = `justificatif_${fournisseur.replace(/\s+/g,'-').toLowerCase()}_${yr}-${mo}.pdf`;
+  doc.save(fname);
 };
 </script>
 </body>
