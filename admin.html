@@ -127,6 +127,7 @@
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 </head>
 <body>
 
@@ -160,7 +161,7 @@
 
     <div class="sidebar-foot">
       <button class="logout-btn" onclick="window.doLogout()">↩ Déconnexion</button>
-      <div style="text-align:center;margin-top:10px;font-size:10px;opacity:.5;letter-spacing:.5px">Build 3.9</div>
+      <div style="text-align:center;margin-top:10px;font-size:10px;opacity:.5;letter-spacing:.5px">Build 4.0</div>
     </div>
   </div>
 
@@ -519,6 +520,20 @@
         <div class="form-group">
           <label>Description / motif *</label>
           <input type="text" id="ndf-description" class="form-input" placeholder="ex: Abonnement Amazon Prime — octobre 2026">
+        </div>
+        <div class="form-group">
+          <label>Mode de paiement</label>
+          <div style="display:flex;gap:10px;margin-top:4px">
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:10px 16px;border:1.5px solid var(--line);border-radius:10px;font-size:13px;font-weight:500;flex:1;justify-content:center" id="ndf-pay-lbl-cash">
+              <input type="radio" name="ndf-paiement" value="Liquide / Cash" id="ndf-pay-cash" onchange="window.ndfPayStyle()" style="accent-color:var(--violet)"> 💵 Liquide
+            </label>
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:10px 16px;border:1.5px solid var(--line);border-radius:10px;font-size:13px;font-weight:500;flex:1;justify-content:center" id="ndf-pay-lbl-visa">
+              <input type="radio" name="ndf-paiement" value="Visa" id="ndf-pay-visa" onchange="window.ndfPayStyle()" style="accent-color:var(--violet)"> 💳 Visa
+            </label>
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:10px 16px;border:1.5px solid var(--line);border-radius:10px;font-size:13px;font-weight:500;flex:1;justify-content:center" id="ndf-pay-lbl-bancontact">
+              <input type="radio" name="ndf-paiement" value="Bancontact" id="ndf-pay-bancontact" onchange="window.ndfPayStyle()" checked style="accent-color:var(--violet)"> 📱 Bancontact
+            </label>
+          </div>
         </div>
         <div class="form-group">
           <label>Acheteur</label>
@@ -1643,9 +1658,44 @@ window.generateEtsyPDF = function() {
 (function(){
   const d = document.getElementById('ndf-date');
   if(d) d.value = new Date().toISOString().split('T')[0];
+  // Init style radio par défaut
+  setTimeout(() => { if(window.ndfPayStyle) window.ndfPayStyle(); }, 100);
 })();
 
+// Style radio sélectionné
+window.ndfPayStyle = function() {
+  ['cash','visa','bancontact'].forEach(k => {
+    const lbl = document.getElementById('ndf-pay-lbl-'+k);
+    const inp = document.getElementById('ndf-pay-'+k);
+    if(lbl && inp) {
+      lbl.style.borderColor = inp.checked ? 'var(--violet)' : 'var(--line)';
+      lbl.style.background  = inp.checked ? 'var(--violet-wash)' : '';
+      lbl.style.color       = inp.checked ? 'var(--violet-d)' : '';
+    }
+  });
+};
+
 let ndfFileData = null; // { type:'image'|'pdf'|'csv', dataUrl, name, csvRows }
+
+// Tente de remplir les champs depuis le texte extrait du PDF
+function ndfAutoFill(text) {
+  // Montant : cherche patterns comme 16,00 € ou € 16.00 ou 16.00EUR
+  const amtMatch = text.match(/(?:€\s*|EUR\s*)(\d{1,6}[.,]\d{2})|(\d{1,6}[.,]\d{2})\s*(?:€|EUR)/i);
+  if(amtMatch) {
+    const raw = (amtMatch[1] || amtMatch[2]).replace(',','.');
+    const el = document.getElementById('ndf-montant');
+    if(el && !el.value) el.value = parseFloat(raw).toFixed(2);
+  }
+  // Date : cherche DD/MM/YYYY ou DD-MM-YYYY ou YYYY-MM-DD
+  const dateMatch = text.match(/(\d{4})-(\d{2})-(\d{2})|(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})/);
+  if(dateMatch) {
+    let y,m,d;
+    if(dateMatch[1]) { y=dateMatch[1]; m=dateMatch[2]; d=dateMatch[3]; }
+    else { d=dateMatch[4].padStart(2,'0'); m=dateMatch[5].padStart(2,'0'); y=dateMatch[6]; }
+    const el = document.getElementById('ndf-date');
+    if(el) el.value = `${y}-${m}-${d}`;
+  }
+}
 
 window.ndfLoadFile = function(event) {
   const file = event.target.files[0];
@@ -1664,9 +1714,31 @@ window.ndfLoadFile = function(event) {
     reader.readAsDataURL(file);
 
   } else if(ext === 'pdf') {
-    ndfFileData = { type:'pdf', name: file.name };
-    preview.innerHTML = `<div style="padding:14px;background:var(--violet-wash);border-radius:10px;font-size:13px">
-      📄 <strong>${file.name}</strong><br><span style="color:var(--muted);font-size:12px">PDF joint — référencé dans le justificatif généré</span></div>`;
+    const reader = new FileReader();
+    reader.onload = async function(e) {
+      ndfFileData = { type:'pdf', name: file.name };
+      preview.innerHTML = `<div style="padding:14px;background:var(--violet-wash);border-radius:10px;font-size:13px">
+        📄 <strong>${file.name}</strong><br><span style="color:var(--muted);font-size:12px">Lecture en cours…</span></div>`;
+      try {
+        if(typeof pdfjsLib === 'undefined') throw new Error('PDF.js non chargé');
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        const pdf = await pdfjsLib.getDocument({ data: e.target.result }).promise;
+        let fullText = '';
+        for(let i=1; i<=Math.min(pdf.numPages,3); i++) {
+          const page = await pdf.getPage(i);
+          const content = await page.getTextContent();
+          fullText += content.items.map(s => s.str).join(' ') + '\n';
+        }
+        ndfAutoFill(fullText);
+        preview.innerHTML = `<div style="padding:14px;background:var(--violet-wash);border-radius:10px;font-size:13px">
+          📄 <strong>${file.name}</strong><br><span style="color:var(--green);font-size:12px">✓ Texte extrait — champs remplis automatiquement si détectés</span></div>`;
+      } catch(err) {
+        preview.innerHTML = `<div style="padding:14px;background:var(--violet-wash);border-radius:10px;font-size:13px">
+          📄 <strong>${file.name}</strong><br><span style="color:var(--muted);font-size:12px">PDF joint — référencé dans le justificatif généré</span></div>`;
+      }
+    };
+    reader.readAsArrayBuffer(file);
+    return;
 
   } else if(ext === 'csv') {
     const reader = new FileReader();
@@ -1698,6 +1770,7 @@ window.generateNdfPDF = function() {
   const montant    = parseFloat(document.getElementById('ndf-montant').value)||0;
   const description= (document.getElementById('ndf-description').value||'').trim();
   const acheteurSel= document.getElementById('ndf-acheteur').value;
+  const paiement   = document.querySelector('input[name="ndf-paiement"]:checked')?.value || 'Bancontact';
 
   if(!fournisseur || !dateVal || !montant || !description) {
     alert('Veuillez remplir tous les champs obligatoires (*)');
@@ -1768,7 +1841,7 @@ window.generateNdfPDF = function() {
   /* ── Référence ── */
   y += 52;
   doc.setFontSize(8); doc.setFont('helvetica','normal'); doc.setTextColor(...MU);
-  doc.text(`Réf. ${refNum}   ·   Date : ${dateFr}   ·   Généré le : ${genDate}`, 14, y);
+  doc.text(`Réf. ${refNum}   ·   Date : ${dateFr}   ·   Mode de paiement : ${paiement}   ·   Généré le : ${genDate}`, 14, y);
   y += 8;
 
   /* ── Tableau ── */
@@ -1779,7 +1852,7 @@ window.generateNdfPDF = function() {
   doc.autoTable({
     startY: y,
     head: [['Description / Motif', 'Montant (EUR)']],
-    body: [bodyRow],
+    body: [bodyRow, ['Mode de paiement', paiement]],
     foot: [['TOTAL PAYÉ', montant.toFixed(2).replace('.',',') + ' €']],
     headStyles:{ fillColor:VIO, textColor:WH, fontSize:9, fontStyle:'bold' },
     footStyles:{ fillColor:[240,235,250], textColor:VIO, fontSize:10, fontStyle:'bold' },
