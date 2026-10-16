@@ -160,7 +160,7 @@
 
     <div class="sidebar-foot">
       <button class="logout-btn" onclick="window.doLogout()">↩ Déconnexion</button>
-      <div style="text-align:center;margin-top:10px;font-size:10px;opacity:.5;letter-spacing:.5px">Build 3.8</div>
+      <div style="text-align:center;margin-top:10px;font-size:10px;opacity:.5;letter-spacing:.5px">Build 3.9</div>
     </div>
   </div>
 
@@ -523,9 +523,9 @@
         <div class="form-group">
           <label>Acheteur</label>
           <select id="ndf-acheteur" class="form-input">
-            <option value="zen">Zen Connect SRL (Lylou-Vely)</option>
-            <option value="phil">Phil Mobile</option>
-            <option value="philfixit">Phil-Fixit</option>
+            <option value="zen">Lylou-Vely by Zen Connect SRL</option>
+            <option value="phil">Phil-Mobile by Zen Connect SRL</option>
+            <option value="philfixit">Phil-Fixit by Zen Connect SRL</option>
             <option value="animal">Animal Rescue (ASBL)</option>
           </select>
         </div>
@@ -1705,10 +1705,10 @@ window.generateNdfPDF = function() {
   }
 
   const ACHETEURS = {
-    zen:      { nom:'Zen Connect SRL',   sub:'Lylou-Vely', email:'lylou.vely@gmail.com',  pays:'Belgique' },
-    phil:     { nom:'Phil Mobile',       sub:'',           email:'formaphil@gmail.com',   pays:'Belgique' },
-    philfixit:{ nom:'Phil-Fixit',        sub:'',           email:'formaphil@gmail.com',   pays:'Belgique' },
-    animal:   { nom:'Animal Rescue',     sub:'ASBL',       email:'formaphil@gmail.com',   pays:'Belgique' }
+    zen:      { nom:'Lylou-Vely by Zen Connect SRL',   sub:'', email:'lylou.vely@gmail.com',  pays:'Belgique' },
+    phil:     { nom:'Phil-Mobile by Zen Connect SRL',  sub:'', email:'formaphil@gmail.com',   pays:'Belgique' },
+    philfixit:{ nom:'Phil-Fixit by Zen Connect SRL',   sub:'', email:'formaphil@gmail.com',   pays:'Belgique' },
+    animal:   { nom:'Animal Rescue',                   sub:'ASBL', email:'formaphil@gmail.com', pays:'Belgique' }
   };
   const ach = ACHETEURS[acheteurSel];
 
