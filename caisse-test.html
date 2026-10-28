@@ -340,7 +340,7 @@ nav{display:none}
 <div id="gate">
   <div class="box">
     <div class="mark">Lylou-Vely</div>
-    <div class="sub">Caisse · Build 3.4</div>
+    <div class="sub">Caisse · Build 3.5</div>
     <input type="email" id="gate-email" placeholder="Email" autocomplete="email" value="infos@lylou-vely.be" style="letter-spacing:0">
     <input type="password" id="gate-pw" placeholder="Mot de passe" autocomplete="current-password">
     <button onclick="doLogin()">Connexion</button>
@@ -352,7 +352,7 @@ nav{display:none}
 <div id="app" class="hidden">
   <header>
     <div class="hdr-top">
-      <div class="title">Lylou-Vely<small>Caisse · Build 3.4</small></div>
+      <div class="title">Lylou-Vely<small>Caisse · Build 3.5</small></div>
       <div style="display:flex;gap:6px;align-items:center">
         <button class="refresh-btn" onclick="openSettings()" style="font-size:12px;padding:6px 10px;font-weight:600" title="Réglages">⚙︎</button>
         <button id="hdr-mode-btn" class="refresh-btn" onclick="toggleMode()" title="Basculer Prod/Test" style="font-size:12px;padding:6px 10px;font-weight:600;letter-spacing:.5px">PROD</button>
@@ -363,7 +363,7 @@ nav{display:none}
       <div class="hdr-kpi"><span>Fond de caisse</span><b id="hdr-fond">0,00 €</b></div>
       <div class="hdr-kpi"><span>Vente Cash</span><b id="hdr-cash">0,00 €</b></div>
       <div class="hdr-kpi"><span>Vente QR Code</span><b id="hdr-qr">0,00 €</b></div>
-      <div class="hdr-kpi"><span>Vente SumUp</span><b id="hdr-sumup">0,00 €</b></div>
+      <div class="hdr-kpi"><span>Vente carte</span><b id="hdr-sumup">0,00 €</b></div>
       <div class="hdr-kpi" onclick="go('etsy')" style="cursor:pointer" title="Total Etsy du mois en cours"><span>Vente Etsy · mois</span><b id="hdr-etsy">0,00 €</b></div>
     </div>
     <div id="hdr-marche" onclick="promptRenameMarche()" style="text-align:center;font-size:13px;color:rgba(255,255,255,0.85);margin-top:6px;font-weight:500;cursor:pointer" title="Modifier le nom du marché"></div>
@@ -697,7 +697,7 @@ nav{display:none}
         </button>
         <button class="pay-btn" onclick="startExternal('qr')">
           <div class="ic qr">📱</div>
-          <div class="tx"><b>QR Code</b><span>Bancontact — le client scanne et paie</span></div>
+          <div class="tx"><b>QR Code</b><span>Virement instantané — le client scanne et paie</span></div>
           <div class="arr">›</div>
         </button>
         <button class="pay-btn" onclick="startExternal('carte-sumup')">
@@ -705,9 +705,9 @@ nav{display:none}
           <div class="tx"><b>Carte (SumUp)</b><span>Terminal ou Tap to Pay</span></div>
           <div class="arr">›</div>
         </button>
-        <button class="pay-btn" onclick="startExternal('carte-mollie')">
+        <button class="pay-btn" onclick="startExternal('carte-ing')">
           <div class="ic carte">💳</div>
-          <div class="tx"><b>Carte (Mollie)</b><span>Tap to Pay — pas de smartphone client</span></div>
+          <div class="tx"><b>Carte (ING)</b><span>App ING SoftPOS — Tap to Pay</span></div>
           <div class="arr">›</div>
         </button>
       </div>
@@ -729,13 +729,15 @@ nav{display:none}
 
     <!-- QR Bancontact -->
     <div id="pay-qr" class="hidden">
-      <h2>Paiement QR — Virement CBC</h2>
+      <h2 id="qr-title">Paiement QR — Virement ING</h2>
       <div class="qr-amount-lbl">Montant exact pré-rempli pour le client</div>
       <div class="pay-amt" id="qr-amount">0,00 €</div>
       <div class="qr-wrap">
         <div id="qr-sepa"></div>
+        <div id="qr-sepa-cbc" class="hidden"></div>
       </div>
-      <p class="qr-steps">Le client scanne avec son app bancaire.<br>Le montant est pré-rempli — il n'a qu'à confirmer.<br>Virement instantané sur ton compte CBC.</p>
+      <p class="qr-steps">Le client scanne avec son app bancaire.<br>Le montant est pré-rempli — il n'a qu'à confirmer.<br><span id="qr-bank-txt">Virement instantané sur ton compte ING.</span></p>
+      <button class="btn btn-outline" id="qr-switch" onclick="toggleQrBank()" style="width:auto;padding:6px 14px;font-size:12px;margin:0 auto 14px;display:block">QR ING ne fonctionne pas ? Afficher le QR CBC</button>
       <button class="btn btn-primary" onclick="confirmExternal('qr')">Paiement confirmé ✓</button>
       <div class="confirm-refused">
         <button class="btn btn-outline" onclick="backToChoice()">Retour</button>
@@ -760,16 +762,18 @@ nav{display:none}
       <button class="btn btn-outline" onclick="copySumUpAmount()" style="width:auto;padding:6px 14px;font-size:12px">📋 Copier le montant</button>
     </div>
 
-    <!-- Mollie -->
-    <div id="pay-mollie" class="hidden">
-      <h2>Paiement par carte — Mollie</h2>
-      <div class="qr-amount-lbl">Montant à taper dans l'app Mollie</div>
-      <div class="pay-amt" id="mollie-amount">0,00 €</div>
+    <!-- ING SoftPOS -->
+    <div id="pay-ing" class="hidden">
+      <h2>Paiement par carte — ING</h2>
+      <div class="qr-amount-lbl">Montant à taper dans l'app ING SoftPOS</div>
+      <div class="pay-amt" id="ing-amount">0,00 €</div>
       <div class="confirm-icon">💳</div>
-      <p class="confirm-steps">Ouvre l'app Mollie, tape le montant, fais taper la carte du client (Tap to Pay).<br>Une fois accepté, choisis ci-dessous selon la carte (belge ou étrangère/pro).</p>
-      <button class="btn btn-outline" onclick="copyMollieAmount()" style="width:auto;padding:6px 14px;font-size:12px;margin-bottom:14px">📋 Copier le montant</button>
-      <button class="btn btn-primary" onclick="confirmExternal('carte','mollie_be')" style="margin-bottom:8px">💳 Carte belge (1,50%) — Paiement accepté ✓</button>
-      <button class="btn btn-primary" onclick="confirmExternal('carte','mollie_intl')">💳 Carte étrangère/pro (1,80%) — Paiement accepté ✓</button>
+      <p class="confirm-steps">Ouvre l'app ING, tape le montant, fais taper la carte du client.<br>Une fois accepté, reviens ici et choisis le type de carte.</p>
+      <button class="btn btn-outline" onclick="copyIngAmount()" style="width:auto;padding:6px 14px;font-size:12px;margin-bottom:14px">📋 Copier le montant</button>
+      <button class="btn btn-primary" onclick="confirmExternal('carte','ing','bancontact')" style="margin-bottom:8px">💳 Bancontact — Paiement accepté ✓</button>
+      <button class="btn btn-primary" onclick="confirmExternal('carte','ing','debit')" style="margin-bottom:8px">💳 Visa/Mastercard débit — Paiement accepté ✓</button>
+      <button class="btn btn-primary" onclick="confirmExternal('carte','ing','credit')" style="margin-bottom:8px">💳 Carte crédit / pro (1,05%) — Paiement accepté ✓</button>
+      <button class="btn btn-primary" onclick="confirmExternal('carte','ing','debit_nonue')">💳 Débit hors UE (0,95%) — Paiement accepté ✓</button>
       <div class="confirm-refused">
         <button class="btn btn-outline" onclick="backToChoice()">Retour</button>
         <button class="btn btn-danger" onclick="backToChoice()">Refusé / Annulé</button>
@@ -1117,8 +1121,20 @@ const MOLLIE_CREDIT_RATE = 0.018; // 1,80% — cartes étrangères ("autres cart
 const ETSY_TRANSACTION_RATE = 0.065; // 6,5% commission de transaction Etsy
 const ETSY_PAYMENT_RATE    = 0.04;  // ~4% frais de traitement paiement Etsy
 const ETSY_RATE = ETSY_TRANSACTION_RATE + ETSY_PAYMENT_RATE; // ~10,5% total
-const PROVIDER_LABEL = { sumup:'SumUp', viva:'Viva Wallet', mollie_be:'Mollie (Carte belge)', mollie_intl:'Mollie (Carte étrangère/pro)' };
-const KNOWN_PROVIDERS = ['sumup','viva','mollie_be','mollie_intl'];
+/* --- ING SoftPOS (formule App) : Bancontact / débit UE = frais fixe selon montant ; crédit et débit hors UE = % --- */
+const ING_CREDIT_RATE = 0.0105;   // 1,05% Visa/Mastercard crédit (à vérifier pour cartes pro)
+const ING_DEBIT_NONUE_RATE = 0.0095; // 0,95% débit hors UE
+function ingCommission(amount, cardType){
+  const a = amount || 0;
+  let c;
+  if(cardType==='credit') c = a*ING_CREDIT_RATE;
+  else if(cardType==='debit_nonue') c = a*ING_DEBIT_NONUE_RATE;
+  else if(cardType==='debit') c = a<=15 ? 0.045 : 0.18;
+  else c = a<=15 ? 0.045 : 0.15; // bancontact (défaut)
+  return Math.round(c*1000)/1000;
+}
+const PROVIDER_LABEL = { sumup:'SumUp', viva:'Viva Wallet', ing:'ING', mollie_be:'Mollie (Carte belge)', mollie_intl:'Mollie (Carte étrangère/pro)' };
+const KNOWN_PROVIDERS = ['sumup','viva','ing','mollie_be','mollie_intl'];
 /* Normalise le prestataire d'une part de paiement carte : 'sumup' par défaut si absent/inconnu (compat anciennes ventes) */
 function normalizeProvider(p){ return KNOWN_PROVIDERS.includes(p.provider) ? p.provider : 'sumup'; }
 
@@ -1127,6 +1143,7 @@ function cardPartCommission(part){
   const amt = part.amount || 0;
   const prov = normalizeProvider(part);
   if(prov === 'viva') return Math.max(VIVA_BANCONTACT_FEE, VIVA_MIN_FEE);
+  if(prov === 'ing') return ingCommission(amt, part.cardType);
   if(prov === 'mollie_be') return Math.round(amt*MOLLIE_DEBIT_RATE*100)/100;
   if(prov === 'mollie_intl') return Math.round(amt*MOLLIE_CREDIT_RATE*100)/100;
   return sumupCommission(amt); // 'sumup' par défaut (compat anciennes ventes sans provider)
@@ -1159,6 +1176,7 @@ function cardCommissionLinesHTML(sale, cls){
   });
   const rateTxt = (prov)=>{
     if(prov==='viva') return `${euro(VIVA_BANCONTACT_FEE)} fixe`;
+    if(prov==='ing') return 'tarif ING';
     if(prov==='mollie_be') return `${(MOLLIE_DEBIT_RATE*100).toFixed(2).replace(/\.?0+$/,'').replace('.',',')}%`;
     if(prov==='mollie_intl') return `${(MOLLIE_CREDIT_RATE*100).toFixed(2).replace(/\.?0+$/,'').replace('.',',')}%`;
     return `${(SUMUP_RATE*100).toFixed(2).replace(/\.?0+$/,'').replace('.',',')}%`;
@@ -1906,7 +1924,7 @@ window.openPay = function(){
 window.closePay = function(){ document.getElementById('pay-overlay').classList.add('hidden'); payParts=[]; };
 
 function showPayChoice(){
-  ['pay-cash','pay-qr','pay-sumup','pay-mollie'].forEach(id=>document.getElementById(id).classList.add('hidden'));
+  ['pay-cash','pay-qr','pay-sumup','pay-ing'].forEach(id=>document.getElementById(id).classList.add('hidden'));
   document.getElementById('pay-choice').classList.remove('hidden');
   const rem = payRemaining();
   document.getElementById('pay-amt').textContent = euro(rem);
@@ -1983,45 +2001,46 @@ window.confirmCashPartial = function(){
   else showPayChoice();
 };
 
-/* --- QR / SumUp --- */
+/* --- QR / SumUp / ING --- */
+const BANK_ING = {iban:'BE91363286037276', bic:'BBRUBEBB', name:'Lylou-Vely By Zen-Connect SRL'};
+const BANK_CBC = {iban:'BE08732086423213', bic:'CPHBBE75', name:'Lylou-Vely By Zen-Connect'};
+let qrBank = 'ing', qrRef = '';
+function renderSepaQR(boxId, bank, amt, ref){
+  const sepaData = ['BCD','002','1','SCT', bank.bic, bank.name, bank.iban, 'EUR'+amt.toFixed(2), '', ref, '', 'Lylou-Vely'].join('\n');
+  const qrBox = document.getElementById(boxId);
+  qrBox.innerHTML = '';
+  try{
+    new QRCode(qrBox, { text: sepaData, width:200, height:200, colorDark:'#000000', colorLight:'#ffffff', correctLevel: QRCode.CorrectLevel.M });
+  }catch(e){ qrBox.innerHTML='<p>QR indisponible</p>'; }
+}
+function applyQrBank(){
+  const ing = qrBank==='ing';
+  document.getElementById('qr-sepa').classList.toggle('hidden', !ing);
+  document.getElementById('qr-sepa-cbc').classList.toggle('hidden', ing);
+  document.getElementById('qr-title').textContent = 'Paiement QR — Virement ' + (ing?'ING':'CBC');
+  document.getElementById('qr-bank-txt').textContent = 'Virement instantané sur ton compte ' + (ing?'ING.':'CBC.');
+  document.getElementById('qr-switch').textContent = ing ? 'QR ING ne fonctionne pas ? Afficher le QR CBC' : '← Revenir au QR ING';
+}
+window.toggleQrBank = function(){
+  qrBank = qrBank==='ing' ? 'cbc' : 'ing';
+  if(qrBank==='cbc' && !document.getElementById('qr-sepa-cbc').innerHTML) renderSepaQR('qr-sepa-cbc', BANK_CBC, payRemaining(), qrRef);
+  applyQrBank();
+};
 window.startExternal = function(method){
   document.getElementById('pay-choice').classList.add('hidden');
   if(method==='qr'){
     document.getElementById('pay-qr').classList.remove('hidden');
     const amt = payRemaining();
     document.getElementById('qr-amount').textContent = euro(amt);
-    // Générer QR SEPA (EPC/GiroCode) avec montant exact
-    const iban = 'BE08732086423213';
-    const bic = 'CPHBBE75'; // CBC BIC
-    const name = 'Lylou-Vely By Zen-Connect';
-    const ref = makeRef(state.ticketCounter+1);
-    const amtStr = amt.toFixed(2);
-    const sepaData = [
-      'BCD',           // Service Tag
-      '002',           // Version
-      '1',             // Encoding UTF-8
-      'SCT',           // SEPA Credit Transfer
-      bic,             // BIC
-      name,            // Nom bénéficiaire
-      iban,            // IBAN
-      'EUR'+amtStr,    // Montant
-      '',              // Purpose
-      ref,             // Référence
-      '',              // Info non structurée
-      'Lylou-Vely'     // Info bénéficiaire
-    ].join('\n');
-    const qrBox = document.getElementById('qr-sepa');
-    qrBox.innerHTML = '';
-    try{
-      new QRCode(qrBox, {
-        text: sepaData, width:200, height:200,
-        colorDark:'#000000', colorLight:'#ffffff',
-        correctLevel: QRCode.CorrectLevel.M
-      });
-    }catch(e){ qrBox.innerHTML='<p>QR indisponible</p>'; }
-  } else if(method==='carte-mollie'){
-    document.getElementById('pay-mollie').classList.remove('hidden');
-    document.getElementById('mollie-amount').textContent = euro(payRemaining());
+    // QR SEPA (EPC/GiroCode) : ING en premier, CBC en secours (affiché au clic)
+    qrRef = makeRef(state.ticketCounter+1);
+    qrBank = 'ing';
+    renderSepaQR('qr-sepa', BANK_ING, amt, qrRef);
+    document.getElementById('qr-sepa-cbc').innerHTML = '';
+    applyQrBank();
+  } else if(method==='carte-ing'){
+    document.getElementById('pay-ing').classList.remove('hidden');
+    document.getElementById('ing-amount').textContent = euro(payRemaining());
   } else {
     document.getElementById('pay-sumup').classList.remove('hidden');
     document.getElementById('sumup-amount').textContent = euro(payRemaining());
@@ -2029,8 +2048,8 @@ window.startExternal = function(method){
   }
 };
 
-/* Copie le montant à encaisser sur Mollie (pas de lien direct documenté pour pré-remplir l'app) */
-window.copyMollieAmount = function(){
+/* Copie le montant à encaisser dans l'app ING SoftPOS (pas de lien direct documenté) */
+window.copyIngAmount = function(){
   const amt = payRemaining().toFixed(2);
   try{
     navigator.clipboard.writeText(amt);
@@ -2115,10 +2134,10 @@ function checkSumUpCallback(){
   }
 }
 /* Copie le montant à encaisser (pratique pour saisie manuelle Tap to Pay) */
-window.confirmExternal = function(method, provider){
+window.confirmExternal = function(method, provider, cardType){
   const rem = payRemaining();
   const part = {method, amount:rem};
-  if(method==='carte') part.provider = provider || 'sumup';
+  if(method==='carte'){ part.provider = provider || 'sumup'; if(cardType) part.cardType = cardType; }
   payParts.push(part);
   finalizeSale();
 };
@@ -2197,6 +2216,7 @@ function saleModeSuffix(sale){
       const prov = normalizeProvider(p);
       if(prov==='sumup') return 'SumUp';
       if(prov==='viva') return 'Viva';
+      if(prov==='ing') return 'ING';
       if(prov==='mollie_be') return 'MollieBE';
       if(prov==='mollie_intl') return 'MollieIntl';
       return 'Carte';
@@ -3226,6 +3246,7 @@ function renderJournal(){
     const parts = [];
     if(bd.sumup.amount>0) parts.push(`SumUp −${euro(bd.sumup.commission)}`);
     if(bd.viva.amount>0) parts.push(`Viva −${euro(bd.viva.commission)}`);
+    if(bd.ing.amount>0) parts.push(`ING −${euro(bd.ing.commission)}`);
     if(bd.mollie_be.amount>0) parts.push(`Mollie Belge −${euro(bd.mollie_be.commission)}`);
     if(bd.mollie_intl.amount>0) parts.push(`Mollie Étrangère −${euro(bd.mollie_intl.commission)}`);
     jrFee.textContent = parts.join(' · ');
@@ -3328,6 +3349,9 @@ function renderJournal(){
       const mFeeParts = [];
       if(mBd.sumup.amount>0) mFeeParts.push(`SumUp −${euro(mBd.sumup.commission)}`);
       if(mBd.viva.amount>0) mFeeParts.push(`Viva −${euro(mBd.viva.commission)}`);
+      if(mBd.ing.amount>0) mFeeParts.push(`ING −${euro(mBd.ing.commission)}`);
+      if(mBd.mollie_be.amount>0) mFeeParts.push(`Mollie Belge −${euro(mBd.mollie_be.commission)}`);
+      if(mBd.mollie_intl.amount>0) mFeeParts.push(`Mollie Étrangère −${euro(mBd.mollie_intl.commission)}`);
       const mFeeTxt = mFeeParts.length ? ` (${mFeeParts.join(' · ')})` : '';
       const mKey = groupe.marche || '(sans marché)';
       const mArg = mKey.replace(/'/g,"\\'");
@@ -3458,7 +3482,7 @@ window.cancelSale = async function(id){
   const cashAmt = cashOfSale(sale);
   if(cashAmt > 0) msg += `\n\n⚠️ Rends ${euro(cashAmt)} en espèces au client.`;
   if(methodAmount(sale,'qr')>0) msg += `\n\n⚠️ Remboursement QR depuis ton portail.`;
-  if(methodAmount(sale,'carte')>0) msg += `\n\n⚠️ Remboursement carte depuis SumUp.`;
+  if(methodAmount(sale,'carte')>0) msg += `\n\n⚠️ Remboursement carte depuis le terminal utilisé (SumUp / ING).`;
   if(!confirm(msg)) return;
   sale.cancelled = true; sale.cancelledAt = nowTime();
   save(); saveSale(sale);
@@ -3814,6 +3838,7 @@ function buildJournalHTML(marcheFilter){
         ${(()=>{ const bd=cardBreakdown(s); let h='';
           if(bd.sumup.amount>0) h+=`<div class="jh-kpi fee"><b>−${euro(bd.sumup.commission)}</b><span>Commission SumUp</span></div>`;
           if(bd.viva.amount>0) h+=`<div class="jh-kpi fee"><b>−${euro(bd.viva.commission)}</b><span>Commission Viva</span></div>`;
+          if(bd.ing.amount>0) h+=`<div class="jh-kpi fee"><b>−${euro(bd.ing.commission)}</b><span>Commission ING</span></div>`;
           if(bd.mollie_be.amount>0) h+=`<div class="jh-kpi fee"><b>−${euro(bd.mollie_be.commission)}</b><span>Commission Mollie Belge</span></div>`;
           if(bd.mollie_intl.amount>0) h+=`<div class="jh-kpi fee"><b>−${euro(bd.mollie_intl.commission)}</b><span>Commission Mollie Étrangère</span></div>`;
           return h; })()}
@@ -3832,6 +3857,7 @@ function buildJournalHTML(marcheFilter){
       const gFeeParts = [];
       if(gBd.sumup.amount>0) gFeeParts.push(`commission SumUp −${euro(gBd.sumup.commission)}`);
       if(gBd.viva.amount>0) gFeeParts.push(`commission Viva −${euro(gBd.viva.commission)}`);
+      if(gBd.ing.amount>0) gFeeParts.push(`commission ING −${euro(gBd.ing.commission)}`);
       if(gBd.mollie_be.amount>0) gFeeParts.push(`commission Mollie Belge −${euro(gBd.mollie_be.commission)}`);
       if(gBd.mollie_intl.amount>0) gFeeParts.push(`commission Mollie Étrangère −${euro(gBd.mollie_intl.commission)}`);
       const gFeeTxt = gFeeParts.length ? ` (${gFeeParts.join(', ')})` : '';
@@ -4341,6 +4367,7 @@ function buildZTicketHTML(day, marche, ca, esp, qr, carte, cancelledN, theo, inT
     ${(()=>{ const bd=cardBreakdown(valid); let h='';
       if(bd.sumup.amount>0) h+=`<div class="t-sub" style="color:#a15c00"><span>dont commission SumUp</span><span>−${euro(bd.sumup.commission)}</span></div>`;
       if(bd.viva.amount>0) h+=`<div class="t-sub" style="color:#a15c00"><span>dont commission Viva Wallet</span><span>−${euro(bd.viva.commission)}</span></div>`;
+      if(bd.ing.amount>0) h+=`<div class="t-sub" style="color:#a15c00"><span>dont commission ING</span><span>−${euro(bd.ing.commission)}</span></div>`;
       if(bd.mollie_be.amount>0) h+=`<div class="t-sub" style="color:#a15c00"><span>dont commission Mollie Belge</span><span>−${euro(bd.mollie_be.commission)}</span></div>`;
       if(bd.mollie_intl.amount>0) h+=`<div class="t-sub" style="color:#a15c00"><span>dont commission Mollie Étrangère</span><span>−${euro(bd.mollie_intl.commission)}</span></div>`;
       return h; })()}
