@@ -340,7 +340,7 @@ nav{display:none}
 <div id="gate">
   <div class="box">
     <div class="mark">Lylou-Vely</div>
-    <div class="sub">Caisse · Build 3.5</div>
+    <div class="sub">Caisse · Build 3.6</div>
     <input type="email" id="gate-email" placeholder="Email" autocomplete="email" value="infos@lylou-vely.be" style="letter-spacing:0">
     <input type="password" id="gate-pw" placeholder="Mot de passe" autocomplete="current-password">
     <button onclick="doLogin()">Connexion</button>
@@ -352,7 +352,7 @@ nav{display:none}
 <div id="app" class="hidden">
   <header>
     <div class="hdr-top">
-      <div class="title">Lylou-Vely<small>Caisse · Build 3.5</small></div>
+      <div class="title">Lylou-Vely<small>Caisse · Build 3.6</small></div>
       <div style="display:flex;gap:6px;align-items:center">
         <button class="refresh-btn" onclick="openSettings()" style="font-size:12px;padding:6px 10px;font-weight:600" title="Réglages">⚙︎</button>
         <button id="hdr-mode-btn" class="refresh-btn" onclick="toggleMode()" title="Basculer Prod/Test" style="font-size:12px;padding:6px 10px;font-weight:600;letter-spacing:.5px">PROD</button>
@@ -384,9 +384,9 @@ nav{display:none}
         <svg viewBox="0 0 24 24"><path d="M4 20V10M12 20V4M20 20v-7"/></svg>
         Statistiques
       </button>
-      <button id="nav-asbl" onclick="go('asbl')" title="Reversements Animal Rescue">
+      <button id="nav-asbl" onclick="go('asbl')" title="Reversements L'Assiette des 4 pattes">
         <svg viewBox="0 0 24 24"><path d="M12 21s-7-4.5-9.5-9A5.5 5.5 0 0 1 12 6a5.5 5.5 0 0 1 9.5 6c-2.5 4.5-9.5 9-9.5 9z"/></svg>
-        Asso Animal Rescue
+        Les 4 pattes
       </button>
       <button id="nav-etsy" onclick="go('etsy')" title="Ventes Etsy (hors caisse)">
         <svg viewBox="0 0 24 24"><path d="M3 9h18v2a3 3 0 0 1-6 0 3 3 0 0 1-6 0 3 3 0 0 1-6 0V9z"/><path d="M3 9l1.5-5h15L21 9"/><path d="M5 13v7h14v-7"/><path d="M10 20v-4h4v4"/></svg>
@@ -647,7 +647,7 @@ nav{display:none}
     </section>
 
     <section class="tab" id="tab-asbl">
-      <h1 class="section-title">Asso Animal Rescue</h1>
+      <h1 class="section-title">L'Assiette des 4 pattes</h1>
       <p class="section-sub">Reversements à l'ASBL (comptoir + Etsy) — virement, sans impact sur la caisse</p>
       <div class="card">
         <div class="big-total"><div class="k">Reste à verser</div><div class="v" id="asbl-due">0,00 €</div></div>
@@ -2185,7 +2185,7 @@ async function finalizeSale(){
     items: cart.map(l=>{
       const it = {name:l.name,price:l.price,qty:l.qty,baseName:l.baseName||l.name,variant:l.variant||null};
       const rev = asblUnitFor(l);
-      if(rev>0) it.reversement = rev; // figé au moment de la vente (virement mensuel Animal Rescue)
+      if(rev>0) it.reversement = rev; // figé au moment de la vente (virement mensuel L'Assiette des 4 pattes)
       return it;
     }),
     subtotal: cartSubtotal(),
@@ -2417,8 +2417,8 @@ function sumOut(d){ return dayMovements(d||state.day).filter(m=>m.type==='out').
 function sumCashOut(d){ return dayMovements(d||state.day).filter(m=>m.type==='out' && m.payMode!=='card').reduce((a,m)=>a+m.amount,0); }
 function theoreticalCash(){ return state.fond + sumCashSales() + sumIn() - sumCashOut(); }
 
-/* ============ ANIMAL RESCUE (reversement ASBL — virement mensuel, sans impact sur la caisse) ============ */
-const ASBL_NAME = 'Animal Rescue';
+/* ============ L'ASSIETTE DES 4 PATTES (reversement ASBL — virement mensuel, sans impact sur la caisse) ============ */
+const ASBL_NAME = "L'Assiette des 4 pattes";
 /* Reversement unitaire d'une ligne de panier, lu dans le catalogue (déclinaison, sinon article sans déclinaison) */
 function asblUnitFor(line){
   const baseName = line.baseName || line.name;
@@ -2470,7 +2470,7 @@ function asblMonths(){
   });
 }
 
-/* ============ VENTES ETSY (hors caisse — alimente uniquement le reversement Animal Rescue) ============ */
+/* ============ VENTES ETSY (hors caisse — alimente uniquement le reversement L'Assiette des 4 pattes) ============ */
 let etsyEditId = null;
 let etsyFormItems = [];
 /* Enregistre dans Firestore en refusionnant avec la liste distante (par id) : deux appareils qui saisissent
@@ -4154,7 +4154,7 @@ window.downloadMarchePDF = function(marche){
 
 /* ============ CSV EXPORT ============ */
 window.exportCSV = function(){
-  let rows = [["Reçu n°","Date","Heure","Articles","HTVA","TVA","Total TVAC","Paiement","Reversement Animal Rescue"]];
+  let rows = [["Reçu n°","Date","Heure","Articles","HTVA","TVA","Total TVAC","Paiement","Reversement L'Assiette des 4 pattes"]];
   state.sales.forEach(s=>{
     const ref = s.ref||makeRef(s.num);
     const arts = s.items.map(i=>`${i.name} x${i.qty}`).join(' + ');
