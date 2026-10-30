@@ -340,7 +340,7 @@ nav{display:none}
 <div id="gate">
   <div class="box">
     <div class="mark">Lylou-Vely</div>
-    <div class="sub">Caisse · Build 3.6</div>
+    <div class="sub">Caisse · Build 3.7</div>
     <input type="email" id="gate-email" placeholder="Email" autocomplete="email" value="infos@lylou-vely.be" style="letter-spacing:0">
     <input type="password" id="gate-pw" placeholder="Mot de passe" autocomplete="current-password">
     <button onclick="doLogin()">Connexion</button>
@@ -352,7 +352,7 @@ nav{display:none}
 <div id="app" class="hidden">
   <header>
     <div class="hdr-top">
-      <div class="title">Lylou-Vely<small>Caisse · Build 3.6</small></div>
+      <div class="title">Lylou-Vely<small>Caisse · Build 3.7</small></div>
       <div style="display:flex;gap:6px;align-items:center">
         <button class="refresh-btn" onclick="openSettings()" style="font-size:12px;padding:6px 10px;font-weight:600" title="Réglages">⚙︎</button>
         <button id="hdr-mode-btn" class="refresh-btn" onclick="toggleMode()" title="Basculer Prod/Test" style="font-size:12px;padding:6px 10px;font-weight:600;letter-spacing:.5px">PROD</button>
@@ -845,6 +845,24 @@ nav{display:none}
   </div>
 </div>
 
+<div class="overlay center hidden" id="asbl-bank-overlay">
+  <div class="sheet" style="max-width:400px">
+    <h2>💶 Versement à l'association</h2>
+    <p id="asbl-bank-info" style="font-size:13px;color:var(--muted);text-align:center;margin-bottom:14px"></p>
+    <div class="field"><label>Versé depuis quelle banque ?</label>
+      <div class="seg" id="asbl-bank-seg" style="margin-bottom:0">
+        <button type="button" data-bank="ING" onclick="pickAsblBank('ING')">🏦 ING</button>
+        <button type="button" data-bank="CBC" onclick="pickAsblBank('CBC')">🏦 CBC</button>
+      </div>
+    </div>
+    <p style="font-size:12px;color:var(--muted);text-align:center;margin:10px 0 0">Simple suivi du virement — aucun impact sur la caisse.</p>
+    <div class="row-btns" style="margin-top:14px">
+      <button class="btn btn-outline" onclick="closeAsblBank()">Annuler</button>
+      <button class="btn btn-primary" onclick="confirmAsblPaid()">Confirmer</button>
+    </div>
+  </div>
+</div>
+
 <div class="overlay center hidden" id="etsy-overlay">
   <div class="sheet" style="max-width:400px">
     <h2>🛍 Versement Etsy</h2>
@@ -1019,6 +1037,13 @@ nav{display:none}
       <div class="field"><label>Date du versement</label><input type="date" id="virement-date-manual"></div>
       <div id="virt-manual-lines"></div>
       <button class="btn btn-outline" style="margin-top:8px;font-size:13px" onclick="addManualLine()">＋ Ajouter une ligne</button>
+    </div>
+
+    <div class="field" style="margin-top:10px"><label>Banque du versement</label>
+      <div class="seg" id="virt-bank-seg" style="margin-bottom:0">
+        <button type="button" data-bank="ING" onclick="pickVirtBank('ING')">🏦 ING</button>
+        <button type="button" data-bank="CBC" onclick="pickVirtBank('CBC')">🏦 CBC</button>
+      </div>
     </div>
 
     <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-top:1px dashed var(--line);margin-top:10px">
@@ -2001,6 +2026,15 @@ window.confirmCashPartial = function(){
 /* --- QR / SumUp / ING --- */
 const BANK_ING = {iban:'BE91363286037276', bic:'BBRUBEBB', name:'Lylou-Vely By Zen-Connect SRL'};
 const BANK_CBC = {iban:'BE08732086423213', bic:'CPHBBE75', name:'Lylou-Vely By Zen-Connect'};
+/* Comptes affichés sur les documents (versement banque, reçu asso) */
+const BANK_DOC = {
+  ING:{label:'ING', iban:'BE91 3632 8603 7276', bic:'BBRUBEBB'},
+  CBC:{label:'CBC', iban:'BE08 7320 8642 3213', bic:'CREGBEBB'}
+};
+const bankDocLine = k => BANK_DOC[k] ? `${BANK_DOC[k].label} · ${BANK_DOC[k].iban} · ${BANK_DOC[k].bic}` : '';
+function setSegBank(segId, key){
+  document.querySelectorAll('#'+segId+' button').forEach(b=>b.classList.toggle('on', b.dataset.bank===key));
+}
 let qrBank = 'ing', qrRef = '';
 function renderSepaQR(boxId, bank, amt, ref){
   const sepaData = ['BCD','002','1','SCT', bank.bic, bank.name, bank.iban, 'EUR'+amt.toFixed(2), '', ref, '', 'Lylou-Vely'].join('\n');
@@ -2660,17 +2694,32 @@ function monthLongLabel(ym){
   const [y,m] = ym.split('-');
   return new Date(parseInt(y,10), parseInt(m,10)-1, 1).toLocaleDateString('fr-BE',{month:'long', year:'numeric'});
 }
+let asblBankMonth = null, asblBankKey = '';
 window.markAsblPaid = function(month){
   const m = asblMonths().find(x=>x.month===month);
   if(!m) return;
   const reste = Math.round((m.total - asblPaidAmount(month))*100)/100;
   if(reste<=0) return;
-  if(!confirm(`Marquer ${monthLabel(month)} comme versé à ${ASBL_NAME} ?\n\nMontant : ${euro(reste)}\n\n(Simple suivi du virement — aucun impact sur la caisse.)`)) return;
+  asblBankMonth = month; asblBankKey = '';
+  setSegBank('asbl-bank-seg', '');
+  document.getElementById('asbl-bank-info').innerHTML = `Marquer <b>${esc(monthLabel(month))}</b> comme versé à <b>${esc(ASBL_NAME)}</b><br>Montant : <b>${euro(reste)}</b>`;
+  document.getElementById('asbl-bank-overlay').classList.remove('hidden');
+};
+window.pickAsblBank = function(k){ asblBankKey = k; setSegBank('asbl-bank-seg', k); };
+window.closeAsblBank = function(){ document.getElementById('asbl-bank-overlay').classList.add('hidden'); asblBankMonth = null; };
+window.confirmAsblPaid = function(){
+  if(!asblBankKey){ toast('Choisis la banque (ING ou CBC)'); return; }
+  const month = asblBankMonth;
+  const m = asblMonths().find(x=>x.month===month);
+  if(!m){ closeAsblBank(); return; }
+  const reste = Math.round((m.total - asblPaidAmount(month))*100)/100;
+  if(reste<=0){ closeAsblBank(); return; }
   const payments = asblPayments(month).slice();
-  payments.push({amount:reste, date:todayStr(), rows:asblUnpaidRows(month, m.rows)});
+  payments.push({amount:reste, date:todayStr(), bank:asblBankKey, rows:asblUnpaidRows(month, m.rows)});
   const entry = {payments};
   state.asblPayouts[month] = entry; save(); saveAsblPayout(month, entry);
-  renderAsbl(); toast('✓ Versement de '+euro(reste)+' enregistré');
+  closeAsblBank();
+  renderAsbl(); toast('✓ Versement de '+euro(reste)+' enregistré ('+asblBankKey+')');
 };
 window.undoAsblPaid = function(month){
   const payments = asblPayments(month).slice();
@@ -2688,7 +2737,8 @@ function asblReceiptData(month, idx){
   const pay = asblPayments(month)[idx];
   if(!pay) return null;
   const rows = (pay.rows && pay.rows.length) ? pay.rows : [{name:'Reversement des ventes de '+monthLongLabel(month), unit:pay.amount, qty:1, total:pay.amount}];
-  return {pay, rows, dateLbl:(pay.date||todayStr()).split('-').reverse().join('/'), periode:monthLongLabel(month)};
+  const periode = monthLongLabel(month);
+  return {pay, rows, dateLbl:(pay.date||todayStr()).split('-').reverse().join('/'), periode, titre:'Don Lylou-Vely – '+periode.charAt(0).toUpperCase()+periode.slice(1), bankLine:bankDocLine(pay.bank)};
 }
 function buildAsblReceiptA4(month, idx){
   const d = asblReceiptData(month, idx); if(!d) return '';
@@ -2729,14 +2779,14 @@ function buildAsblReceiptA4(month, idx){
         <hr>
       </div>
       ${testMark}
-      <div class="rv-titre">Reçu de versement</div>
+      <div class="rv-titre">${esc(d.titre)}</div>
       <div class="rv-meta">Bénéficiaire : <b>${ASBL_NAME} (ASBL)</b><br>Période : <b>${esc(d.periode)}</b> · Date du versement : <b>${d.dateLbl}</b></div>
       <table class="rv-table">
         <thead><tr><th>Article</th><th class="r">Qté</th><th class="r">Reversé / pièce</th><th class="r">Montant</th></tr></thead>
         <tbody>${rowsHTML}</tbody>
       </table>
       <div class="rv-total"><div class="lbl">Montant versé</div><div class="val">${euro(d.pay.amount)}</div></div>
-      <div class="rv-note">Versé à ${ASBL_NAME} par virement bancaire.</div>
+      <div class="rv-note">Versé à ${ASBL_NAME} par virement bancaire${d.pay.bank?' depuis <b>'+esc(d.bankLine)+'</b>':''}.</div>
       <div class="rv-sign"><div>Pour ${esc(SELLER.brand)}</div><div>Pour ${ASBL_NAME} (pour réception)</div></div>
       <div class="rv-foot">Merci pour votre engagement envers les animaux · Reçu généré le ${new Date().toLocaleString('fr-BE')}</div>
     </body></html>`;
@@ -2746,7 +2796,7 @@ function buildAsblReceipt58(month, idx){
   const rowsHTML = d.rows.map(r=>`<div class="t-item"><span>${esc(r.name)} <span class="q">×${r.qty}</span></span><span>${euro(r.total)}</span></div>`).join('');
   const testMark = (mode==='test') ? `<div class="t-testmark">⚠ REÇU DE TEST — SANS VALEUR</div>` : '';
   return `${testMark}
-    <div class="t-head"><div class="lg">${esc(SELLER.brand)}</div><div class="sl">Reçu de versement</div>
+    <div class="t-head"><div class="lg">${esc(SELLER.brand)}</div><div class="sl">${esc(d.titre)}</div>
       <div class="t-legal">${esc(SELLER.legal)}<br>TVA ${esc(SELLER.vat)}</div></div>
     <div style="text-align:center;font-weight:600;margin-bottom:3px">${ASBL_NAME} (ASBL)</div>
     <div class="t-meta"><span>Date</span><span>${d.dateLbl}</span></div>
@@ -2754,7 +2804,7 @@ function buildAsblReceipt58(month, idx){
     <div class="t-sep"></div>
     ${rowsHTML}
     <div class="t-tot"><span>Total versé</span><span>${euro(d.pay.amount)}</span></div>
-    <div class="t-pay" style="text-align:center">Versé par virement bancaire</div>
+    <div class="t-pay" style="text-align:center">Versé par virement bancaire${d.pay.bank?'<br>depuis '+esc(BANK_DOC[d.pay.bank].label)+' '+esc(BANK_DOC[d.pay.bank].iban):''}</div>
     <div class="t-foot">Merci pour votre engagement<br>envers les animaux</div>`;
 }
 window.printAsblReceipt = function(month, idx, mode){
@@ -4522,6 +4572,7 @@ window.addManualLine = function(){
 window.openVirement = function(){
   virementMode = 'auto';
   setVirementMode('auto');
+  virtBank = ''; setSegBank('virt-bank-seg', '');
   // Versements banque non encore traités
   const versements = state.movements.filter(m=>m.type==='out' && m.reason && m.reason.startsWith('Versement banque') && !m.banked);
   const box = document.getElementById('virement-tickets');
@@ -4545,6 +4596,8 @@ window.openVirement = function(){
   updateVirementTotal();
   document.getElementById('virement-overlay').classList.remove('hidden');
 };
+let virtBank = '';
+window.pickVirtBank = function(k){ virtBank = k; setSegBank('virt-bank-seg', k); };
 window.closeVirement = function(){ document.getElementById('virement-overlay').classList.add('hidden'); };
 
 window.updateVirementTotal = function(){
@@ -4564,6 +4617,7 @@ window.updateVirementTotal = function(){
 /* Construit le document de versement (HTML complet) + marque les mouvements comme bancés.
    Retourne le HTML, ou null si rien à générer (toast déjà affiché). */
 function buildVirementDoc(){
+  if(!virtBank){ toast('Choisis la banque (ING ou CBC)'); return null; }
   let dateV, rows='', total=0;
   if(virementMode==='auto'){
     dateV = document.getElementById('virement-date').value;
@@ -4581,6 +4635,7 @@ function buildVirementDoc(){
     // Marquer comme bancés après génération
     selectedMvs.forEach(async mv=>{
       mv.banked = true;
+      mv.bank = virtBank;
       await saveMovement(mv);
     });
     save();
@@ -4629,12 +4684,12 @@ function buildVirementDoc(){
     <body>
       <div class="vb-head">
         <div class="logo">${esc(SELLER.brand)}</div>
-        <div class="sub">Versement banque</div>
+        <div class="sub">Versement banque · ${esc(BANK_DOC[virtBank].label)}</div>
         <div class="legal">${esc(SELLER.legal)} · TVA ${esc(SELLER.vat)}<br>${esc(SELLER.address)}</div>
         <hr>
       </div>
       <div class="vb-titre">Document de versement en banque</div>
-      <div class="vb-meta"><b>Date du versement :</b> ${dateLabel}${state.marche?' &nbsp;·&nbsp; <b>Marché :</b> '+esc(state.marche):''}</div>
+      <div class="vb-meta"><b>Date du versement :</b> ${dateLabel}${state.marche?' &nbsp;·&nbsp; <b>Marché :</b> '+esc(state.marche):''}<br><b>Versé sur :</b> ${esc(bankDocLine(virtBank))}</div>
       <table class="vb-table">
         <thead><tr><th>Réf.</th><th>Date/Heure</th><th>Marché</th><th>Description</th><th class="r">Montant</th></tr></thead>
         <tbody>${rows}</tbody>
