@@ -340,7 +340,7 @@ nav{display:none}
 <div id="gate">
   <div class="box">
     <div class="mark">Lylou-Vely</div>
-    <div class="sub">Caisse · Build 4.0</div>
+    <div class="sub">Caisse · Build 4.1</div>
     <input type="email" id="gate-email" placeholder="Email" autocomplete="email" value="infos@lylou-vely.be" style="letter-spacing:0">
     <input type="password" id="gate-pw" placeholder="Mot de passe" autocomplete="current-password">
     <button onclick="doLogin()">Connexion</button>
@@ -352,7 +352,7 @@ nav{display:none}
 <div id="app" class="hidden">
   <header>
     <div class="hdr-top">
-      <div class="title">Lylou-Vely<small>Caisse · Build 4.0</small></div>
+      <div class="title">Lylou-Vely<small>Caisse · Build 4.1</small></div>
       <div style="display:flex;gap:6px;align-items:center">
         <button class="refresh-btn" onclick="openSettings()" style="font-size:12px;padding:6px 10px;font-weight:600" title="Réglages">⚙︎</button>
         <button id="hdr-mode-btn" class="refresh-btn" onclick="toggleMode()" title="Basculer Prod/Test" style="font-size:12px;padding:6px 10px;font-weight:600;letter-spacing:.5px">PROD</button>
@@ -490,6 +490,12 @@ nav{display:none}
         <select id="jr-month-select" onchange="setJournalMonth(this.value)" style="display:none;padding:8px 12px;border-radius:8px;border:1px solid #ddd;font-size:13px;margin-bottom:12px;width:100%"></select>
         <button id="jr-export-closures-btn" class="btn btn-outline" style="display:none;margin-bottom:12px" onclick="downloadClosuresMonthZip()">📦 Exporter les clôtures du mois (ZIP)</button>
         <button id="jr-export-tickets-btn" class="btn btn-outline" style="display:none;margin-bottom:12px" onclick="downloadTicketsMonthZip()">🧾 Exporter tous les tickets du mois (ZIP)</button>
+        <div id="jr-month-exports" style="display:none">
+          <button class="btn btn-outline" style="margin-bottom:12px" onclick="downloadClosuresMonthPDFs()">📄 Clôtures du mois (2 PDF : avant / après)</button>
+          <button class="btn btn-outline" style="margin-bottom:12px" onclick="downloadMonthVersementsPDF()">🏦 Versements banque du mois (PDF)</button>
+          <button class="btn btn-outline" style="margin-bottom:12px" onclick="downloadMonthRecapPDF()">📊 Récap comptable du mois (PDF)</button>
+          <button class="btn btn-outline" style="margin-bottom:12px" onclick="downloadTicketsMonthPDF()">🧾 Tous les tickets du mois (1 PDF)</button>
+        </div>
         <div id="jr-range-picker" style="display:none;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center" class="date-filter">
           <span style="font-size:13px;color:var(--muted)">Du</span>
           <input type="date" id="jr-range-start" onchange="setJournalRange()">
@@ -3293,6 +3299,7 @@ window.setJournalFilter = function(f){
   }
   document.getElementById('jr-export-closures-btn').style.display = (f==='month') ? 'block' : 'none';
   document.getElementById('jr-export-tickets-btn').style.display = (f==='month') ? 'block' : 'none';
+  document.getElementById('jr-month-exports').style.display = (f==='month') ? 'block' : 'none';
   renderJournal();
 };
 /* Remplit le menu déroulant "Mois" du Journal avec tous les mois où il y a eu des ventes */
@@ -4126,7 +4133,7 @@ function getMonthClosureDates(month){
 
 /* Génère le PDF (blob) d'un ticket de clôture Z isolé, hors écran, sans passer par la modale visible.
    Utilise le même style large "A5" que le bouton A4 de l'app, pour un rendu cohérent avec le reste. */
-async function ticketToPdfBlob(day, marche, mode){
+async function ticketToCanvas(day, marche, mode){
   const excludeVersement = mode==='avant';
   const {ca,esp,qr,carte,cancelledN,theo,inTotal,outTotal,cashOut,cardOut,fondForDay} = buildZHTML(day, marche, excludeVersement);
   const bodyHtml = buildZTicketHTML(day, marche, ca, esp, qr, carte, cancelledN, theo, inTotal, outTotal, cashOut, cardOut, fondForDay);
@@ -4151,6 +4158,10 @@ async function ticketToPdfBlob(day, marche, mode){
   await new Promise(r=>setTimeout(r,30));
   const canvas = await html2canvas(wrap, {scale:2, backgroundColor:'#ffffff'});
   wrap.remove();
+  return canvas;
+}
+async function ticketToPdfBlob(day, marche, mode){
+  const canvas = await ticketToCanvas(day, marche, mode);
   const img = canvas.toDataURL('image/png');
   const { jsPDF } = window.jspdf;
   const wmm = 148; // Largeur A5 portrait, format "large" (identique au rendu du bouton A4)
@@ -4188,8 +4199,226 @@ window.downloadClosuresMonthZip = async function(){
   }
 };
 
+
+/* ============ EXPORTS PDF DU MOIS (un seul fichier par type) ============ */
+function monthPdfLabel(month){ const l = monthLongLabel(month); return l.charAt(0).toUpperCase()+l.slice(1); }
+function currentExportMonth(){ return (journalDate||todayStr()).slice(0,7); }
+const pdfSleep = ms => new Promise(r=>setTimeout(r,ms));
+function addPdfHeaderFooter(pdf, title){
+  const n = pdf.getNumberOfPages();
+  for(let i=1;i<=n;i++){
+    pdf.setPage(i); pdf.setFontSize(9); pdf.setTextColor(120);
+    pdf.text(title, 14, 9);
+    pdf.text('Page '+i+'/'+n, 196, 9, {align:'right'});
+    pdf.text('Lylou-Vely - généré le '+new Date().toLocaleString('fr-BE'), 14, 292);
+  }
+}
+function pdfLibsOk(){ if(!window.jspdf || !window.html2canvas){ toast("Export PDF indisponible"); return false; } return true; }
+
+/* 1) Clôtures du mois : un PDF "après clôture" + un PDF "avant clôture" (infos versements), une clôture par page */
+window.downloadClosuresMonthPDFs = async function(){
+  const month = currentExportMonth(), label = monthPdfLabel(month);
+  const list = getMonthClosureDates(month);
+  if(list.length===0){ toast("Aucune clôture trouvée pour ce mois"); return; }
+  if(!pdfLibsOk()) return;
+  try{
+    const jobs = [
+      ['apres', 'Clôture du mois - '+label+'.pdf', 'Clôtures du mois - '+label+' (après clôture)', 'des clôtures'],
+      ['avant', 'Infos Versements du mois - '+label+'.pdf', 'Infos versements du mois - '+label+' (avant clôture)', 'des infos versements']
+    ];
+    for(const [mode, fname, title, txt] of jobs){
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF({unit:'mm', format:'a4'});
+      let i = 0;
+      for(const {date, marche} of list){
+        i++; toast('Génération '+txt+'… '+i+'/'+list.length);
+        const canvas = await ticketToCanvas(date, marche, mode);
+        if(i>1) pdf.addPage();
+        let w = 148, h = canvas.height*w/canvas.width;
+        const maxH = 265;
+        if(h>maxH){ w = w*maxH/h; h = maxH; }
+        pdf.addImage(canvas.toDataURL('image/jpeg',0.9), 'JPEG', (210-w)/2, 16, w, h);
+      }
+      addPdfHeaderFooter(pdf, title);
+      downloadBlob(pdf.output('blob'), fname);
+      await pdfSleep(900);
+    }
+    toast('✓ 2 PDF téléchargés — '+list.length+' clôture'+(list.length>1?'s':''));
+  }catch(e){
+    console.warn('downloadClosuresMonthPDFs:', e);
+    toast("Erreur lors de la génération des PDF");
+  }
+};
+
+/* 2) Tous les tickets de vente du mois dans un seul PDF (2 colonnes par page A4) */
+window.downloadTicketsMonthPDF = async function(){
+  const month = currentExportMonth(), label = monthPdfLabel(month);
+  const sales = state.sales.filter(s=>s.date.slice(0,7)===month).sort((a,b)=>a.date.localeCompare(b.date)||a.time.localeCompare(b.time));
+  if(sales.length===0){ toast("Aucun ticket trouvé pour ce mois"); return; }
+  if(!pdfLibsOk()) return;
+  try{
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({unit:'mm', format:'a4'});
+    const X = [16, 114], W = 80, TOP = 16, BOTTOM = 284;
+    let y = [TOP, TOP], n = 0;
+    for(const sale of sales){
+      n++; if(n%5===1) toast('Génération des tickets… '+n+'/'+sales.length);
+      const canvas = await saleTicketToCanvas(sale, 2);
+      const h = canvas.height*W/canvas.width;
+      let c = y[0]<=y[1] ? 0 : 1;
+      if(y[c]+h>BOTTOM){
+        const o = 1-c;
+        if(y[o]+h<=BOTTOM) c = o;
+        else { pdf.addPage(); y = [TOP, TOP]; c = 0; }
+      }
+      pdf.addImage(canvas.toDataURL('image/jpeg',0.88), 'JPEG', X[c], y[c], W, h);
+      y[c] += h + 4;
+    }
+    addPdfHeaderFooter(pdf, 'Tickets de vente du mois - '+label);
+    downloadBlob(pdf.output('blob'), 'Tickets du mois - '+label+'.pdf');
+    toast('✓ PDF téléchargé — '+sales.length+' ticket'+(sales.length>1?'s':''));
+  }catch(e){
+    console.warn('downloadTicketsMonthPDF:', e);
+    toast("Erreur lors de la génération du PDF");
+  }
+};
+
+/* Gabarit commun des documents comptables du mois (récap, versements) */
+function monthDocHTML(title, sub, inner){
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8">
+    <title>${esc(SELLER.brand)} — ${esc(title)}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Jost:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+      @page{margin:14mm;size:A4 portrait}
+      *{box-sizing:border-box}
+      body{font-family:'Jost',Arial,sans-serif;color:#2a2233;margin:0;padding:0}
+      .md-head{text-align:center;margin-bottom:18px}
+      .md-head .logo{font-family:'Cormorant Garamond',serif;font-size:32px;color:#6B3FA0;font-weight:700}
+      .md-head .sub{font-size:11px;letter-spacing:3px;text-transform:uppercase;color:#8b62c0;margin-top:2px}
+      .md-head .legal{font-size:11px;color:#777;margin-top:8px}
+      .md-head hr{border:none;border-top:1px solid #e4d9f2;margin:14px 0 0}
+      .md-titre{font-family:'Cormorant Garamond',serif;font-size:22px;color:#6B3FA0;font-weight:700;text-align:center;margin:18px 0 12px}
+      .md-h2{font-family:'Cormorant Garamond',serif;font-size:18px;color:#6B3FA0;font-weight:700;margin:22px 0 8px}
+      .md-table{width:100%;border-collapse:collapse;margin-bottom:8px;font-size:12px}
+      .md-table th{background:#6B3FA0;color:#fff;text-align:left;padding:7px 9px;font-weight:600;font-size:10px;text-transform:uppercase;letter-spacing:.4px}
+      .md-table td{padding:7px 9px;border-bottom:1px solid #eee}
+      .md-table tr:nth-child(even) td{background:#faf7fd}
+      .md-table .r{text-align:right}
+      .md-table tr.tot td{background:#f1eaf9;font-weight:700;border-top:2px solid #6B3FA0}
+      .md-empty{color:#999;font-style:italic;font-size:12px;margin:6px 0}
+      .md-foot{margin-top:24px;text-align:center;font-size:10px;color:#aaa;border-top:1px dashed #e4d9f2;padding-top:12px}
+    </style></head>
+    <body>
+      <div class="md-head">
+        <div class="logo">${esc(SELLER.brand)}</div>
+        <div class="sub">${esc(sub)}</div>
+        <div class="legal">${esc(SELLER.legal)} · TVA ${esc(SELLER.vat)}<br>${esc(SELLER.address)}</div>
+        <hr>
+      </div>
+      <div class="md-titre">${esc(title)}</div>
+      ${inner}
+      <div class="md-foot">Document généré le ${new Date().toLocaleString('fr-BE')} · ${esc(SELLER.brand)}</div>
+    </body></html>`;
+}
+const fr = d => (d||'').split('-').reverse().join('/');
+
+/* 3) Récap comptable du mois : jour par jour + totaux par libellé */
+window.downloadMonthRecapPDF = function(){
+  const month = currentExportMonth(), label = monthPdfLabel(month);
+  const byM = computeMarcheDateStats();
+  const rows = [];
+  Object.keys(byM).forEach(m=>Object.keys(byM[m]).forEach(d=>{ if(d.slice(0,7)===month) rows.push({date:d, marche:m, ...byM[m][d]}); }));
+  const vers = state.movements.filter(m=>m.type==='out' && (m.reason||'').startsWith('Versement banque') && m.date.slice(0,7)===month);
+  const datesWithRow = new Set(rows.map(r=>r.date));
+  vers.forEach(v=>{ if(!datesWithRow.has(v.date)){ datesWithRow.add(v.date); rows.push({date:v.date, marche:v.marche||'(sans marché)', esp:0, qr:0, carte:0, ca:0, count:0}); } });
+  if(rows.length===0){ toast("Aucune donnée pour ce mois"); return; }
+  rows.sort((a,b)=>a.date.localeCompare(b.date)||a.marche.localeCompare(b.marche));
+  const shown = new Set();
+  let tot = {ca:0, esp:0, qr:0, carte:0, count:0, vers:0};
+  const byLabel = {};
+  const dayRows = rows.map(r=>{
+    let vTxt = '—';
+    if(!shown.has(r.date)){
+      shown.add(r.date);
+      const vs = vers.filter(v=>v.date===r.date);
+      if(vs.length){
+        const sum = vs.reduce((a,v)=>a+v.amount,0);
+        const banks = [...new Set(vs.map(v=>v.bank).filter(Boolean))].join('/');
+        vTxt = euro(sum) + (banks ? ' ('+banks+')' : '');
+        tot.vers += sum;
+      }
+    }
+    tot.ca+=r.ca; tot.esp+=r.esp; tot.qr+=r.qr; tot.carte+=r.carte; tot.count+=r.count;
+    const b = byLabel[r.marche] = byLabel[r.marche] || {ca:0, esp:0, qr:0, carte:0, count:0, jours:0};
+    b.ca+=r.ca; b.esp+=r.esp; b.qr+=r.qr; b.carte+=r.carte; b.count+=r.count; if(r.count>0) b.jours++;
+    return `<tr><td>${fr(r.date)}</td><td>${esc(r.marche)}</td><td class="r">${r.count}</td><td class="r"><b>${euro(r.ca)}</b></td><td class="r">${euro(r.esp)}</td><td class="r">${euro(r.qr)}</td><td class="r">${euro(r.carte)}</td><td class="r">${vTxt}</td></tr>`;
+  }).join('');
+  const labelRows = Object.keys(byLabel).sort((a,b)=>byLabel[b].ca-byLabel[a].ca).map(k=>{
+    const b = byLabel[k];
+    return `<tr><td>${esc(k)}</td><td class="r">${b.jours}</td><td class="r">${b.count}</td><td class="r"><b>${euro(b.ca)}</b></td><td class="r">${euro(b.esp)}</td><td class="r">${euro(b.qr)}</td><td class="r">${euro(b.carte)}</td></tr>`;
+  }).join('');
+  const inner = `
+    <div class="md-h2">Jour par jour</div>
+    <table class="md-table">
+      <thead><tr><th>Date</th><th>Libellé</th><th class="r">Ventes</th><th class="r">CA</th><th class="r">Espèces</th><th class="r">QR</th><th class="r">Carte</th><th class="r">Versement banque</th></tr></thead>
+      <tbody>${dayRows}
+        <tr class="tot"><td colspan="2">Total du mois</td><td class="r">${tot.count}</td><td class="r">${euro(tot.ca)}</td><td class="r">${euro(tot.esp)}</td><td class="r">${euro(tot.qr)}</td><td class="r">${euro(tot.carte)}</td><td class="r">${euro(tot.vers)}</td></tr>
+      </tbody>
+    </table>
+    <div class="md-h2">Totaux par libellé</div>
+    <table class="md-table">
+      <thead><tr><th>Libellé</th><th class="r">Jours</th><th class="r">Ventes</th><th class="r">CA</th><th class="r">Espèces</th><th class="r">QR</th><th class="r">Carte</th></tr></thead>
+      <tbody>${labelRows}</tbody>
+    </table>
+    <p style="font-size:11px;color:#777">Les montants sont TVA comprise. Le détail des versements (banque, association) figure dans le document « Versements banque du mois ».</p>`;
+  htmlStringToPDF(monthDocHTML('Récap comptable - '+label, 'Récap du mois', inner), 'Récap comptable - '+label+'.pdf');
+};
+
+/* 4) Versements banque du mois (avec banque ING/CBC) + versements à l'association */
+window.downloadMonthVersementsPDF = function(){
+  const month = currentExportMonth(), label = monthPdfLabel(month);
+  const vers = state.movements.filter(m=>m.type==='out' && (m.reason||'').startsWith('Versement banque') && m.date.slice(0,7)===month)
+    .sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time));
+  const asso = [];
+  Object.keys(state.asblPayouts||{}).forEach(k=>{
+    asblPayments(k).forEach(p=>{ if((p.date||'').slice(0,7)===month) asso.push({date:p.date, periode:monthLongLabel(k), amount:p.amount, bank:p.bank}); });
+  });
+  asso.sort((a,b)=>a.date.localeCompare(b.date));
+  if(vers.length===0 && asso.length===0){ toast("Aucun versement pour ce mois"); return; }
+  const bankTxt = k => BANK_DOC[k] ? BANK_DOC[k].label : '—';
+  const sub = {ING:0, CBC:0, none:0};
+  vers.forEach(v=>{ sub[BANK_DOC[v.bank] ? v.bank : 'none'] += v.amount; });
+  const totV = vers.reduce((a,v)=>a+v.amount,0);
+  const versTable = vers.length===0 ? '<div class="md-empty">Aucun versement banque ce mois-ci.</div>' : `
+    <table class="md-table">
+      <thead><tr><th>Date</th><th>Description</th><th>Libellé</th><th>Banque</th><th class="r">Montant</th></tr></thead>
+      <tbody>${vers.map(v=>`<tr><td>${fr(v.date)} ${esc(v.time||'')}</td><td>${esc(v.reason)}</td><td>${esc(v.marche||'—')}</td><td><b>${bankTxt(v.bank)}</b></td><td class="r"><b>${euro(v.amount)}</b></td></tr>`).join('')}
+        <tr class="tot"><td colspan="4">Total des versements banque</td><td class="r">${euro(totV)}</td></tr>
+      </tbody>
+    </table>
+    <table class="md-table" style="width:60%">
+      <thead><tr><th>Banque</th><th>Compte</th><th class="r">Sous-total</th></tr></thead>
+      <tbody>
+        <tr><td><b>ING</b></td><td>${esc(BANK_DOC.ING.iban)}</td><td class="r">${euro(sub.ING)}</td></tr>
+        <tr><td><b>CBC</b></td><td>${esc(BANK_DOC.CBC.iban)}</td><td class="r">${euro(sub.CBC)}</td></tr>
+        <tr><td>Non précisée</td><td>—</td><td class="r">${euro(sub.none)}</td></tr>
+      </tbody>
+    </table>`;
+  const totA = asso.reduce((a,p)=>a+p.amount,0);
+  const assoTable = asso.length===0 ? `<div class="md-empty">Aucun versement à ${esc(ASBL_NAME)} ce mois-ci.</div>` : `
+    <table class="md-table">
+      <thead><tr><th>Date</th><th>Bénéficiaire</th><th>Période</th><th>Banque</th><th class="r">Montant</th></tr></thead>
+      <tbody>${asso.map(p=>`<tr><td>${fr(p.date)}</td><td>${esc(ASBL_NAME)}</td><td>${esc(p.periode)}</td><td><b>${bankTxt(p.bank)}</b></td><td class="r"><b>${euro(p.amount)}</b></td></tr>`).join('')}
+        <tr class="tot"><td colspan="4">Total versé à l'association</td><td class="r">${euro(totA)}</td></tr>
+      </tbody>
+    </table>`;
+  const inner = `<div class="md-h2">Versements en banque</div>${versTable}<div class="md-h2">Versements à l'association</div>${assoTable}`;
+  htmlStringToPDF(monthDocHTML('Versements banque du mois - '+label, 'Versements du mois', inner), 'Versements banque du mois - '+label+'.pdf');
+};
+
 /* Génère le PDF (blob) d'un ticket de vente isolé, hors écran, même style que le téléchargement individuel */
-async function saleTicketToPdfBlob(sale){
+async function saleTicketToCanvas(sale, scale){
+  scale = scale || 3;
   const ref = sale.ref || makeRef(sale.num);
   const wrap = document.createElement('div');
   wrap.style.cssText = 'position:fixed;left:-99999px;top:0;background:#fff';
@@ -4221,8 +4450,12 @@ async function saleTicketToPdfBlob(sale){
     }
   }catch(e){}
   await new Promise(r=>setTimeout(r,30));
-  const canvas = await html2canvas(wrap, {scale:3, backgroundColor:'#ffffff'});
+  const canvas = await html2canvas(wrap, {scale:scale, backgroundColor:'#ffffff'});
   wrap.remove();
+  return canvas;
+}
+async function saleTicketToPdfBlob(sale){
+  const canvas = await saleTicketToCanvas(sale);
   const img = canvas.toDataURL('image/png');
   const { jsPDF } = window.jspdf;
   const wmm = 80;
