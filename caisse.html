@@ -340,7 +340,7 @@ nav{display:none}
 <div id="gate">
   <div class="box">
     <div class="mark">Lylou-Vely</div>
-    <div class="sub">Caisse · Build 4.2</div>
+    <div class="sub">Caisse · Build 4.3</div>
     <input type="email" id="gate-email" placeholder="Email" autocomplete="email" value="infos@lylou-vely.be" style="letter-spacing:0">
     <input type="password" id="gate-pw" placeholder="Mot de passe" autocomplete="current-password">
     <button onclick="doLogin()">Connexion</button>
@@ -352,7 +352,7 @@ nav{display:none}
 <div id="app" class="hidden">
   <header>
     <div class="hdr-top">
-      <div class="title">Lylou-Vely<small>Caisse · Build 4.2</small></div>
+      <div class="title">Lylou-Vely<small>Caisse · Build 4.3</small></div>
       <div style="display:flex;gap:6px;align-items:center">
         <button class="refresh-btn" onclick="openSettings()" style="font-size:12px;padding:6px 10px;font-weight:600" title="Réglages">⚙︎</button>
         <button id="hdr-mode-btn" class="refresh-btn" onclick="toggleMode()" title="Basculer Prod/Test" style="font-size:12px;padding:6px 10px;font-weight:600;letter-spacing:.5px">PROD</button>
@@ -3855,7 +3855,7 @@ function canvasToPDFPages(canvas, filename){
   buildPDFFromCanvas(canvas).save(filename);
 }
 /* Construit un document jsPDF paginé à partir d'un canvas (utilisé par canvasToPDFPages et les exports en blob) */
-function buildPDFFromCanvas(canvas){
+function buildPDFFromCanvas(canvas, jpeg){
   const { jsPDF } = window.jspdf;
   const pdf = new jsPDF({unit:'mm', format:'a4'});
   const pageW = 210, pageH = 297, margin = 8;
@@ -3872,7 +3872,8 @@ function buildPDFFromCanvas(canvas){
     ctx.fillStyle = '#ffffff'; ctx.fillRect(0,0,pageCanvas.width,pageCanvas.height);
     ctx.drawImage(canvas, 0, rendered, canvas.width, sliceH, 0, 0, canvas.width, sliceH);
     if(page>0) pdf.addPage();
-    pdf.addImage(pageCanvas.toDataURL('image/png'), 'PNG', margin, margin, imgW, sliceH/pxPerMm);
+    if(jpeg) pdf.addImage(pageCanvas.toDataURL('image/jpeg', 0.9), 'JPEG', margin, margin, imgW, sliceH/pxPerMm);
+    else pdf.addImage(pageCanvas.toDataURL('image/png'), 'PNG', margin, margin, imgW, sliceH/pxPerMm);
     rendered += sliceH; page++;
   }
   return pdf;
@@ -3901,6 +3902,21 @@ async function htmlToCanvasViaIframe(fullHtml){
 async function htmlToPdfBlobViaIframe(fullHtml){
   const canvas = await htmlToCanvasViaIframe(fullHtml);
   return buildPDFFromCanvas(canvas).output('blob');
+}
+
+/* Variante compacte (JPEG) pour les documents comptables du mois / de l'année : fichiers légers à envoyer */
+async function htmlStringToPDFCompact(fullHtml, filename){
+  if(!window.html2canvas || !window.jspdf){
+    toast("PDF indisponible → impression"); openPrintWindow(fullHtml); return;
+  }
+  toast("Génération du PDF…");
+  try{
+    const canvas = await htmlToCanvasViaIframe(fullHtml);
+    buildPDFFromCanvas(canvas, true).save(filename);
+    toast("PDF téléchargé");
+  }catch(e){
+    toast("Erreur PDF → impression"); openPrintWindow(fullHtml);
+  }
 }
 
 async function htmlStringToPDF(fullHtml, filename){
@@ -4443,7 +4459,7 @@ function makeRecapPDF(prefix, isYear, label){
     ${assoBlock}
     <p style="font-size:11px;color:#777">Les montants de vente sont TVA comprise. Le détail des versements (banque, association) figure dans le document « Versements banque ».</p>`;
   const title = 'Récap comptable' + (isYear ? ' de l\'année - ' : ' - ') + label;
-  htmlStringToPDF(monthDocHTML(title, isYear ? 'Récap de l\'année' : 'Récap du mois', inner), title+'.pdf');
+  htmlStringToPDFCompact(monthDocHTML(title, isYear ? 'Récap de l\'année' : 'Récap du mois', inner), title+'.pdf');
 }
 window.downloadMonthRecapPDF = function(){ const m = currentExportMonth(); makeRecapPDF(m, false, monthPdfLabel(m)); };
 window.downloadYearRecapPDF = function(){ const y = selectedExportYear(); makeRecapPDF(y, true, y); };
@@ -4486,7 +4502,7 @@ function makeVersementsPDF(prefix, isYear, label){
     </table>`;
   const inner = `<div class="md-h2">Versements en banque</div>${versTable}<div class="md-h2">Versements à l'association</div>${assoTable}`;
   const title = 'Versements banque ' + (isYear ? 'de l\'année - ' : 'du mois - ') + label;
-  htmlStringToPDF(monthDocHTML(title, isYear ? 'Versements de l\'année' : 'Versements du mois', inner), title+'.pdf');
+  htmlStringToPDFCompact(monthDocHTML(title, isYear ? 'Versements de l\'année' : 'Versements du mois', inner), title+'.pdf');
 }
 window.downloadMonthVersementsPDF = function(){ const m = currentExportMonth(); makeVersementsPDF(m, false, monthPdfLabel(m)); };
 window.downloadYearVersementsPDF = function(){ const y = selectedExportYear(); makeVersementsPDF(y, true, y); };
