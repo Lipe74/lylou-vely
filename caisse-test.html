@@ -340,7 +340,7 @@ nav{display:none}
 <div id="gate">
   <div class="box">
     <div class="mark">Lylou-Vely</div>
-    <div class="sub">Caisse · Build 3.9</div>
+    <div class="sub">Caisse · Build 4.0</div>
     <input type="email" id="gate-email" placeholder="Email" autocomplete="email" value="infos@lylou-vely.be" style="letter-spacing:0">
     <input type="password" id="gate-pw" placeholder="Mot de passe" autocomplete="current-password">
     <button onclick="doLogin()">Connexion</button>
@@ -352,7 +352,7 @@ nav{display:none}
 <div id="app" class="hidden">
   <header>
     <div class="hdr-top">
-      <div class="title">Lylou-Vely<small>Caisse · Build 3.9</small></div>
+      <div class="title">Lylou-Vely<small>Caisse · Build 4.0</small></div>
       <div style="display:flex;gap:6px;align-items:center">
         <button class="refresh-btn" onclick="openSettings()" style="font-size:12px;padding:6px 10px;font-weight:600" title="Réglages">⚙︎</button>
         <button id="hdr-mode-btn" class="refresh-btn" onclick="toggleMode()" title="Basculer Prod/Test" style="font-size:12px;padding:6px 10px;font-weight:600;letter-spacing:.5px">PROD</button>
@@ -600,6 +600,7 @@ nav{display:none}
             <button class="btn btn-outline" style="width:auto;padding:6px 12px;font-size:12px" onclick="downloadStatsTablePDF()">📄 PDF</button>
             <button class="btn btn-outline" style="width:auto;padding:6px 12px;font-size:12px" onclick="printStatsTable()">🖨 A4</button>
             <button class="btn btn-outline" style="width:auto;padding:6px 12px;font-size:12px" onclick="openLabelFix()">✏️ Corriger un libellé</button>
+            <button class="btn btn-outline" style="width:auto;padding:6px 12px;font-size:12px" onclick="openLabelNormalize()">🔠 Normaliser</button>
           </div>
           <div id="stats-marche-filter" style="text-align:right;margin-bottom:8px">
             <select id="stats-marche-select" onchange="onStatsFilterChange()" style="padding:6px 10px;border-radius:8px;border:1px solid #ddd;font-size:13px"></select>
@@ -842,6 +843,18 @@ nav{display:none}
     <div class="row-btns" style="margin-top:14px">
       <button class="btn btn-outline" onclick="closeVersementPrompt()">Annuler</button>
       <button class="btn btn-primary" onclick="confirmVersementPrompt()">OK</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay center hidden" id="norm-overlay">
+  <div class="sheet" style="max-width:420px">
+    <h2>🔠 Normaliser les libellés</h2>
+    <p style="font-size:13px;color:var(--muted);text-align:center;margin-bottom:10px">Majuscule à chaque mot important, « marche » en tête devient « Marché ». Les variantes identiques sont fusionnées. Les montants ne changent pas.</p>
+    <div id="norm-list" style="max-height:300px;overflow-y:auto;margin-bottom:12px"></div>
+    <div class="row-btns">
+      <button class="btn btn-outline" onclick="closeLabelNormalize()">Fermer</button>
+      <button class="btn btn-primary" id="norm-apply" onclick="applyLabelNormalize()">Appliquer</button>
     </div>
   </div>
 </div>
@@ -1507,6 +1520,23 @@ window.ignoreRequiredClosure = function(){
 
 /* Libellés fixes des journées (jamais saisis à la main → pas de variantes "Maison", "maison"...) */
 const LBL_HORS = 'Vente hors marché', LBL_ADMIN = 'Administration', LBL_TEST = 'Test';
+const SMALL_WORDS = new Set(['de','du','des','la','le','les','et','en','à','au','aux','sur','sous']);
+/* Met un nom de marché en forme : majuscule à chaque mot important, petits mots en minuscules,
+   "marche" en tête de nom → "Marché". Les libellés fixes ne sont jamais modifiés. */
+function normalizeLabel(name){
+  const t = (name||'').trim().replace(/\s+/g,' ');
+  if(!t || [LBL_HORS, LBL_ADMIN, LBL_TEST, 'Repos / Pas de marché'].includes(t)) return t;
+  const cap = w => w ? w.charAt(0).toUpperCase()+w.slice(1) : w;
+  const fixWord = (w, first)=>{
+    const low = w.toLowerCase();
+    if(first && low==='marche') return 'Marché';
+    const m = low.match(/^([dl])['’](.+)$/);
+    if(m) return (first ? cap(m[1]) : m[1]) + "'" + cap(m[2]);
+    if(!first && SMALL_WORDS.has(low)) return low;
+    return cap(low);
+  };
+  return t.split(' ').map((w,i)=> w.split('-').map((p,j)=>fixWord(p, i===0 && j===0)).join('-')).join(' ');
+}
 let dayMode = '';
 function isForcedTest(){ return typeof FORCE_TEST !== 'undefined' && FORCE_TEST; }
 function applyDayModeUI(){
@@ -1537,7 +1567,7 @@ window.confirmFond = async function(){
   if(!dayMode){ toast("Choisis le type de journée"); return; }
   let marche;
   if(dayMode==='marche'){
-    marche = document.getElementById('marche-input').value.trim();
+    marche = normalizeLabel(document.getElementById('marche-input').value);
     if(!marche){ toast("Indique le nom du marché"); return; }
   } else if(dayMode==='hors') marche = LBL_HORS;
   else if(dayMode==='admin') marche = LBL_ADMIN;
@@ -2389,7 +2419,7 @@ function buildSaleTicketBodyHTML(sale){
     </div>
     <div class="t-meta"><span>Reçu n°</span><span><b>${ref}</b></span></div>
     <div class="t-meta"><span>${sale.date.split('-').reverse().join('/')}</span><span>${sale.time}</span></div>
-    ${sale.marche ? `<div style="text-align:center;font-size:11px;color:#555;margin:2px 0">Marche : ${esc(sale.marche)}</div>` : ''}
+    ${sale.marche ? `<div style="text-align:center;font-size:11px;color:#555;margin:2px 0">Marché : ${esc(sale.marche)}</div>` : ''}
     ${items}
     ${discountBlock}
     ${tvaBlock}
@@ -3489,7 +3519,7 @@ function renderJournal(){
         ? `<span class="jr-badge">ANNULÉ</span><button class="del" onclick="quickDownloadTicketPDF(${sale.id})" style="color:var(--muted);font-size:15px" title="PDF">📄</button>`
         : `<button class="del" onclick="quickDownloadTicketPDF(${sale.id})" style="color:var(--violet);font-size:15px" title="PDF">📄</button>
            <button class="del" onclick="cancelSale(${sale.id})" style="color:var(--red);font-size:15px">⊘</button>`;
-      const marcheTag = (groupes.length===1 && sale.marche) ? `<span style="font-size:10px;color:var(--violet);margin-left:4px">Marche : ${esc(sale.marche)}</span>` : '';
+      const marcheTag = (groupes.length===1 && sale.marche) ? `<span style="font-size:10px;color:var(--violet);margin-left:4px">Marché : ${esc(sale.marche)}</span>` : '';
       div.innerHTML = `
         <div class="pill ${cls}">${ic}</div>
         <div class="j-info"><div class="t">${esc(ref)} · ${esc(names)}${marcheTag}</div><div class="d">${sale.date.split('-').reverse().join('/')} ${sale.time} · ${METHOD_LABEL[sale.method]}</div></div>
@@ -4466,7 +4496,7 @@ function buildZTicketHTML(day, marche, ca, esp, qr, carte, cancelledN, theo, inT
   return `
     <div class="t-head"><div class="lg">${esc(SELLER.brand)}</div><div class="sl">Clôture Z</div>
       <div class="t-legal">${esc(SELLER.legal)}<br>TVA ${esc(SELLER.vat)}</div></div>
-    ${marche ? `<div style="text-align:center;font-weight:600;font-size:14px;margin-bottom:4px">Marche : ${esc(marche)}</div>` : ''}
+    ${marche ? `<div style="text-align:center;font-weight:600;font-size:14px;margin-bottom:4px">Marché : ${esc(marche)}</div>` : ''}
     <div class="t-meta"><span>${day.split('-').reverse().join('/')}</span><span>${nowTime()}</span></div>
     <div class="t-item"><span>Nombre de ventes</span><span>${valid.length}</span></div>
     <div class="t-item"><span>Tickets annulés</span><span>${cancelledN}</span></div>
@@ -4884,12 +4914,20 @@ window.closeLabelFix = function(){ document.getElementById('label-overlay').clas
 window.applyLabelFix = async function(){
   const oldL = document.getElementById('label-old').value;
   let newL = document.getElementById('label-new').value;
-  if(newL==='__custom__') newL = document.getElementById('label-custom').value.trim();
+  if(newL==='__custom__') newL = normalizeLabel(document.getElementById('label-custom').value);
   if(!newL){ toast("Indique le nouveau libellé"); return; }
   if(newL===oldL){ toast("Le libellé est identique"); return; }
   const c = collectLabels()[oldL] || {sales:0,mvs:0,cl:0};
   if(!confirm(`Renommer « ${labelText(oldL)} » en « ${newL} » ?\n\n${c.sales} vente(s), ${c.mvs} mouvement(s), ${c.cl} clôture(s) Z concernés.\nLes montants ne changent pas.`)) return;
   toast("Correction en cours…");
+  await renameLabelCore(oldL, newL);
+  save();
+  closeLabelFix();
+  renderAll(); renderStats();
+  toast(`✓ Libellé corrigé : ${c.sales} vente(s), ${c.mvs} mouvement(s), ${c.cl} clôture(s)`);
+};
+/* Cœur du renommage : ventes, mouvements (+ motif des versements de clôture), clôtures Z, journée en cours */
+async function renameLabelCore(oldL, newL){
   const same = x => (x.marche||'')===oldL;
   for(const sale of state.sales){
     if(!same(sale)) continue;
@@ -4898,7 +4936,6 @@ window.applyLabelFix = async function(){
   for(const m of state.movements){
     if(!same(m)) continue;
     m.marche = newL;
-    // Le motif des versements de clôture contient aussi le nom du marché
     if(oldL && m.reason){
       const parts = m.reason.split(' — ');
       if(parts.length>=3 && parts.slice(2).join(' — ')===oldL) m.reason = parts.slice(0,2).join(' — ') + ' — ' + newL;
@@ -4914,11 +4951,33 @@ window.applyLabelFix = async function(){
     }
     await saveClosure(cl);
   }
+  // évite les doublons de clôture (même date, même libellé) après une fusion
+  state.closures = state.closures.filter((x,i,arr)=>arr.findIndex(y=>y.date===x.date && (y.marche||'')===(x.marche||''))===i);
   if((state.marche||'')===oldL){ state.marche = newL; await saveConfig(); }
+}
+
+/* ---- Normaliser tous les libellés d'un coup (aperçu puis confirmation) ---- */
+let normPlan = [];
+window.openLabelNormalize = function(){
+  const map = collectLabels();
+  normPlan = Object.keys(map).filter(k=>k).map(k=>({from:k, to:normalizeLabel(k), c:map[k]})).filter(x=>x.to && x.to!==x.from);
+  const box = document.getElementById('norm-list');
+  box.innerHTML = normPlan.length===0
+    ? '<div class="empty">Tous les libellés sont déjà propres 👍</div>'
+    : normPlan.map(x=>`<div style="padding:8px 0;border-bottom:1px solid var(--line);font-size:13px"><span style="color:var(--muted)">${esc(x.from)}</span> → <b>${esc(x.to)}</b><div style="font-size:11px;color:var(--muted)">${x.c.sales} vente(s), ${x.c.mvs} mouv., ${x.c.cl} clôt.</div></div>`).join('');
+  document.getElementById('norm-apply').style.display = normPlan.length ? 'block' : 'none';
+  document.getElementById('norm-overlay').classList.remove('hidden');
+};
+window.closeLabelNormalize = function(){ document.getElementById('norm-overlay').classList.add('hidden'); };
+window.applyLabelNormalize = async function(){
+  if(!normPlan.length) return;
+  toast("Normalisation en cours…");
+  for(const x of normPlan) await renameLabelCore(x.from, x.to);
   save();
-  closeLabelFix();
+  closeLabelNormalize();
   renderAll(); renderStats();
-  toast(`✓ Libellé corrigé : ${c.sales} vente(s), ${c.mvs} mouvement(s), ${c.cl} clôture(s)`);
+  toast(`✓ ${normPlan.length} libellé(s) normalisé(s)`);
+  normPlan = [];
 };
 
 /* Renomme le marché en cours (ex. faute de frappe) : corrige aussi, rétroactivement, toutes les
@@ -4929,7 +4988,7 @@ window.promptRenameMarche = async function(){
   if(!oldName) return;
   const input = prompt("Renommer le marché du jour :", oldName);
   if(input===null) return;
-  const newName = input.trim();
+  const newName = normalizeLabel(input);
   if(!newName || newName===oldName) return;
 
   state.marche = newName;
