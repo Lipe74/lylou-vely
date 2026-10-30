@@ -340,7 +340,7 @@ nav{display:none}
 <div id="gate">
   <div class="box">
     <div class="mark">Lylou-Vely</div>
-    <div class="sub">Caisse · Build 3.7</div>
+    <div class="sub">Caisse · Build 3.8</div>
     <input type="email" id="gate-email" placeholder="Email" autocomplete="email" value="infos@lylou-vely.be" style="letter-spacing:0">
     <input type="password" id="gate-pw" placeholder="Mot de passe" autocomplete="current-password">
     <button onclick="doLogin()">Connexion</button>
@@ -352,7 +352,7 @@ nav{display:none}
 <div id="app" class="hidden">
   <header>
     <div class="hdr-top">
-      <div class="title">Lylou-Vely<small>Caisse · Build 3.7</small></div>
+      <div class="title">Lylou-Vely<small>Caisse · Build 3.8</small></div>
       <div style="display:flex;gap:6px;align-items:center">
         <button class="refresh-btn" onclick="openSettings()" style="font-size:12px;padding:6px 10px;font-weight:600" title="Réglages">⚙︎</button>
         <button id="hdr-mode-btn" class="refresh-btn" onclick="toggleMode()" title="Basculer Prod/Test" style="font-size:12px;padding:6px 10px;font-weight:600;letter-spacing:.5px">PROD</button>
@@ -841,6 +841,21 @@ nav{display:none}
     <div class="row-btns" style="margin-top:14px">
       <button class="btn btn-outline" onclick="closeVersementPrompt()">Annuler</button>
       <button class="btn btn-primary" onclick="confirmVersementPrompt()">OK</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay center hidden" id="mvbank-overlay">
+  <div class="sheet" style="max-width:400px">
+    <h2>🏦 Banque du versement</h2>
+    <p id="mvbank-info" style="font-size:13px;color:var(--muted);text-align:center;margin-bottom:14px"></p>
+    <div class="seg" id="mvbank-seg" style="margin-bottom:0">
+      <button type="button" data-bank="ING" onclick="pickMvBank('ING')">🏦 ING</button>
+      <button type="button" data-bank="CBC" onclick="pickMvBank('CBC')">🏦 CBC</button>
+    </div>
+    <div class="row-btns" style="margin-top:14px">
+      <button class="btn btn-outline" onclick="closeMvBank()">Annuler</button>
+      <button class="btn btn-primary" onclick="confirmMvBank()">Enregistrer</button>
     </div>
   </div>
 </div>
@@ -3068,7 +3083,7 @@ function renderMovements(){
   [...mvs].reverse().forEach(m=>{
     const payBadge = (m.type==='out' && m.payMode) ?
       `<span style="font-size:10px;background:${m.payMode==='cash'?'var(--violet-wash)':'var(--blue-wash)'};color:${m.payMode==='cash'?'var(--violet)':'var(--blue)'};padding:2px 6px;border-radius:6px;margin-left:4px">${m.payMode==='cash'?'Liquide':'Carte'}</span>` : '';
-    const bancedBadge = m.banked ? `<span style="font-size:10px;background:#e6f4ea;color:#2e9e6b;padding:2px 6px;border-radius:6px;margin-left:4px">✓ Bancé</span>` : '';
+    const bancedBadge = m.banked ? `<span style="font-size:10px;background:#e6f4ea;color:#2e9e6b;padding:2px 6px;border-radius:6px;margin-left:4px">✓ Bancé${m.bank?' · '+esc(m.bank):''}</span>` : '';
     const div=document.createElement('div'); div.className='mv-line';
     div.innerHTML = `
       <div class="pill ${m.type}">${m.type==='in'?'＋':'－'}</div>
@@ -3452,12 +3467,13 @@ function mvLineHTML(m){
     `<span style="font-size:10px;background:${m.payMode==='cash'?'var(--violet-wash)':'var(--blue-wash)'};color:${m.payMode==='cash'?'var(--violet)':'var(--blue)'};padding:2px 6px;border-radius:6px;margin-left:4px">${m.payMode==='cash'?'💶':'💳'}</span>` : '';
   const isZ = m.reason && m.reason.startsWith('Versement banque — clôture Z');
   const reprZ = isZ ? `<button class="del" onclick="reprintZ('${m.date}','${(m.reason.split(' — ')[2]||'').replace(/'/g,"\\'")}')" style="color:var(--violet);font-size:15px" title="Réimprimer clôture Z">📋</button>` : '';
-  const bancedBadge = m.banked ? `<span style="font-size:10px;background:#e6f4ea;color:#2e9e6b;padding:2px 6px;border-radius:6px;margin-left:4px">✓ Bancé</span>` : '';
+  const bancedBadge = m.banked ? `<span style="font-size:10px;background:#e6f4ea;color:#2e9e6b;padding:2px 6px;border-radius:6px;margin-left:4px">✓ Bancé${m.bank?' · '+esc(m.bank):''}</span>` : '';
+  const bankBtn = (m.banked && m.reason && m.reason.startsWith('Versement banque')) ? `<button class="del" onclick="openMvBank(${m.id})" style="color:var(--violet);font-size:15px" title="Indiquer / modifier la banque">🏦</button>` : '';
   return `
     <div class="pill ${m.type}">${m.type==='in'?'＋':'－'}</div>
     <div class="m-info"><div class="t">${esc(m.reason)}${payBadge}${bancedBadge}</div><div class="d">${m.date.split('-').reverse().join('/')} ${m.time}</div></div>
     <div class="amt ${m.type==='in'?'plus':'minus'}">${m.type==='in'?'+':'−'}${euro(m.amount)}</div>
-    <button class="del" onclick="quickDownloadMvPDF(${m.id})" style="color:var(--violet);font-size:15px" title="PDF">📄</button>${reprZ}`;
+    <button class="del" onclick="quickDownloadMvPDF(${m.id})" style="color:var(--violet);font-size:15px" title="PDF">📄</button>${bankBtn}${reprZ}`;
 }
 
 /* Rendu d'un bloc-catégorie de mouvements (titre + total + boutons + liste) */
@@ -3607,6 +3623,7 @@ function buildSingleMvHTML(id){
           <tr><td>Motif</td><td>${esc(m.reason)}</td></tr>
           <tr><td>Date</td><td>${m.date.split('-').reverse().join('/')} — ${m.time}</td></tr>
           <tr><td>Mode</td><td>${pm}</td></tr>
+          ${m.bank&&BANK_DOC[m.bank]?`<tr><td>Banque</td><td>${esc(bankDocLine(m.bank))}</td></tr>`:''}
         </table>
         <div class="mv-amt">
           <div class="lbl">Montant</div>
@@ -3698,7 +3715,7 @@ function buildJournalMvHTML(subset, subtitle, dateLabelOverride){
     const sign = m.type==='in'?'+':'−';
     const pm = m.payMode==='card'?'Carte':m.payMode==='cash'?'Liquide':'—';
     const cls = m.type==='in'?'jm-plus':'jm-minus';
-    return `<tr><td>${sign}</td><td>${esc(m.reason)}</td><td>${m.date.split('-').reverse().join('/')} — ${m.time}</td><td>${pm}</td><td class="r ${cls} b">${sign}${euro(m.amount)}</td></tr>`;
+    return `<tr><td>${sign}</td><td>${esc(m.reason)}${m.bank&&BANK_DOC[m.bank]?`<div style="font-size:11px;color:#8b62c0">Versé sur ${esc(bankDocLine(m.bank))}</div>`:''}</td><td>${m.date.split('-').reverse().join('/')} — ${m.time}</td><td>${pm}</td><td class="r ${cls} b">${sign}${euro(m.amount)}</td></tr>`;
   }).join('');
   return `<!DOCTYPE html><html><head><meta charset="UTF-8">
     <title>${esc(SELLER.brand)} — Mouvements</title>
@@ -4599,6 +4616,25 @@ window.openVirement = function(){
   updateVirementTotal();
   document.getElementById('virement-overlay').classList.remove('hidden');
 };
+let mvBankId = null, mvBankKey = '';
+window.openMvBank = function(id){
+  const m = state.movements.find(x=>x.id===id);
+  if(!m) return;
+  mvBankId = id; mvBankKey = m.bank || '';
+  setSegBank('mvbank-seg', mvBankKey);
+  document.getElementById('mvbank-info').innerHTML = `${esc(m.reason)}<br><b>${euro(m.amount)}</b> · ${m.date.split('-').reverse().join('/')}`;
+  document.getElementById('mvbank-overlay').classList.remove('hidden');
+};
+window.pickMvBank = function(k){ mvBankKey = k; setSegBank('mvbank-seg', k); };
+window.closeMvBank = function(){ document.getElementById('mvbank-overlay').classList.add('hidden'); mvBankId = null; };
+window.confirmMvBank = async function(){
+  if(!mvBankKey){ toast('Choisis la banque (ING ou CBC)'); return; }
+  const m = state.movements.find(x=>x.id===mvBankId);
+  if(!m){ closeMvBank(); return; }
+  m.bank = mvBankKey;
+  save(); await saveMovement(m);
+  closeMvBank(); renderJournal(); toast('✓ Banque enregistrée ('+m.bank+')');
+};
 let virtBank = '';
 window.pickVirtBank = function(k){ virtBank = k; setSegBank('virt-bank-seg', k); };
 window.closeVirement = function(){ document.getElementById('virement-overlay').classList.add('hidden'); };
@@ -4658,6 +4694,8 @@ function buildVirementDoc(){
     if(total===0){ toast("Aucun montant saisi"); return null; }
   }
   const dateLabel = dateV ? dateV.split('-').reverse().join('/') : todayStr().split('-').reverse().join('/');
+  const _mois = monthLongLabel((dateV||todayStr()).slice(0,7));
+  const titreMois = _mois.charAt(0).toUpperCase()+_mois.slice(1);
   const html=`<!DOCTYPE html><html><head><meta charset="UTF-8">
     <title>${esc(SELLER.brand)} — Versement banque</title>
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Jost:wght@400;500;600&display=swap" rel="stylesheet">
@@ -4691,7 +4729,7 @@ function buildVirementDoc(){
         <div class="legal">${esc(SELLER.legal)} · TVA ${esc(SELLER.vat)}<br>${esc(SELLER.address)}</div>
         <hr>
       </div>
-      <div class="vb-titre">Document de versement en banque</div>
+      <div class="vb-titre">Versement Lylou-Vely – ${esc(titreMois)}</div>
       <div class="vb-meta"><b>Date du versement :</b> ${dateLabel}${state.marche?' &nbsp;·&nbsp; <b>Marché :</b> '+esc(state.marche):''}<br><b>Versé sur :</b> ${esc(bankDocLine(virtBank))}</div>
       <table class="vb-table">
         <thead><tr><th>Réf.</th><th>Date/Heure</th><th>Marché</th><th>Description</th><th class="r">Montant</th></tr></thead>
