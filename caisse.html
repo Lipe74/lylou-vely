@@ -340,7 +340,7 @@ nav{display:none}
 <div id="gate">
   <div class="box">
     <div class="mark">Lylou-Vely</div>
-    <div class="sub">Caisse · Build 3.8</div>
+    <div class="sub">Caisse · Build 3.9</div>
     <input type="email" id="gate-email" placeholder="Email" autocomplete="email" value="infos@lylou-vely.be" style="letter-spacing:0">
     <input type="password" id="gate-pw" placeholder="Mot de passe" autocomplete="current-password">
     <button onclick="doLogin()">Connexion</button>
@@ -352,7 +352,7 @@ nav{display:none}
 <div id="app" class="hidden">
   <header>
     <div class="hdr-top">
-      <div class="title">Lylou-Vely<small>Caisse · Build 3.8</small></div>
+      <div class="title">Lylou-Vely<small>Caisse · Build 3.9</small></div>
       <div style="display:flex;gap:6px;align-items:center">
         <button class="refresh-btn" onclick="openSettings()" style="font-size:12px;padding:6px 10px;font-weight:600" title="Réglages">⚙︎</button>
         <button id="hdr-mode-btn" class="refresh-btn" onclick="toggleMode()" title="Basculer Prod/Test" style="font-size:12px;padding:6px 10px;font-weight:600;letter-spacing:.5px">PROD</button>
@@ -599,6 +599,7 @@ nav{display:none}
             <button class="btn btn-outline" id="stats-view-mois" style="width:auto;padding:6px 12px;font-size:12px" onclick="setStatsTableMode('mois')">Par mois</button>
             <button class="btn btn-outline" style="width:auto;padding:6px 12px;font-size:12px" onclick="downloadStatsTablePDF()">📄 PDF</button>
             <button class="btn btn-outline" style="width:auto;padding:6px 12px;font-size:12px" onclick="printStatsTable()">🖨 A4</button>
+            <button class="btn btn-outline" style="width:auto;padding:6px 12px;font-size:12px" onclick="openLabelFix()">✏️ Corriger un libellé</button>
           </div>
           <div id="stats-marche-filter" style="text-align:right;margin-bottom:8px">
             <select id="stats-marche-select" onchange="onStatsFilterChange()" style="padding:6px 10px;border-radius:8px;border:1px solid #ddd;font-size:13px"></select>
@@ -845,6 +846,20 @@ nav{display:none}
   </div>
 </div>
 
+<div class="overlay center hidden" id="label-overlay">
+  <div class="sheet" style="max-width:420px">
+    <h2>✏️ Corriger un libellé</h2>
+    <p style="font-size:13px;color:var(--muted);text-align:center;margin-bottom:12px">Renomme un libellé dans tout l'historique (ventes, mouvements, clôtures Z). Les montants ne changent pas.</p>
+    <div class="field"><label>Libellé à corriger</label><select id="label-old" onchange="onLabelOldChange()"></select></div>
+    <div class="field"><label>Nouveau libellé</label><select id="label-new" onchange="onLabelNewChange()"></select></div>
+    <div class="field" id="label-custom-field" style="display:none"><label>Autre nom</label><input type="text" id="label-custom" placeholder="Ex. : Marché de Tilff" autocomplete="off"></div>
+    <div class="row-btns" style="margin-top:14px">
+      <button class="btn btn-outline" onclick="closeLabelFix()">Annuler</button>
+      <button class="btn btn-primary" onclick="applyLabelFix()">Appliquer</button>
+    </div>
+  </div>
+</div>
+
 <div class="overlay center hidden" id="mvbank-overlay">
   <div class="sheet" style="max-width:400px">
     <h2>🏦 Banque du versement</h2>
@@ -974,12 +989,19 @@ nav{display:none}
 <div class="overlay center hidden" id="fond-overlay">
   <div class="sheet" style="max-width:380px">
     <h2>☀️ Nouvelle journée</h2>
-    <p style="text-align:center;color:var(--muted);font-size:14px;margin:8px 0 16px">Confirme ton fond de caisse et le nom du marché.</p>
-    <div style="text-align:center;font-family:'Cormorant Garamond',serif;font-size:36px;color:var(--violet);font-weight:600;margin-bottom:6px" id="fond-current"></div>
-    <div class="field" style="margin-top:12px"><label>Fond de caisse (pré-rempli, modifie si différent)</label><input type="number" inputmode="decimal" id="fond-input" placeholder="Montant €" step="0.01"></div>
-    <div class="field" style="margin-top:10px"><label>Nom du marché</label><input type="text" id="marche-input" placeholder="Ex. : Marché de Tilff" autocomplete="off"></div>
+    <p id="fond-sub" style="text-align:center;color:var(--muted);font-size:14px;margin:8px 0 16px">Choisis le type de journée et confirme ton fond de caisse.</p>
+    <div id="day-modes">
+      <div class="field" style="margin-bottom:8px"><label>Type de journée</label></div>
+      <button type="button" class="btn btn-outline" id="dm-marche" style="margin-bottom:8px" onclick="pickDayMode('marche')">🏪 Marché</button>
+      <button type="button" class="btn btn-outline" id="dm-hors" style="margin-bottom:8px" onclick="pickDayMode('hors')">🏠 Vente hors marché</button>
+      <button type="button" class="btn btn-outline" id="dm-admin" style="margin-bottom:8px" onclick="pickDayMode('admin')">🗂 Administration</button>
+      <div class="field" id="marche-field" style="margin-top:10px;display:none"><label>Nom du marché (obligatoire)</label><input type="text" id="marche-input" placeholder="Ex. : Marché de Tilff" autocomplete="off"></div>
+    </div>
+    <div id="fond-field">
+      <div style="text-align:center;font-family:'Cormorant Garamond',serif;font-size:36px;color:var(--violet);font-weight:600;margin-bottom:6px" id="fond-current"></div>
+      <div class="field" style="margin-top:12px"><label>Fond de caisse (pré-rempli, modifie si différent)</label><input type="number" inputmode="decimal" id="fond-input" placeholder="Montant €" step="0.01"></div>
+    </div>
     <button class="btn btn-primary" style="margin-top:14px" onclick="confirmFond()">Démarrer la journée</button>
-    <button class="btn btn-ghost" style="margin-top:10px" onclick="confirmDayOff()">🏖️ Repos / Pas de marché</button>
   </div>
 </div>
 
@@ -1482,35 +1504,60 @@ window.ignoreRequiredClosure = function(){
   showFondConfirmation();
 };
 
+/* Libellés fixes des journées (jamais saisis à la main → pas de variantes "Maison", "maison"...) */
+const LBL_HORS = 'Vente hors marché', LBL_ADMIN = 'Administration', LBL_TEST = 'Test';
+let dayMode = '';
+function isForcedTest(){ return typeof FORCE_TEST !== 'undefined' && FORCE_TEST; }
+function applyDayModeUI(){
+  ['marche','hors','admin'].forEach(k=>{
+    const b = document.getElementById('dm-'+k);
+    if(b) b.className = 'btn ' + (dayMode===k ? 'btn-primary' : 'btn-outline');
+  });
+  document.getElementById('marche-field').style.display = dayMode==='marche' ? 'block' : 'none';
+  document.getElementById('fond-field').style.display = dayMode==='admin' ? 'none' : 'block';
+}
+window.pickDayMode = function(k){
+  dayMode = k; applyDayModeUI();
+  if(k==='marche') setTimeout(()=>document.getElementById('marche-input').focus(), 50);
+};
 function showFondConfirmation(){
   const t = theoreticalCash(); // fond + mouvements du jour en cours (ex: remise de pièces après clôture)
   document.getElementById('fond-current').textContent = euro(state.fond);
   document.getElementById('fond-input').value = t>0 ? t.toFixed(2) : (state.fond>0 ? state.fond.toFixed(2) : '');
-  document.getElementById('marche-input').value = state.marche || '';
+  document.getElementById('marche-input').value = '';
+  const forced = isForcedTest();
+  dayMode = forced ? 'test' : '';
+  document.getElementById('day-modes').style.display = forced ? 'none' : 'block';
+  document.getElementById('fond-sub').textContent = forced ? 'Mode Test — confirme ton fond de caisse.' : 'Choisis le type de journée et confirme ton fond de caisse.';
+  applyDayModeUI();
   document.getElementById('fond-overlay').classList.remove('hidden');
 }
 window.confirmFond = async function(){
-  const v = parseNum(document.getElementById('fond-input').value);
-  if(v > 0) state.fond = v;
-  const marche = document.getElementById('marche-input').value.trim();
+  if(!dayMode){ toast("Choisis le type de journée"); return; }
+  let marche;
+  if(dayMode==='marche'){
+    marche = document.getElementById('marche-input').value.trim();
+    if(!marche){ toast("Indique le nom du marché"); return; }
+  } else if(dayMode==='hors') marche = LBL_HORS;
+  else if(dayMode==='admin') marche = LBL_ADMIN;
+  else marche = LBL_TEST;
+  // Administration : pas de vente, le fond de caisse reste inchangé
+  if(dayMode!=='admin'){
+    const v = parseNum(document.getElementById('fond-input').value);
+    if(v > 0) state.fond = v;
+  }
   state.marche = marche;
   state.day = todayStr();
   save();
   await saveConfig();
   document.getElementById('fond-overlay').classList.add('hidden');
   renderAll();
-  toast("Journée démarrée"+(marche?' — '+marche:'')+' · Fond : '+euro(state.fond));
-};
-/* Jour de repos : passe à aujourd'hui sans toucher au fond de caisse (juste consulter/imprimer) */
-window.confirmDayOff = async function(){
-  state.marche = 'Repos / Pas de marché';
-  state.day = todayStr();
-  save();
-  await saveConfig();
-  document.getElementById('fond-overlay').classList.add('hidden');
-  renderAll();
-  toast("Jour off enregistré · Fond de caisse inchangé : "+euro(state.fond));
-  window.go('journal');
+  if(dayMode==='admin'){
+    toast("Journée Administration · Fond de caisse inchangé : "+euro(state.fond));
+    window.go('journal');
+  } else {
+    toast("Journée démarrée — "+marche+' · Fond : '+euro(state.fond));
+  }
 };
 
 /* ---- Navigation ---- */
@@ -4797,6 +4844,79 @@ function renderHeaderKPIs(){
   const hm = document.getElementById('hdr-marche');
   if(hm) hm.textContent = state.marche ? '🏪 '+state.marche+' ✏️' : '';
 }
+
+/* ============ CORRECTION DES LIBELLÉS (renommage rétroactif de tout l'historique) ============ */
+function collectLabels(){
+  const map = {};
+  const add = (l,k)=>{ const key = l||''; (map[key] = map[key] || {sales:0,mvs:0,cl:0})[k]++; };
+  state.sales.forEach(x=>add(x.marche,'sales'));
+  state.movements.forEach(x=>add(x.marche,'mvs'));
+  state.closures.forEach(x=>add(x.marche,'cl'));
+  return map;
+}
+const labelText = l => l || '(sans marché)';
+window.openLabelFix = function(){
+  const map = collectLabels();
+  const keys = Object.keys(map).sort((a,b)=>labelText(a).localeCompare(labelText(b),'fr'));
+  document.getElementById('label-old').innerHTML = keys.map(k=>{
+    const c = map[k];
+    return `<option value="${esc(k)}">${esc(labelText(k))} — ${c.sales} vente${c.sales>1?'s':''}, ${c.mvs} mouv., ${c.cl} clôt.</option>`;
+  }).join('');
+  window._labelKeys = keys;
+  onLabelOldChange();
+  document.getElementById('label-overlay').classList.remove('hidden');
+};
+window.onLabelOldChange = function(){
+  const old = document.getElementById('label-old').value;
+  const others = (window._labelKeys||[]).filter(k=>k && k!==old && k!==LBL_HORS && k!==LBL_ADMIN);
+  const opts = [LBL_HORS, LBL_ADMIN].filter(k=>k!==old).concat(others);
+  document.getElementById('label-new').innerHTML = opts.map(k=>`<option value="${esc(k)}">${esc(k)}</option>`).join('') + '<option value="__custom__">✏️ Autre nom…</option>';
+  onLabelNewChange();
+};
+window.onLabelNewChange = function(){
+  const custom = document.getElementById('label-new').value==='__custom__';
+  document.getElementById('label-custom-field').style.display = custom ? 'block' : 'none';
+};
+window.closeLabelFix = function(){ document.getElementById('label-overlay').classList.add('hidden'); };
+window.applyLabelFix = async function(){
+  const oldL = document.getElementById('label-old').value;
+  let newL = document.getElementById('label-new').value;
+  if(newL==='__custom__') newL = document.getElementById('label-custom').value.trim();
+  if(!newL){ toast("Indique le nouveau libellé"); return; }
+  if(newL===oldL){ toast("Le libellé est identique"); return; }
+  const c = collectLabels()[oldL] || {sales:0,mvs:0,cl:0};
+  if(!confirm(`Renommer « ${labelText(oldL)} » en « ${newL} » ?\n\n${c.sales} vente(s), ${c.mvs} mouvement(s), ${c.cl} clôture(s) Z concernés.\nLes montants ne changent pas.`)) return;
+  toast("Correction en cours…");
+  const same = x => (x.marche||'')===oldL;
+  for(const sale of state.sales){
+    if(!same(sale)) continue;
+    sale.marche = newL; await saveSale(sale);
+  }
+  for(const m of state.movements){
+    if(!same(m)) continue;
+    m.marche = newL;
+    // Le motif des versements de clôture contient aussi le nom du marché
+    if(oldL && m.reason){
+      const parts = m.reason.split(' — ');
+      if(parts.length>=3 && parts.slice(2).join(' — ')===oldL) m.reason = parts.slice(0,2).join(' — ') + ' — ' + newL;
+    }
+    await saveMovement(m);
+  }
+  for(const cl of state.closures.slice()){
+    if(!same(cl)) continue;
+    const oldKey = closureKey(cl.date, cl.marche);
+    cl.marche = newL;
+    if(closureKey(cl.date, newL)!==oldKey){
+      try{ await deleteDoc(doc(db, basePath(), 'closures', oldKey)); }catch(e){ console.warn('closure delete:', e.message); }
+    }
+    await saveClosure(cl);
+  }
+  if((state.marche||'')===oldL){ state.marche = newL; await saveConfig(); }
+  save();
+  closeLabelFix();
+  renderAll(); renderStats();
+  toast(`✓ Libellé corrigé : ${c.sales} vente(s), ${c.mvs} mouvement(s), ${c.cl} clôture(s)`);
+};
 
 /* Renomme le marché en cours (ex. faute de frappe) : corrige aussi, rétroactivement, toutes les
    ventes et mouvements déjà enregistrés AUJOURD'HUI sous l'ancien nom — pour que la clôture Z du
