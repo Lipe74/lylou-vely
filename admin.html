@@ -161,7 +161,7 @@
 
     <div class="sidebar-foot">
       <button class="logout-btn" onclick="window.doLogout()">↩ Déconnexion</button>
-      <div style="text-align:center;margin-top:10px;font-size:10px;opacity:.5;letter-spacing:.5px">Build 5.2</div>
+      <div style="text-align:center;margin-top:10px;font-size:10px;opacity:.5;letter-spacing:.5px">Build 5.4</div>
     </div>
   </div>
 
@@ -559,10 +559,21 @@
           <label>Acheteur</label>
           <select id="ndf-acheteur" class="form-input" onchange="window.ndfAcheteurChange()">
             <option value="zenconnect">Zen-Connect SRL</option>
+            <option value="philippe">Philippe Tomaszewsky pour Zen-Connect SRL</option>
+            <option value="liliana">Liliana Rodrigues pour Zen-Connect SRL</option>
             <option value="zen">Lylou-Vely by Zen Connect SRL</option>
             <option value="phil">Phil-Mobile by Zen Connect SRL</option>
             <option value="philfixit">Phil-Fixit by Zen Connect SRL</option>
             <option value="animal">🐾 Don à L'Assiette des 4 pattes (ASBL) — par Lylou-Vely</option>
+          </select>
+        </div>
+        <div class="form-group" id="ndf-compte-row">
+          <label>Compte débité *</label>
+          <select id="ndf-compte" class="form-input">
+            <option value="">— Choisir le compte —</option>
+            <option value="cbc">CBC</option>
+            <option value="ing">ING</option>
+            <option value="aucun">Aucun (espèces)</option>
           </select>
         </div>
         <div class="form-group" id="ndf-don-banque-row" style="display:none">
@@ -1842,6 +1853,8 @@ window.ndfLoadFile = function(event) {
 /* ---- Entités : couleurs + logos (dossier images/ du dépôt) ---- */
 const NDF_ENT = {
   zenconnect:{ nom:'Zen-Connect SRL',                email:'infos@zen-connect.be', pays:'Belgique', logo:['images/zen-connect.png'],      c1:[24,98,168],  c2:[76,168,84]  },
+  philippe:  { nom:'Philippe Tomaszewsky', societe:'Zen-Connect SRL', email:'infos@zen-connect.be', pays:'Belgique', logo:['images/zen-connect.png'], c1:[24,98,168], c2:[76,168,84] },
+  liliana:   { nom:'Liliana Rodrigues',    societe:'Zen-Connect SRL', email:'infos@zen-connect.be', pays:'Belgique', logo:['images/zen-connect.png'], c1:[24,98,168], c2:[76,168,84] },
   zen:       { nom:'Lylou-Vely by Zen Connect SRL',  email:'infos@lylou-vely.be',  pays:'Belgique', logo:['images/lylou-vely logo.png','images/lylou-vely-logo.png','images/lylou-vely.png','images/logo.png'], c1:[107,63,160], c2:[170,140,210] },
   phil:      { nom:'Phil-Mobile by Zen Connect SRL', email:'infos@phil-mobile.be', pays:'Belgique', logo:['images/phil-mobile.png'],     c1:[16,72,168],  c2:[245,130,20] },
   philfixit: { nom:'Phil-Fixit by Zen Connect SRL',  email:'infos@phil-fixit.be',  pays:'Belgique', logo:['images/phil-fixit.png'],      c1:[28,28,32],   c2:[240,130,20] }
@@ -1897,7 +1910,7 @@ function ndfDrawHeader(doc, PW, ent, logo, titre, sousTitre, dateFr){
   doc.rect(0, 38, PW, 2.5, 'F');
 
   doc.setTextColor(...NDF_WH); doc.setFont('helvetica','bold');
-  doc.setFontSize(11); doc.text(ent.nom, 14, 13);
+  doc.setFontSize(11); doc.text(ent.societe || ent.nom, 14, 13);
   doc.setFontSize(16); doc.text(titre, 14, 23);
   doc.setFontSize(9);  doc.setFont('helvetica','normal'); doc.text(sousTitre, 14, 31);
 
@@ -1963,6 +1976,7 @@ window.ndfAcheteurChange = function(){
   const adr = document.getElementById('ndf-adresse');
   document.getElementById('ndf-don-banque-row').style.display = isDon ? '' : 'none';
   if(!isDon) document.getElementById('ndf-don-banque').value = '';
+  document.getElementById('ndf-compte-row').style.display = isDon ? 'none' : '';
   const tva = document.getElementById('ndf-tva');
   document.getElementById('ndf-lbl-tva').textContent         = isDon ? 'N° d\'entreprise' : 'N° TVA (optionnel)';
   document.getElementById('ndf-h-fournisseur').textContent   = isDon ? 'Bénéficiaire du don' : 'Fournisseur';
@@ -2077,6 +2091,7 @@ window.ndfFournisseurPick = function(){
       document.getElementById('ndf-acheteur').value = f.acheteur;
       window.ndfAcheteurChange();
     }
+    if(f.compte && document.getElementById('ndf-compte')) document.getElementById('ndf-compte').value = f.compte;
     const radio = [...document.querySelectorAll('input[name="ndf-paiement"]')].find(r => r.value === f.paiement);
     if(radio){ radio.checked = true; window.ndfPayStyle(); }
   }
@@ -2139,6 +2154,11 @@ window.generateNdfPDF = async function() {
   /* Don : le compte débité (ING ou CBC) est obligatoire pour le comptable */
   const banqueDon = isDon ? NDF_BANQUES[document.getElementById('ndf-don-banque').value] : null;
   if(isDon && !banqueDon){ alert('Choisis le compte débité pour le don (CBC ou ING).'); return; }
+  /* Dépense : compte débité obligatoire (CBC, ING ou aucun si espèces) */
+  const compteSel = isDon ? '' : document.getElementById('ndf-compte').value;
+  if(!isDon && !compteSel){ alert('Choisis le compte débité (CBC, ING ou Aucun si espèces).'); return; }
+  const compte = NDF_BANQUES[compteSel] || null;
+  const compteTxt = compte ? `${compte.nom} · ${compte.iban}` : 'Aucun (espèces)';
   if(isDon) paiement = `Virement (${banqueDon.nom})`;
   const logo = await ndfLoadLogo(ach.logo);
 
@@ -2161,13 +2181,16 @@ window.generateNdfPDF = async function() {
   let y = 48;
   ndfDrawBloc(doc, 12, y, ach, isDon ? 'BÉNÉFICIAIRE' : 'FOURNISSEUR',
     [fournisseur, adresse, tva ? (isDon ? 'N° d\'entreprise : ' : 'TVA : ')+tva : ''], 50);
+  /* Achat par une personne pour Zen-Connect : nom de la personne + « pour le compte de la société » (sans ligne Tél. pour rester dans le bloc) */
   ndfDrawBloc(doc, 110, y, ach, isDon ? 'DONATEUR' : 'ACHETEUR',
-    [ach.nom, NDF_ADRESSE, ach.email, 'Facturation : ' + NDF_FACTURATION, 'Tél. : ' + NDF_TEL, 'TVA : ' + NDF_TVA], 50);
+    ach.societe
+      ? [ach.nom, 'Pour le compte de ' + ach.societe, NDF_ADRESSE, ach.email, 'Facturation : ' + NDF_FACTURATION, 'TVA : ' + NDF_TVA]
+      : [ach.nom, NDF_ADRESSE, ach.email, 'Facturation : ' + NDF_FACTURATION, 'Tél. : ' + NDF_TEL, 'TVA : ' + NDF_TVA], 50);
 
   /* ── Référence ── */
   y += 58;
   doc.setFontSize(8); doc.setFont('helvetica','normal'); doc.setTextColor(...NDF_MU);
-  doc.text(`Réf. ${refNum}   ·   Date : ${dateFr}   ·   Mode de paiement : ${paiement}   ·   Généré le : ${genDate}`, 14, y);
+  doc.text(`Réf. ${refNum}   ·   Date : ${dateFr}   ·   Mode de paiement : ${paiement}${isDon ? '' : '   ·   Compte : ' + (compte ? compte.nom : 'aucun')}   ·   Généré le : ${genDate}`, 14, y);
   y += 8;
 
   /* ── Tableau ── */
@@ -2178,7 +2201,7 @@ window.generateNdfPDF = async function() {
   doc.autoTable({
     startY: y,
     head: [['Description / Motif', 'Montant (EUR)']],
-    body: [bodyRow, ['Mode de paiement', paiement]],
+    body: isDon ? [bodyRow, ['Mode de paiement', paiement]] : [bodyRow, ['Mode de paiement', paiement], ['Compte débité', compteTxt]],
     foot: [[isDon ? 'TOTAL DONNÉ' : 'TOTAL PAYÉ', ndfFmtMontant(montant)]],
     headStyles:{ fillColor:ach.c1, textColor:NDF_WH, fontSize:9, fontStyle:'bold' },
     footStyles:{ fillColor:ndfTint(ach.c1), textColor:ach.c1, fontSize:10, fontStyle:'bold' },
@@ -2207,7 +2230,7 @@ window.generateNdfPDF = async function() {
     doc.text('À joindre dans Billit comme pièce justificative pour la transaction bancaire correspondante.', 14, fn+10);
     if(extra) doc.text(extra, 14, fn+15);
   } else {
-    doc.text(`Ce document est un justificatif de dépense établi par ${ach.nom} en l'absence de facture officielle.`, 14, fn);
+    doc.text(`Ce document est un justificatif de dépense établi par ${ach.societe || ach.nom} en l'absence de facture officielle.`, 14, fn);
     doc.text('À joindre dans Billit comme pièce justificative pour la transaction bancaire correspondante.', 14, fn+5);
     if(extra) doc.text(extra, 14, fn+10);
   }
@@ -2215,7 +2238,7 @@ window.generateNdfPDF = async function() {
 
   const fname = `${isDon ? 'justificatif-don' : 'justificatif'}_${ndfSlug(fournisseur).toLowerCase()}_${yr}-${mo}.pdf`;
   doc.save(fname);
-  if(!isDon) await ndfSaveFournisseurIfAsked({ nom: fournisseur, tva, adresse, acheteur: acheteurSel, paiement });
+  if(!isDon) await ndfSaveFournisseurIfAsked({ nom: fournisseur, tva, adresse, acheteur: acheteurSel, paiement, compte: compteSel });
 };
 
 /* ---- Transfert interne CBC ↔ ING (Zen-Connect SRL) ---- */
