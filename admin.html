@@ -161,7 +161,7 @@
 
     <div class="sidebar-foot">
       <button class="logout-btn" onclick="window.doLogout()">↩ Déconnexion</button>
-      <div style="text-align:center;margin-top:10px;font-size:10px;opacity:.5;letter-spacing:.5px">Build 4.2</div>
+      <div style="text-align:center;margin-top:10px;font-size:10px;opacity:.5;letter-spacing:.5px">Build 4.4</div>
     </div>
   </div>
 
@@ -502,16 +502,23 @@
         <div class="form-row">
           <div class="form-group">
             <label id="ndf-lbl-fournisseur">Nom du fournisseur *</label>
-            <input type="text" id="ndf-fournisseur" class="form-input" placeholder="ex: Amazon, AXA, …">
+            <input type="text" id="ndf-fournisseur" class="form-input" placeholder="ex: Amazon, AXA, …" list="ndf-fournisseurs-list" autocomplete="off" oninput="window.ndfFournisseurPick()">
+            <datalist id="ndf-fournisseurs-list"></datalist>
           </div>
           <div class="form-group">
-            <label>N° TVA (optionnel)</label>
+            <label id="ndf-lbl-tva">N° TVA (optionnel)</label>
             <input type="text" id="ndf-tva" class="form-input" placeholder="ex: BE0123456789">
           </div>
         </div>
         <div class="form-group">
           <label>Adresse (optionnel)</label>
           <input type="text" id="ndf-adresse" class="form-input" placeholder="ex: Rue de la Loi 1, 1000 Bruxelles">
+        </div>
+        <div class="form-group" id="ndf-save-row" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:0">
+          <input type="checkbox" id="ndf-save-fourn" checked style="width:auto">
+          <label for="ndf-save-fourn" style="margin:0">💾 Mémoriser ce fournisseur (TVA, adresse, acheteur, paiement)</label>
+          <button type="button" class="btn btn-danger" id="ndf-del-fourn" style="display:none;padding:6px 12px;font-size:12px" onclick="window.ndfDeleteFournisseur()">🗑️ Supprimer ce fournisseur</button>
+          <span id="ndf-save-status" style="font-size:12px;color:var(--muted)"></span>
         </div>
       </div>
 
@@ -621,6 +628,26 @@ const storage = getStorage(fbApp);
 const marchesCol = collection(db, "lylou_vely", "marches", "items");
 const avisCol = collection(db, "lylou_vely", "avis", "items");
 
+/* ---- Fournisseurs mémorisés (note de frais) : doc lylou_vely/fournisseurs ---- */
+const fournisseursDocRef = doc(db, "lylou_vely", "fournisseurs");
+let fournUnsub = null;
+window._ndfFournisseurs = [];
+function startFournisseurs(){
+  if(fournUnsub) return;
+  fournUnsub = onSnapshot(fournisseursDocRef, snap=>{
+    window._ndfFournisseurs = snap.exists() ? (snap.data().items || []) : [];
+    if(window.ndfRenderFournisseurs) window.ndfRenderFournisseurs();
+  }, err=>console.warn('Fournisseurs :', err.message));
+}
+function stopFournisseurs(){
+  if(fournUnsub){ fournUnsub(); fournUnsub = null; }
+  window._ndfFournisseurs = [];
+  if(window.ndfRenderFournisseurs) window.ndfRenderFournisseurs();
+}
+window.ndfPersistFournisseurs = async function(items){
+  await setDoc(fournisseursDocRef, { items, updatedAt: new Date().toISOString() });
+};
+
 /* ---- Auth ---- */
 window.doLogin = async function(){
   const email = document.getElementById('gate-email').value.trim();
@@ -650,11 +677,13 @@ onAuthStateChanged(auth, user=>{
     document.getElementById('app').classList.add('visible');
     document.getElementById('iframe-caisse').src = 'caisse.html';
     document.getElementById('iframe-fidelite').src = 'admin-fidelite.html';
+    startFournisseurs();
   } else {
     document.getElementById('gate').classList.remove('hidden');
     document.getElementById('app').classList.remove('visible');
     document.getElementById('iframe-caisse').src = '';
     document.getElementById('iframe-fidelite').src = '';
+    stopFournisseurs();
   }
 });
 
@@ -1814,6 +1843,8 @@ const NDF_BANQUES = {
   ing:{ nom:'ING', iban:'BE91 3632 8603 7276' }
 };
 const NDF_ASBL = "L'Assiette des 4 pattes (ASBL)";
+const NDF_ASBL_ADRESSE = 'Rue des Écoles 9, 4140 Sprimont';
+const NDF_ASBL_NUM = 'BE0654.984.085';
 const NDF_MONTHS = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
 const NDF_MU = [140,130,155];
 const NDF_WH = [255,255,255];
@@ -1901,6 +1932,9 @@ window.ndfSwitchType = function(){
 window.ndfAcheteurChange = function(){
   const isDon = document.getElementById('ndf-acheteur').value === 'animal';
   const f = document.getElementById('ndf-fournisseur');
+  const adr = document.getElementById('ndf-adresse');
+  const tva = document.getElementById('ndf-tva');
+  document.getElementById('ndf-lbl-tva').textContent         = isDon ? 'N° d\'entreprise' : 'N° TVA (optionnel)';
   document.getElementById('ndf-h-fournisseur').textContent   = isDon ? 'Bénéficiaire du don' : 'Fournisseur';
   document.getElementById('ndf-lbl-fournisseur').textContent = isDon ? 'Bénéficiaire *' : 'Nom du fournisseur *';
   document.getElementById('ndf-h-depense').textContent       = isDon ? 'Don' : 'Dépense';
@@ -1908,11 +1942,16 @@ window.ndfAcheteurChange = function(){
   document.getElementById('ndf-lbl-montant').textContent     = isDon ? 'Montant du don (€) *' : 'Montant payé (€ TVAC) *';
   if(isDon){
     f.value = NDF_ASBL; f.readOnly = true;
+    adr.value = NDF_ASBL_ADRESSE; adr.readOnly = true;
+    tva.value = NDF_ASBL_NUM;     tva.readOnly = true;
     document.getElementById('ndf-pay-virement').checked = true;
     window.ndfPayStyle();
   } else if(f.readOnly){
     f.value = ''; f.readOnly = false;
+    adr.value = ''; adr.readOnly = false;
+    tva.value = ''; tva.readOnly = false;
   }
+  window.ndfFournisseurChange();
 };
 
 /* ---- Pièce jointe (ticket Amazon, etc.) : image ou PDF, ajoutée en pages à la suite ---- */
@@ -1974,6 +2013,77 @@ function ndfAddAttachmentPages(doc, ent, pages){
   });
 }
 
+/* ---- Fournisseurs mémorisés : suggestions, pré-remplissage, enregistrement ---- */
+function ndfFournisseurs(){ return window._ndfFournisseurs || []; }
+function ndfEsc(t){ return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function ndfFindFournisseur(nom){
+  const k = (nom||'').trim().toLowerCase();
+  return k ? ndfFournisseurs().find(f => (f.nom||'').trim().toLowerCase() === k) : null;
+}
+
+window.ndfRenderFournisseurs = function(){
+  const dl = document.getElementById('ndf-fournisseurs-list');
+  if(dl) dl.innerHTML = ndfFournisseurs().map(f => `<option value="${ndfEsc(f.nom)}"></option>`).join('');
+  window.ndfFournisseurChange();
+};
+
+/* Affiche la case « Mémoriser » (pas pour un don) et le bouton Supprimer si le fournisseur est déjà connu */
+window.ndfFournisseurChange = function(){
+  const isDon = document.getElementById('ndf-acheteur').value === 'animal';
+  const known = ndfFindFournisseur(document.getElementById('ndf-fournisseur').value);
+  document.getElementById('ndf-save-row').style.display = isDon ? 'none' : 'flex';
+  document.getElementById('ndf-del-fourn').style.display = (known && !isDon) ? '' : 'none';
+};
+
+/* Nom reconnu : remplit TVA, adresse, acheteur et mode de paiement */
+window.ndfFournisseurPick = function(){
+  const el = document.getElementById('ndf-fournisseur');
+  const f = el.readOnly ? null : ndfFindFournisseur(el.value);
+  if(f){
+    el.value = f.nom;
+    document.getElementById('ndf-tva').value = f.tva || '';
+    document.getElementById('ndf-adresse').value = f.adresse || '';
+    if(f.acheteur && NDF_ENT[f.acheteur]){
+      document.getElementById('ndf-acheteur').value = f.acheteur;
+      window.ndfAcheteurChange();
+    }
+    const radio = [...document.querySelectorAll('input[name="ndf-paiement"]')].find(r => r.value === f.paiement);
+    if(radio){ radio.checked = true; window.ndfPayStyle(); }
+  }
+  window.ndfFournisseurChange();
+};
+
+window.ndfDeleteFournisseur = async function(){
+  const f = ndfFindFournisseur(document.getElementById('ndf-fournisseur').value);
+  if(!f) return;
+  if(!confirm(`Supprimer « ${f.nom} » des fournisseurs mémorisés ?`)) return;
+  const st = document.getElementById('ndf-save-status');
+  try{
+    await window.ndfPersistFournisseurs(ndfFournisseurs().filter(x => x !== f));
+    st.textContent = '✓ Fournisseur supprimé';
+  }catch(e){ alert('Erreur : ' + e.message); }
+};
+
+/* Enregistre (ou met à jour) le fournisseur si la case est cochée — n'empêche jamais la génération du PDF */
+async function ndfSaveFournisseurIfAsked(data){
+  const cb = document.getElementById('ndf-save-fourn');
+  const st = document.getElementById('ndf-save-status');
+  if(!cb || !cb.checked || !data.nom) return;
+  try{
+    if(!window.ndfPersistFournisseurs) throw new Error('Firebase indisponible');
+    const items = ndfFournisseurs().slice();
+    const k = data.nom.trim().toLowerCase();
+    const i = items.findIndex(f => (f.nom||'').trim().toLowerCase() === k);
+    const entry = { id: ndfSlug(data.nom).toLowerCase(), ...data };
+    if(i >= 0) items[i] = entry; else items.push(entry);
+    items.sort((a, b) => a.nom.localeCompare(b.nom, 'fr'));
+    await window.ndfPersistFournisseurs(items);
+    st.textContent = '✓ Fournisseur mémorisé';
+  }catch(e){
+    st.textContent = '⚠️ Fournisseur non mémorisé : ' + e.message;
+  }
+}
+
 window.generateNdfPDF = async function() {
   if(!window.jspdf){ alert('jsPDF non chargé — recharge la page et réessaie.'); return; }
   if(document.getElementById('ndf-type').value === 'transfert') return ndfGenerateTransfert();
@@ -2016,7 +2126,7 @@ window.generateNdfPDF = async function() {
   /* ── Fournisseur (ou bénéficiaire) / Acheteur (ou donateur) ── */
   let y = 48;
   ndfDrawBloc(doc, 12, y, ach, isDon ? 'BÉNÉFICIAIRE' : 'FOURNISSEUR',
-    [fournisseur, adresse, tva ? 'TVA : '+tva : '']);
+    [fournisseur, adresse, tva ? (isDon ? 'N° d\'entreprise : ' : 'TVA : ')+tva : '']);
   ndfDrawBloc(doc, 110, y, ach, isDon ? 'DONATEUR' : 'ACHETEUR',
     [ach.nom, ach.email, ach.pays]);
 
@@ -2067,6 +2177,7 @@ window.generateNdfPDF = async function() {
 
   const fname = `${isDon ? 'justificatif-don' : 'justificatif'}_${ndfSlug(fournisseur).toLowerCase()}_${yr}-${mo}.pdf`;
   doc.save(fname);
+  if(!isDon) await ndfSaveFournisseurIfAsked({ nom: fournisseur, tva, adresse, acheteur: acheteurSel, paiement });
 };
 
 /* ---- Transfert interne CBC ↔ ING (Zen-Connect SRL) ---- */
