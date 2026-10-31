@@ -161,7 +161,7 @@
 
     <div class="sidebar-foot">
       <button class="logout-btn" onclick="window.doLogout()">↩ Déconnexion</button>
-      <div style="text-align:center;margin-top:10px;font-size:10px;opacity:.5;letter-spacing:.5px">Build 5.5</div>
+      <div style="text-align:center;margin-top:10px;font-size:10px;opacity:.5;letter-spacing:.5px">Build 5.6</div>
     </div>
   </div>
 
@@ -1770,25 +1770,180 @@ window.ndfPayStyle = function() {
 
 let ndfFileData = null; // { type:'image'|'pdf'|'csv', dataUrl, name, csvRows }
 
-// Tente de remplir les champs depuis le texte extrait du PDF
-function ndfAutoFill(text) {
-  // Montant : cherche patterns comme 16,00 € ou € 16.00 ou 16.00EUR
-  const amtMatch = text.match(/(?:€\s*|EUR\s*)(\d{1,6}[.,]\d{2})|(\d{1,6}[.,]\d{2})\s*(?:€|EUR)/i);
-  if(amtMatch) {
-    const raw = (amtMatch[1] || amtMatch[2]).replace(',','.');
-    const el = document.getElementById('ndf-montant');
-    if(el && !el.value) el.value = parseFloat(raw).toFixed(2);
-  }
-  // Date : cherche DD/MM/YYYY ou DD-MM-YYYY ou YYYY-MM-DD
-  const dateMatch = text.match(/(\d{4})-(\d{2})-(\d{2})|(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})/);
-  if(dateMatch) {
-    let y,m,d;
-    if(dateMatch[1]) { y=dateMatch[1]; m=dateMatch[2]; d=dateMatch[3]; }
-    else { d=dateMatch[4].padStart(2,'0'); m=dateMatch[5].padStart(2,'0'); y=dateMatch[6]; }
-    const el = document.getElementById('ndf-date');
-    if(el) el.value = `${y}-${m}-${d}`;
-  }
+/* ==== NDF-LECTURE-DEBUT : lecture automatique d'une facture PDF (texte) ==== */
+const NDF_MOIS = {janvier:1,janv:1,jan:1,january:1,fevrier:2,février:2,fevr:2,févr:2,feb:2,february:2,mars:3,mar:3,march:3,avril:4,avr:4,apr:4,april:4,mai:5,may:5,juin:6,jun:6,june:6,juillet:7,juil:7,jul:7,july:7,aout:8,août:8,aug:8,august:8,septembre:9,sept:9,sep:9,september:9,octobre:10,oct:10,october:10,novembre:11,nov:11,november:11,decembre:12,décembre:12,dec:12,déc:12,december:12};
+const NDF_PAYS_TVA = '(?:AT|BE|BG|CY|CZ|DE|DK|EE|EL|ES|FI|FR|GB|HR|HU|IE|IT|LT|LU|LV|MT|NL|PL|PT|RO|SE|SI|SK)';
+const NDF_FOURNISSEURS_CONNUS = [
+  { re:/Amazon EU|amazon\.com|amazon\.fr|Amazon Services/i, nom:'Amazon', adresse:'38 avenue John F. Kennedy, L-1855 Luxembourg' },
+  { re:/Anthropic/i, nom:'Anthropic, PBC', adresse:'548 Market Street, San Francisco, CA 94104 (États-Unis)' }
+];
+
+/* Date → 'AAAA-MM-JJ' (formats : 22.10.2026, 22/10/2026, 2026-10-22, October 24, 2026, 24 octobre 2026) ou null */
+function ndfParseDate(str){
+  const ok = (y,m,d) => (m>=1 && m<=12 && d>=1 && d<=31) ? `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}` : null;
+  const mois = w => NDF_MOIS[w.toLowerCase().replace(/\./g,'')];
+  let m;
+  if((m = str.match(/(\d{4})-(\d{2})-(\d{2})/))){ const r = ok(m[1], +m[2], +m[3]); if(r) return r; }
+  if((m = str.match(/(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{4})/))){ const r = ok(m[3], +m[2], +m[1]); if(r) return r; }
+  const reEn = /([A-Za-zéûè]{3,10})\.?\s+(\d{1,2})(?:st|nd|rd|th)?,?\s+(\d{4})/g;
+  while((m = reEn.exec(str))){ const mo = mois(m[1]); if(mo){ const r = ok(m[3], mo, +m[2]); if(r) return r; } }
+  const reFr = /(\d{1,2})(?:er)?\s+([A-Za-zéûè]{3,10})\.?\s+(\d{4})/g;
+  while((m = reFr.exec(str))){ const mo = mois(m[2]); if(mo){ const r = ok(m[3], mo, +m[1]); if(r) return r; } }
+  return null;
 }
+/* Premier montant d'un texte (49,99 € · €18.00 · 1.234,56 €) → nombre ou null */
+function ndfParseAmount(str){
+  const m = str.match(/(\d{1,3}(?:[ .,]\d{3})*[.,]\d{2}|\d+[.,]\d{2})(?!\d)/);
+  if(!m) return null;
+  let v = m[1].replace(/\s/g,'');
+  const lastSep = Math.max(v.lastIndexOf(','), v.lastIndexOf('.'));
+  v = v.slice(0, lastSep).replace(/[.,]/g,'') + '.' + v.slice(lastSep + 1);
+  const n = parseFloat(v);
+  return isNaN(n) ? null : n;
+}
+/* Analyse les lignes de texte d'une facture → { fournisseur, tva, adresse, date, montant, description, acheteur, numero } */
+function ndfParseInvoice(lines){
+  lines = lines.map(l => String(l).replace(/[\u0000-\u001f]/g,' ').replace(/\s+/g,' ').trim()).filter(Boolean);
+  const text = lines.join('\n');
+  const out = {};
+
+  /* Acheteur : société, ou personne (facture au nom d'un particulier) */
+  if(text.includes(NDF_TVA)) out.acheteur = 'zenconnect';
+  else if(/tomaszewsky\s+philippe|philippe\s+tomaszewsky/i.test(text)) out.acheteur = 'philippe';
+  else if(/rodrigues\s+liliana|liliana\s+rodrigues/i.test(text)) out.acheteur = 'liliana';
+
+  /* Montant TVAC : libellés par ordre de priorité */
+  const montants = [/total\s+à\s+payer/i, /amount\s+due/i, /montant\s+dû/i, /facture\s+total/i, /total\s+(?:ttc|tvac)/i, /total\s+amount/i, /(?:^|\s)total\b/i];
+  for(const re of montants){
+    for(const l of lines){
+      if(/sous-total|subtotal|\bHT\b|HTVA|excl/i.test(l) && re === montants[montants.length-1]) continue;
+      const mm = re.exec(l); if(!mm) continue;
+      const v = ndfParseAmount(l.slice(mm.index + mm[0].length));
+      if(v !== null){ out.montant = v; break; }
+    }
+    if(out.montant !== undefined) break;
+  }
+
+  /* Date de la facture */
+  const dates = [/date of issue/i, /date de (?:la )?facture/i, /invoice date/i, /date de facturation/i, /date d['’]émission/i];
+  for(const re of dates){
+    for(const l of lines){
+      const mm = re.exec(l); if(!mm) continue;
+      const d = ndfParseDate(l.slice(mm.index + mm[0].length));
+      if(d){ out.date = d; break; }
+    }
+    if(out.date) break;
+  }
+  if(!out.date) out.date = ndfParseDate(text) || undefined;
+
+  /* N° de facture */
+  const nm = text.match(/(?:invoice number|num[ée]ro de la facture|facture n[°o]|invoice no\.?)\s*[:#]?\s*([A-Z0-9][A-Z0-9\- ]{3,24})/i);
+  if(nm) out.numero = nm[1].trim().replace(/\s{2,}/g,'-');
+
+  /* N° de TVA du fournisseur : jamais celui de la société acheteuse */
+  const reKey = /(?:TVA|VAT|BTW)/gi; let km;
+  const reTok = new RegExp('\\b(' + NDF_PAYS_TVA + ')\\s?([0-9][0-9A-Z.]{7,12})\\b');
+  while((km = reKey.exec(text))){
+    const tm = reTok.exec(text.slice(km.index, km.index + 70));
+    if(tm){
+      const tva = (tm[1] + tm[2]).replace(/[.\s]/g,'');
+      if(tva !== NDF_TVA){ out.tva = tva; break; }
+    }
+  }
+
+  /* Fournisseur : connu (Amazon, Anthropic…) sinon première ligne avec une forme juridique */
+  const conn = NDF_FOURNISSEURS_CONNUS.find(k => k.re.test(text));
+  if(conn){ out.fournisseur = conn.nom; out.adresse = conn.adresse; }
+  else {
+    const f = lines.find(l => /\b(SRL|SPRL|SA|NV|BV|ASBL|Ltd|LLC|Inc\.?|GmbH|PBC|SAS|SARL|S\.à r\.l\.?)(?:\W|$)/.test(l) && !/zen.?connect/i.test(l));
+    if(f) out.fournisseur = f.replace(/\s+(Bill to|Facturé à|Invoice to)\b.*$/i,'').slice(0,60).trim();
+  }
+
+  /* Description : lignes sous l'en-tête « Description … Qté » */
+  const hi = lines.findIndex(l => /description/i.test(l) && /(qty|qt[ée]|quantit)/i.test(l));
+  if(hi >= 0){
+    const parts = [];
+    for(let k = hi + 1; k < lines.length && parts.length < 2; k++){
+      const l = lines[k].trim();
+      if(!l || /^[\[\]\d\s().]+$/.test(l) || /^\(?(HT|TTC)\)/i.test(l) || /^ASIN/i.test(l)) continue;
+      if(/^(livraison|subtotal|sous-total|total|taux|amount|tax\b|facture total)/i.test(l)) break;
+      parts.push(l.replace(/^\d\s+(?=[A-ZÀ-Ý])/, '').replace(/\s+\d+\s+[€$]?\s*[\d.,]+\s*[€$]?\s*(?:\d+\s*%|\d).*$/, '').trim());
+    }
+    if(parts.length){
+      let d = parts[0];
+      if(parts[1]) d += (/\b(19|20)\d{2}\b/.test(parts[1]) ? ' — ' : ' ') + parts[1];
+      d = d.replace(/(\b[A-Z][a-z]{2,8}\.? \d{1,2}) +([A-Z][a-z]{2,8}\.? \d{1,2},? \d{4})/, '$1 – $2').replace(/\s*\|\s*[A-Z0-9]{10}\b.*$/, '');
+      if(d.length > 110) d = d.slice(0, 110).replace(/\s+\S*$/, '') + '…';
+      out.description = d;
+      /* Vendeur tiers (Amazon Marketplace) */
+      const vm = lines.map(l => l.match(/^Vendu par\s+(\S.{2,})$/i)).find(Boolean);
+      if(vm && !/amazon/i.test(vm[1])) out.description += ' (vendu par ' + vm[1].trim() + ')';
+    }
+  }
+  return out;
+}
+/* ==== NDF-LECTURE-FIN ==== */
+
+/* Lignes de texte d'un PDF (regroupées par position verticale) — 3 premières pages */
+async function ndfPdfLines(buffer){
+  if(typeof pdfjsLib === 'undefined') throw new Error('PDF.js non chargé');
+  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(buffer.slice(0)) }).promise;
+  const out = [];
+  for(let p = 1; p <= Math.min(pdf.numPages, 3); p++){
+    const content = await (await pdf.getPage(p)).getTextContent();
+    const items = content.items.filter(t => t.str && t.str.trim()).map(t => ({ s:t.str, x:t.transform[4], y:t.transform[5] }));
+    items.sort((a, b) => b.y - a.y || a.x - b.x);
+    let cur = null;
+    items.forEach(it => {
+      if(cur && Math.abs(cur.y - it.y) <= 2.5) cur.items.push(it);
+      else { cur = { y:it.y, items:[it] }; out.push(cur); }
+    });
+  }
+  return out.map(l => l.items.sort((a, b) => a.x - b.x).map(i => i.s).join(' '));
+}
+
+/* Remplit le formulaire depuis l'analyse ; ne touche que les champs vides sauf si overwrite. Retourne les champs trouvés. */
+function ndfApplyParsed(p, overwrite){
+  const found = [];
+  const set = (id, val, label) => {
+    if(val === undefined || val === null || val === '') return;
+    const el = document.getElementById(id);
+    if(!el || el.readOnly) return;
+    if(overwrite || !el.value){ el.value = val; found.push(label); }
+  };
+  set('ndf-fournisseur', p.fournisseur, 'Fournisseur');
+  if(p.fournisseur && window.ndfFournisseurPick) window.ndfFournisseurPick(); // reprend aussi TVA, compte, paiement mémorisés
+  set('ndf-tva', p.tva, 'TVA');
+  set('ndf-adresse', p.adresse, 'Adresse');
+  set('ndf-date', p.date, 'Date');
+  set('ndf-montant', p.montant !== undefined ? p.montant.toFixed(2) : '', 'Montant');
+  set('ndf-description', p.description, 'Description');
+  const ach = document.getElementById('ndf-acheteur');
+  if(p.acheteur && ach && ach.value !== 'animal' && NDF_ENT[p.acheteur] && ach.value !== p.acheteur){
+    ach.value = p.acheteur; window.ndfAcheteurChange(); found.push('Acheteur');
+  }
+  if(window.ndfFournisseurChange) window.ndfFournisseurChange();
+  return found;
+}
+
+/* Lit le PDF joint (texte) et pré-remplit les champs ; overwrite = true depuis le bouton « Relire » */
+window.ndfReadPdf = async function(overwrite){
+  const d = ndfFileData, preview = document.getElementById('ndf-file-preview');
+  if(!d || d.type !== 'pdf') return;
+  const box = inner => `<div style="padding:14px;background:var(--violet-wash);border-radius:10px;font-size:13px">📄 <strong>${ndfEsc(d.name)}</strong><br>${inner}</div>`;
+  preview.innerHTML = box('<span style="color:var(--muted);font-size:12px">Lecture en cours…</span>');
+  try{
+    const lines = await ndfPdfLines(d.buffer);
+    const found = ndfApplyParsed(ndfParseInvoice(lines), !!overwrite);
+    const btn = ' <button type="button" class="btn btn-outline" style="padding:4px 10px;font-size:11px;margin-left:6px" onclick="window.ndfReadPdf(true)">🔍 Relire et remplacer</button>';
+    preview.innerHTML = box(found.length
+      ? `<span style="color:var(--green);font-size:12px">✓ Lu : ${found.join(', ')} — pense à vérifier avant de générer</span>${btn}`
+      : `<span style="color:var(--muted);font-size:12px">Rien de nouveau à remplir (champs déjà remplis ou texte non reconnu)</span>${btn}`);
+  }catch(err){
+    preview.innerHTML = box('<span style="color:var(--muted);font-size:12px">PDF joint — texte non lisible (scan ?), référencé dans le justificatif généré</span>');
+  }
+};
 
 window.ndfLoadFile = function(event) {
   const file = event.target.files[0];
@@ -1810,25 +1965,7 @@ window.ndfLoadFile = function(event) {
     const reader = new FileReader();
     reader.onload = async function(e) {
       ndfFileData = { type:'pdf', name: file.name, buffer: e.target.result };
-      preview.innerHTML = `<div style="padding:14px;background:var(--violet-wash);border-radius:10px;font-size:13px">
-        📄 <strong>${file.name}</strong><br><span style="color:var(--muted);font-size:12px">Lecture en cours…</span></div>`;
-      try {
-        if(typeof pdfjsLib === 'undefined') throw new Error('PDF.js non chargé');
-        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-        const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(e.target.result.slice(0)) }).promise;
-        let fullText = '';
-        for(let i=1; i<=Math.min(pdf.numPages,3); i++) {
-          const page = await pdf.getPage(i);
-          const content = await page.getTextContent();
-          fullText += content.items.map(s => s.str).join(' ') + '\n';
-        }
-        ndfAutoFill(fullText);
-        preview.innerHTML = `<div style="padding:14px;background:var(--violet-wash);border-radius:10px;font-size:13px">
-          📄 <strong>${file.name}</strong><br><span style="color:var(--green);font-size:12px">✓ Texte extrait — champs remplis automatiquement si détectés</span></div>`;
-      } catch(err) {
-        preview.innerHTML = `<div style="padding:14px;background:var(--violet-wash);border-radius:10px;font-size:13px">
-          📄 <strong>${file.name}</strong><br><span style="color:var(--muted);font-size:12px">PDF joint — référencé dans le justificatif généré</span></div>`;
-      }
+      await window.ndfReadPdf(false);
     };
     reader.readAsArrayBuffer(file);
     return;
