@@ -161,7 +161,7 @@
 
     <div class="sidebar-foot">
       <button class="logout-btn" onclick="window.doLogout()">↩ Déconnexion</button>
-      <div style="text-align:center;margin-top:10px;font-size:10px;opacity:.5;letter-spacing:.5px">Build 4.0</div>
+      <div style="text-align:center;margin-top:10px;font-size:10px;opacity:.5;letter-spacing:.5px">Build 4.2</div>
     </div>
   </div>
 
@@ -476,22 +476,32 @@
     <!-- PANEL NOTE DE FRAIS ZEN CONNECT -->
     <div class="panel" id="panel-notedfrais">
       <div class="panel-title">Note de frais</div>
-      <div class="panel-sub">Génère un justificatif PDF pour une dépense sans facture officielle — Amazon, AXA, abonnements…</div>
+      <div class="panel-sub">Justificatifs PDF pour Billit : dépense sans facture (Amazon, AXA, abonnements…), don à l'ASBL ou transfert entre comptes CBC ↔ ING</div>
 
       <div class="card">
+        <h3>Type de document</h3>
+        <div class="form-group" style="margin-bottom:0">
+          <select id="ndf-type" class="form-input" onchange="window.ndfSwitchType()">
+            <option value="depense">🧾 Dépense ou don (justificatif)</option>
+            <option value="transfert">🔁 Transfert entre comptes CBC ↔ ING (Zen-Connect)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="card" id="ndf-card-source">
         <h3>Document source (optionnel)</h3>
         <div class="form-group">
-          <label>Importer une image, PDF ou CSV (bon de commande, capture, relevé…)</label>
+          <label>Ticket ou document à joindre (image JPEG/PNG ou PDF) — ajouté en pages à la suite du justificatif. CSV : aperçu seulement</label>
           <input type="file" id="ndf-file" accept="image/*,.pdf,.csv" onchange="window.ndfLoadFile(event)" style="margin-bottom:10px">
         </div>
         <div id="ndf-file-preview" style="display:none;margin-top:10px"></div>
       </div>
 
-      <div class="card">
-        <h3>Fournisseur</h3>
+      <div class="card" id="ndf-card-fournisseur">
+        <h3 id="ndf-h-fournisseur">Fournisseur</h3>
         <div class="form-row">
           <div class="form-group">
-            <label>Nom du fournisseur *</label>
+            <label id="ndf-lbl-fournisseur">Nom du fournisseur *</label>
             <input type="text" id="ndf-fournisseur" class="form-input" placeholder="ex: Amazon, AXA, …">
           </div>
           <div class="form-group">
@@ -505,15 +515,15 @@
         </div>
       </div>
 
-      <div class="card">
-        <h3>Dépense</h3>
+      <div class="card" id="ndf-card-depense">
+        <h3 id="ndf-h-depense">Dépense</h3>
         <div class="form-row">
           <div class="form-group">
-            <label>Date de la dépense *</label>
+            <label id="ndf-lbl-date">Date de la dépense *</label>
             <input type="date" id="ndf-date" class="form-input">
           </div>
           <div class="form-group">
-            <label>Montant payé (€ TVAC) *</label>
+            <label id="ndf-lbl-montant">Montant payé (€ TVAC) *</label>
             <input type="number" id="ndf-montant" class="form-input" placeholder="0.00" step="0.01" min="0">
           </div>
         </div>
@@ -523,31 +533,60 @@
         </div>
         <div class="form-group">
           <label>Mode de paiement</label>
-          <div style="display:flex;gap:10px;margin-top:4px">
-            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:10px 16px;border:1.5px solid var(--line);border-radius:10px;font-size:13px;font-weight:500;flex:1;justify-content:center" id="ndf-pay-lbl-cash">
+          <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:4px">
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:10px 16px;border:1.5px solid var(--line);border-radius:10px;font-size:13px;font-weight:500;flex:1;min-width:110px;justify-content:center" id="ndf-pay-lbl-cash">
               <input type="radio" name="ndf-paiement" value="Liquide / Cash" id="ndf-pay-cash" onchange="window.ndfPayStyle()" style="accent-color:var(--violet)"> 💵 Liquide
             </label>
-            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:10px 16px;border:1.5px solid var(--line);border-radius:10px;font-size:13px;font-weight:500;flex:1;justify-content:center" id="ndf-pay-lbl-visa">
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:10px 16px;border:1.5px solid var(--line);border-radius:10px;font-size:13px;font-weight:500;flex:1;min-width:110px;justify-content:center" id="ndf-pay-lbl-visa">
               <input type="radio" name="ndf-paiement" value="Visa" id="ndf-pay-visa" onchange="window.ndfPayStyle()" style="accent-color:var(--violet)"> 💳 Visa
             </label>
-            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:10px 16px;border:1.5px solid var(--line);border-radius:10px;font-size:13px;font-weight:500;flex:1;justify-content:center" id="ndf-pay-lbl-bancontact">
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:10px 16px;border:1.5px solid var(--line);border-radius:10px;font-size:13px;font-weight:500;flex:1;min-width:110px;justify-content:center" id="ndf-pay-lbl-bancontact">
               <input type="radio" name="ndf-paiement" value="Bancontact" id="ndf-pay-bancontact" onchange="window.ndfPayStyle()" checked style="accent-color:var(--violet)"> 📱 Bancontact
+            </label>
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:10px 16px;border:1.5px solid var(--line);border-radius:10px;font-size:13px;font-weight:500;flex:1;min-width:110px;justify-content:center" id="ndf-pay-lbl-virement">
+              <input type="radio" name="ndf-paiement" value="Virement" id="ndf-pay-virement" onchange="window.ndfPayStyle()" style="accent-color:var(--violet)"> 🏦 Virement
             </label>
           </div>
         </div>
         <div class="form-group">
           <label>Acheteur</label>
-          <select id="ndf-acheteur" class="form-input">
+          <select id="ndf-acheteur" class="form-input" onchange="window.ndfAcheteurChange()">
+            <option value="zenconnect">Zen-Connect SRL</option>
             <option value="zen">Lylou-Vely by Zen Connect SRL</option>
             <option value="phil">Phil-Mobile by Zen Connect SRL</option>
             <option value="philfixit">Phil-Fixit by Zen Connect SRL</option>
-            <option value="animal">Animal Rescue (ASBL)</option>
+            <option value="animal">🐾 Don à L'Assiette des 4 pattes (ASBL) — par Lylou-Vely</option>
           </select>
         </div>
       </div>
 
+      <div class="card" id="ndf-card-transfert" style="display:none">
+        <h3>Transfert interne — Zen-Connect SRL</h3>
+        <div class="form-group">
+          <label>Sens du transfert *</label>
+          <select id="ndf-t-sens" class="form-input">
+            <option value="cbc-ing">CBC → ING</option>
+            <option value="ing-cbc">ING → CBC</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Date du transfert *</label>
+            <input type="date" id="ndf-t-date" class="form-input">
+          </div>
+          <div class="form-group">
+            <label>Montant (€) *</label>
+            <input type="number" id="ndf-t-montant" class="form-input" placeholder="0.00" step="0.01" min="0">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Communication</label>
+          <input type="text" id="ndf-t-comm" class="form-input" placeholder="ex: Alimentation compte ING">
+        </div>
+      </div>
+
       <div class="card">
-        <button class="btn btn-primary" onclick="window.generateNdfPDF()">📥 Générer le justificatif PDF</button>
+        <button class="btn btn-primary" id="ndf-btn-generate" onclick="window.generateNdfPDF()">📥 Générer le justificatif PDF</button>
       </div>
     </div>
 
@@ -1658,13 +1697,15 @@ window.generateEtsyPDF = function() {
 (function(){
   const d = document.getElementById('ndf-date');
   if(d) d.value = new Date().toISOString().split('T')[0];
+  const td = document.getElementById('ndf-t-date');
+  if(td) td.value = new Date().toISOString().split('T')[0];
   // Init style radio par défaut
   setTimeout(() => { if(window.ndfPayStyle) window.ndfPayStyle(); }, 100);
 })();
 
 // Style radio sélectionné
 window.ndfPayStyle = function() {
-  ['cash','visa','bancontact'].forEach(k => {
+  ['cash','visa','bancontact','virement'].forEach(k => {
     const lbl = document.getElementById('ndf-pay-lbl-'+k);
     const inp = document.getElementById('ndf-pay-'+k);
     if(lbl && inp) {
@@ -1716,13 +1757,13 @@ window.ndfLoadFile = function(event) {
   } else if(ext === 'pdf') {
     const reader = new FileReader();
     reader.onload = async function(e) {
-      ndfFileData = { type:'pdf', name: file.name };
+      ndfFileData = { type:'pdf', name: file.name, buffer: e.target.result };
       preview.innerHTML = `<div style="padding:14px;background:var(--violet-wash);border-radius:10px;font-size:13px">
         📄 <strong>${file.name}</strong><br><span style="color:var(--muted);font-size:12px">Lecture en cours…</span></div>`;
       try {
         if(typeof pdfjsLib === 'undefined') throw new Error('PDF.js non chargé');
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-        const pdf = await pdfjsLib.getDocument({ data: e.target.result }).promise;
+        const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(e.target.result.slice(0)) }).promise;
         let fullText = '';
         for(let i=1; i<=Math.min(pdf.numPages,3); i++) {
           const page = await pdf.getPage(i);
@@ -1761,7 +1802,182 @@ window.ndfLoadFile = function(event) {
   }
 };
 
-window.generateNdfPDF = function() {
+/* ---- Entités : couleurs + logos (dossier images/ du dépôt) ---- */
+const NDF_ENT = {
+  zenconnect:{ nom:'Zen-Connect SRL',                email:'infos@zen-connect.be', pays:'Belgique', logo:'images/zen-connect.png',      c1:[24,98,168],  c2:[76,168,84]  },
+  zen:       { nom:'Lylou-Vely by Zen Connect SRL',  email:'infos@lylou-vely.be',  pays:'Belgique', logo:'images/lylou-vely logo.png', c1:[107,63,160], c2:[170,140,210] },
+  phil:      { nom:'Phil-Mobile by Zen Connect SRL', email:'infos@phil-mobile.be', pays:'Belgique', logo:'images/phil-mobile.png',     c1:[16,72,168],  c2:[245,130,20] },
+  philfixit: { nom:'Phil-Fixit by Zen Connect SRL',  email:'infos@phil-fixit.be',  pays:'Belgique', logo:'images/phil-fixit.png',      c1:[28,28,32],   c2:[240,130,20] }
+};
+const NDF_BANQUES = {
+  cbc:{ nom:'CBC', iban:'BE08 7320 8642 3213' },
+  ing:{ nom:'ING', iban:'BE91 3632 8603 7276' }
+};
+const NDF_ASBL = "L'Assiette des 4 pattes (ASBL)";
+const NDF_MONTHS = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
+const NDF_MU = [140,130,155];
+const NDF_WH = [255,255,255];
+
+function ndfTint(c){ return c.map(v => Math.round(v + (255 - v) * 0.9)); }
+function ndfSlug(s){ return String(s).normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-zA-Z0-9]+/g,'-').replace(/^-+|-+$/g,''); }
+function ndfFmtMontant(v){ return v.toFixed(2).replace('.',',') + ' €'; }
+
+/* Charge un logo en PNG (data URL) ; null si indisponible → le PDF se génère sans logo */
+function ndfLoadLogo(url){
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => {
+      try {
+        const c = document.createElement('canvas');
+        c.width = img.naturalWidth; c.height = img.naturalHeight;
+        c.getContext('2d').drawImage(img, 0, 0);
+        resolve(c.toDataURL('image/png'));
+      } catch(e){ resolve(null); }
+    };
+    img.onerror = () => resolve(null);
+    img.src = encodeURI(url);
+  });
+}
+
+/* Bandeau d'en-tête aux couleurs de l'entité + logo + badge date */
+function ndfDrawHeader(doc, PW, ent, logo, titre, sousTitre, dateFr){
+  doc.setFillColor(...ent.c1);
+  doc.rect(0, 0, PW, 38, 'F');
+  doc.setFillColor(...ent.c2);
+  doc.rect(0, 38, PW, 2.5, 'F');
+
+  doc.setTextColor(...NDF_WH); doc.setFont('helvetica','bold');
+  doc.setFontSize(11); doc.text(ent.nom, 14, 13);
+  doc.setFontSize(16); doc.text(titre, 14, 23);
+  doc.setFontSize(9);  doc.setFont('helvetica','normal'); doc.text(sousTitre, 14, 31);
+
+  const bx = PW - 14 - 30;
+  if(logo){
+    doc.setFillColor(...NDF_WH);
+    doc.roundedRect(bx, 4, 30, 30, 3, 3, 'F');
+    try {
+      const p = doc.getImageProperties(logo);
+      const s = Math.min(26 / p.width, 26 / p.height);
+      const w = p.width * s, h = p.height * s;
+      doc.addImage(logo, 'PNG', bx + (30 - w) / 2, 4 + (30 - h) / 2, w, h);
+    } catch(e){}
+  }
+  doc.setFontSize(9); doc.setFont('helvetica','bold');
+  const bw = doc.getTextWidth(dateFr) + 12;
+  const right = logo ? bx - 6 : PW - 14;
+  doc.setDrawColor(...NDF_WH);
+  doc.roundedRect(right - bw, 13, bw, 12, 3, 3, 'S');
+  doc.text(dateFr, right - bw + 6, 21);
+  doc.setDrawColor(0);
+}
+
+/* Bloc d'information (étiquette + lignes ; la première ligne est en gras) */
+function ndfDrawBloc(doc, x, y, ent, label, lines){
+  doc.setFillColor(...ndfTint(ent.c1));
+  doc.roundedRect(x, y, 84, 44, 4, 4, 'F');
+  doc.setFontSize(7.5); doc.setFont('helvetica','bold'); doc.setTextColor(...ent.c1);
+  doc.text(label, x + 6, y + 8);
+  let ly = y + 16;
+  lines.forEach((ln, i) => {
+    if(!ln) return;
+    if(i === 0){ doc.setFontSize(9); doc.setFont('helvetica','bold'); doc.setTextColor(44,34,51); }
+    else { doc.setFontSize(8.5); doc.setFont('helvetica','normal'); doc.setTextColor(80,70,95); }
+    doc.text(String(ln), x + 6, ly);
+    ly += (i === 0 ? 6 : 5);
+  });
+}
+
+/* Affichage selon le type de document (dépense/don ou transfert) */
+window.ndfSwitchType = function(){
+  const t = document.getElementById('ndf-type').value === 'transfert';
+  ['ndf-card-source','ndf-card-fournisseur','ndf-card-depense'].forEach(id => {
+    document.getElementById(id).style.display = t ? 'none' : '';
+  });
+  document.getElementById('ndf-card-transfert').style.display = t ? '' : 'none';
+  document.getElementById('ndf-btn-generate').textContent = t ? '📥 Générer le justificatif de transfert' : '📥 Générer le justificatif PDF';
+};
+
+/* Choix « Don à L'Assiette des 4 pattes » : bénéficiaire pré-rempli, paiement par virement */
+window.ndfAcheteurChange = function(){
+  const isDon = document.getElementById('ndf-acheteur').value === 'animal';
+  const f = document.getElementById('ndf-fournisseur');
+  document.getElementById('ndf-h-fournisseur').textContent   = isDon ? 'Bénéficiaire du don' : 'Fournisseur';
+  document.getElementById('ndf-lbl-fournisseur').textContent = isDon ? 'Bénéficiaire *' : 'Nom du fournisseur *';
+  document.getElementById('ndf-h-depense').textContent       = isDon ? 'Don' : 'Dépense';
+  document.getElementById('ndf-lbl-date').textContent        = isDon ? 'Date du don *' : 'Date de la dépense *';
+  document.getElementById('ndf-lbl-montant').textContent     = isDon ? 'Montant du don (€) *' : 'Montant payé (€ TVAC) *';
+  if(isDon){
+    f.value = NDF_ASBL; f.readOnly = true;
+    document.getElementById('ndf-pay-virement').checked = true;
+    window.ndfPayStyle();
+  } else if(f.readOnly){
+    f.value = ''; f.readOnly = false;
+  }
+};
+
+/* ---- Pièce jointe (ticket Amazon, etc.) : image ou PDF, ajoutée en pages à la suite ---- */
+function ndfNormalizeImage(dataUrl){
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => {
+      try {
+        const k = Math.min(1, 2000 / Math.max(img.naturalWidth, img.naturalHeight));
+        const c = document.createElement('canvas');
+        c.width = Math.round(img.naturalWidth * k); c.height = Math.round(img.naturalHeight * k);
+        const ctx = c.getContext('2d');
+        ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height);
+        ctx.drawImage(img, 0, 0, c.width, c.height);
+        resolve(c.toDataURL('image/jpeg', 0.88));
+      } catch(e){ resolve(null); }
+    };
+    img.onerror = () => resolve(null);
+    img.src = dataUrl;
+  });
+}
+
+/* Prépare les pages à joindre : [{ dataUrl, label }] (vide si rien à joindre ou en cas d'échec) */
+async function ndfPrepareAttachment(){
+  const pages = [];
+  if(!ndfFileData) return pages;
+  if(ndfFileData.type === 'image'){
+    const jpg = await ndfNormalizeImage(ndfFileData.dataUrl);
+    if(jpg) pages.push({ dataUrl: jpg, label: `Pièce jointe : ${ndfFileData.name}` });
+  } else if(ndfFileData.type === 'pdf' && ndfFileData.buffer && typeof pdfjsLib !== 'undefined'){
+    try {
+      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+      const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(ndfFileData.buffer.slice(0)) }).promise;
+      const n = Math.min(pdf.numPages, 10);
+      for(let i = 1; i <= n; i++){
+        const page = await pdf.getPage(i);
+        const vp = page.getViewport({ scale: 2 });
+        const c = document.createElement('canvas');
+        c.width = vp.width; c.height = vp.height;
+        await page.render({ canvasContext: c.getContext('2d'), viewport: vp }).promise;
+        pages.push({ dataUrl: c.toDataURL('image/jpeg', 0.85), label: `Pièce jointe : ${ndfFileData.name} — page ${i}/${pdf.numPages}` });
+      }
+    } catch(e){ console.warn('Pièce jointe PDF non intégrée :', e); }
+  }
+  return pages;
+}
+
+function ndfAddAttachmentPages(doc, ent, pages){
+  const PW = doc.internal.pageSize.getWidth(), PH = doc.internal.pageSize.getHeight();
+  pages.forEach(pg => {
+    doc.addPage();
+    doc.setFontSize(8); doc.setFont('helvetica','bold'); doc.setTextColor(...ent.c1);
+    doc.text(pg.label, 14, 12);
+    try {
+      const p = doc.getImageProperties(pg.dataUrl);
+      const s = Math.min((PW - 20) / p.width, (PH - 28) / p.height);
+      doc.addImage(pg.dataUrl, p.fileType, 10, 18, p.width * s, p.height * s);
+    } catch(e){}
+  });
+}
+
+window.generateNdfPDF = async function() {
+  if(!window.jspdf){ alert('jsPDF non chargé — recharge la page et réessaie.'); return; }
+  if(document.getElementById('ndf-type').value === 'transfert') return ndfGenerateTransfert();
+
   const { jsPDF } = window.jspdf;
   const fournisseur = (document.getElementById('ndf-fournisseur').value||'').trim();
   const tva        = (document.getElementById('ndf-tva').value||'').trim();
@@ -1777,119 +1993,143 @@ window.generateNdfPDF = function() {
     return;
   }
 
-  const ACHETEURS = {
-    zen:      { nom:'Lylou-Vely by Zen Connect SRL',   sub:'', email:'lylou.vely@gmail.com',  pays:'Belgique' },
-    phil:     { nom:'Phil-Mobile by Zen Connect SRL',  sub:'', email:'formaphil@gmail.com',   pays:'Belgique' },
-    philfixit:{ nom:'Phil-Fixit by Zen Connect SRL',   sub:'', email:'formaphil@gmail.com',   pays:'Belgique' },
-    animal:   { nom:'Animal Rescue',                   sub:'ASBL', email:'formaphil@gmail.com', pays:'Belgique' }
-  };
-  const ach = ACHETEURS[acheteurSel];
+  /* Don à l'ASBL : le donateur est Lylou-Vely, le « fournisseur » devient le bénéficiaire */
+  const isDon = acheteurSel === 'animal';
+  const ach = NDF_ENT[isDon ? 'zen' : acheteurSel];
+  const logo = await ndfLoadLogo(ach.logo);
 
   const [yr,mo,dy] = dateVal.split('-');
-  const MONTHS = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
-  const dateFr = `${parseInt(dy)} ${MONTHS[parseInt(mo)-1]} ${yr}`;
-  const refNum = `NDF-${yr}-${mo}-${fournisseur.replace(/\s+/g,'-').toUpperCase().substring(0,10)}`;
+  const dateFr = `${parseInt(dy)} ${NDF_MONTHS[parseInt(mo)-1]} ${yr}`;
+  const refNum = `${isDon ? 'DON' : 'NDF'}-${yr}-${mo}-${ndfSlug(fournisseur).toUpperCase().substring(0,10)}`;
   const now    = new Date();
   const genDate= `${now.getDate().toString().padStart(2,'0')}/${(now.getMonth()+1).toString().padStart(2,'0')}/${now.getFullYear()}`;
 
   const doc = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
   const PW  = doc.internal.pageSize.getWidth();
-  const VIO = [107,63,160];
-  const MU  = [140,130,155];
-  const WH  = [255,255,255];
 
   /* ── Header ── */
-  doc.setFillColor(...VIO);
-  doc.rect(0, 0, PW, 38, 'F');
-  doc.setFontSize(11); doc.setTextColor(...WH); doc.setFont('helvetica','bold');
-  doc.text(ach.nom + (ach.sub ? ' / '+ach.sub : ''), 14, 13);
-  doc.setFontSize(16);
-  doc.text('Justificatif de dépense', 14, 23);
-  doc.setFontSize(9); doc.setFont('helvetica','normal');
-  doc.text('Document établi en l\'absence de facture officielle', 14, 31);
+  ndfDrawHeader(doc, PW, ach, logo,
+    isDon ? 'Justificatif de don' : 'Justificatif de dépense',
+    isDon ? 'Don par virement — aucune facture émise (don à une ASBL)' : 'Document établi en l\'absence de facture officielle',
+    dateFr);
 
-  // Badge date
-  doc.setFontSize(9); doc.setFont('helvetica','bold'); doc.setTextColor(...WH);
-  const bw = doc.getTextWidth(dateFr) + 12;
-  doc.roundedRect(PW - bw - 10, 13, bw, 12, 3, 3, 'S');
-  doc.text(dateFr, PW - bw - 4, 21);
-
-  /* ── Fournisseur / Acheteur ── */
-  let y = 46;
-  doc.setFillColor(243,238,255);
-  doc.roundedRect(12, y, 84, 44, 4, 4, 'F');
-  doc.roundedRect(110, y, 84, 44, 4, 4, 'F');
-
-  doc.setFontSize(7.5); doc.setFont('helvetica','bold'); doc.setTextColor(...VIO);
-  doc.text('FOURNISSEUR', 18, y+8);
-  doc.text('ACHETEUR', 116, y+8);
-
-  doc.setFontSize(9); doc.setFont('helvetica','bold'); doc.setTextColor(44,34,51);
-  doc.text(fournisseur, 18, y+16);
-  doc.text(ach.nom, 116, y+16);
-
-  doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(80,70,95);
-  let fy2 = y+22;
-  if(adresse){ doc.text(adresse, 18, fy2); fy2 += 5; }
-  if(tva)    { doc.text('TVA : '+tva, 18, fy2); }
-
-  let ay = y+22;
-  if(ach.sub)  { doc.text(ach.sub,   116, ay); ay += 5; }
-  if(ach.email){ doc.text(ach.email, 116, ay); ay += 5; }
-  doc.text(ach.pays, 116, ay);
+  /* ── Fournisseur (ou bénéficiaire) / Acheteur (ou donateur) ── */
+  let y = 48;
+  ndfDrawBloc(doc, 12, y, ach, isDon ? 'BÉNÉFICIAIRE' : 'FOURNISSEUR',
+    [fournisseur, adresse, tva ? 'TVA : '+tva : '']);
+  ndfDrawBloc(doc, 110, y, ach, isDon ? 'DONATEUR' : 'ACHETEUR',
+    [ach.nom, ach.email, ach.pays]);
 
   /* ── Référence ── */
   y += 52;
-  doc.setFontSize(8); doc.setFont('helvetica','normal'); doc.setTextColor(...MU);
+  doc.setFontSize(8); doc.setFont('helvetica','normal'); doc.setTextColor(...NDF_MU);
   doc.text(`Réf. ${refNum}   ·   Date : ${dateFr}   ·   Mode de paiement : ${paiement}   ·   Généré le : ${genDate}`, 14, y);
   y += 8;
 
   /* ── Tableau ── */
   // Mention fichier joint si présent
   const fileNote = ndfFileData ? `Pièce jointe : ${ndfFileData.name}` : '';
-  const bodyRow = [description + (fileNote ? `\n${fileNote}` : ''), montant.toFixed(2).replace('.',',') + ' €'];
+  const bodyRow = [description + (fileNote ? `\n${fileNote}` : ''), ndfFmtMontant(montant)];
 
   doc.autoTable({
     startY: y,
     head: [['Description / Motif', 'Montant (EUR)']],
     body: [bodyRow, ['Mode de paiement', paiement]],
-    foot: [['TOTAL PAYÉ', montant.toFixed(2).replace('.',',') + ' €']],
-    headStyles:{ fillColor:VIO, textColor:WH, fontSize:9, fontStyle:'bold' },
-    footStyles:{ fillColor:[240,235,250], textColor:VIO, fontSize:10, fontStyle:'bold' },
+    foot: [[isDon ? 'TOTAL DONNÉ' : 'TOTAL PAYÉ', ndfFmtMontant(montant)]],
+    headStyles:{ fillColor:ach.c1, textColor:NDF_WH, fontSize:9, fontStyle:'bold' },
+    footStyles:{ fillColor:ndfTint(ach.c1), textColor:ach.c1, fontSize:10, fontStyle:'bold' },
     bodyStyles:{ fontSize:9 },
     columnStyles:{ 1:{ halign:'right', fontStyle:'bold', textColor:[192,71,94] } },
     margin:{ left:14, right:14 },
     theme:'grid'
   });
 
-  /* ── Image source (si image importée) ── */
-  if(ndfFileData && ndfFileData.type === 'image') {
-    const imgY = doc.lastAutoTable.finalY + 10;
-    doc.setFontSize(8); doc.setFont('helvetica','bold'); doc.setTextColor(...VIO);
-    doc.text('Document source :', 14, imgY);
-    try {
-      const maxW = PW - 28;
-      const img = new Image();
-      img.src = ndfFileData.dataUrl;
-      const ratio = img.naturalHeight / img.naturalWidth || 1;
-      const iw = Math.min(maxW, 120);
-      const ih = Math.min(iw * ratio, 80);
-      doc.addImage(ndfFileData.dataUrl, 'JPEG', 14, imgY + 4, iw, ih);
-    } catch(e){}
-  }
+  /* ── Pièce jointe (pages à la suite) ── */
+  const attachPages = await ndfPrepareAttachment();
 
   /* ── Note pied ── */
-  const fn = doc.lastAutoTable.finalY + (ndfFileData && ndfFileData.type === 'image' ? 90 : 12);
-  doc.setFontSize(7.5); doc.setTextColor(...MU); doc.setFont('helvetica','italic');
-  doc.text(`Ce document est un justificatif de dépense établi par ${ach.nom} en l'absence de facture officielle.`, 14, fn);
-  doc.text('À joindre dans Billit comme pièce justificative pour la transaction bancaire correspondante.', 14, fn+5);
-  if(ndfFileData && ndfFileData.type === 'pdf'){
-    doc.text(`Fichier joint séparé : ${ndfFileData.name}`, 14, fn+10);
+  const fn = doc.lastAutoTable.finalY + 12;
+  const extra = !ndfFileData ? '' :
+    (attachPages.length ? `Pièce jointe aux pages suivantes : ${ndfFileData.name}` :
+    (ndfFileData.type === 'pdf' ? `Fichier joint séparé : ${ndfFileData.name}` : ''));
+  doc.setFontSize(7.5); doc.setTextColor(...NDF_MU); doc.setFont('helvetica','italic');
+  if(isDon){
+    doc.text(`Ce document est un justificatif de don établi par ${ach.nom} en faveur de ${fournisseur}.`, 14, fn);
+    doc.text('Don effectué par virement — aucune facture n\'est émise pour un don à une ASBL.', 14, fn+5);
+    doc.text('À joindre dans Billit comme pièce justificative pour la transaction bancaire correspondante.', 14, fn+10);
+    if(extra) doc.text(extra, 14, fn+15);
+  } else {
+    doc.text(`Ce document est un justificatif de dépense établi par ${ach.nom} en l'absence de facture officielle.`, 14, fn);
+    doc.text('À joindre dans Billit comme pièce justificative pour la transaction bancaire correspondante.', 14, fn+5);
+    if(extra) doc.text(extra, 14, fn+10);
   }
+  ndfAddAttachmentPages(doc, ach, attachPages);
 
-  const fname = `justificatif_${fournisseur.replace(/\s+/g,'-').toLowerCase()}_${yr}-${mo}.pdf`;
+  const fname = `${isDon ? 'justificatif-don' : 'justificatif'}_${ndfSlug(fournisseur).toLowerCase()}_${yr}-${mo}.pdf`;
   doc.save(fname);
 };
+
+/* ---- Transfert interne CBC ↔ ING (Zen-Connect SRL) ---- */
+async function ndfGenerateTransfert() {
+  const { jsPDF } = window.jspdf;
+  const sens    = document.getElementById('ndf-t-sens').value; // 'cbc-ing' | 'ing-cbc'
+  const dateVal = document.getElementById('ndf-t-date').value;
+  const montant = parseFloat(document.getElementById('ndf-t-montant').value)||0;
+  const comm    = (document.getElementById('ndf-t-comm').value||'').trim() || 'Transfert entre comptes';
+
+  if(!dateVal || !montant) {
+    alert('Veuillez remplir la date et le montant (*)');
+    return;
+  }
+
+  const [kFrom, kTo] = sens.split('-');
+  const from = NDF_BANQUES[kFrom], to = NDF_BANQUES[kTo];
+  const ent  = NDF_ENT.zenconnect;
+  const logo = await ndfLoadLogo(ent.logo);
+
+  const [yr,mo,dy] = dateVal.split('-');
+  const dateFr = `${parseInt(dy)} ${NDF_MONTHS[parseInt(mo)-1]} ${yr}`;
+  const refNum = `TRF-${yr}-${mo}-${dy}-${from.nom}-${to.nom}`;
+  const now    = new Date();
+  const genDate= `${now.getDate().toString().padStart(2,'0')}/${(now.getMonth()+1).toString().padStart(2,'0')}/${now.getFullYear()}`;
+
+  const doc = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
+  const PW  = doc.internal.pageSize.getWidth();
+
+  ndfDrawHeader(doc, PW, ent, logo,
+    'Justificatif de transfert interne',
+    'Transfert entre deux comptes de ' + ent.nom + ' — pas une dépense',
+    dateFr);
+
+  let y = 48;
+  ndfDrawBloc(doc, 12, y, ent, 'COMPTE DÉBITÉ',  [`Banque ${from.nom}`, from.iban, 'Titulaire : ' + ent.nom]);
+  ndfDrawBloc(doc, 110, y, ent, 'COMPTE CRÉDITÉ', [`Banque ${to.nom}`,   to.iban,   'Titulaire : ' + ent.nom]);
+
+  y += 52;
+  doc.setFontSize(8); doc.setFont('helvetica','normal'); doc.setTextColor(...NDF_MU);
+  doc.text(`Réf. ${refNum}   ·   Date : ${dateFr}   ·   Généré le : ${genDate}`, 14, y);
+  y += 8;
+
+  doc.autoTable({
+    startY: y,
+    head: [['Date', 'Sens du transfert', 'Communication', 'Montant (EUR)']],
+    body: [[dateFr, `${from.nom} vers ${to.nom}`, comm, ndfFmtMontant(montant)]],
+    foot: [[{ content:'TOTAL TRANSFÉRÉ', colSpan:3 }, ndfFmtMontant(montant)]],
+    headStyles:{ fillColor:ent.c1, textColor:NDF_WH, fontSize:9, fontStyle:'bold' },
+    footStyles:{ fillColor:ndfTint(ent.c1), textColor:ent.c1, fontSize:10, fontStyle:'bold' },
+    bodyStyles:{ fontSize:9 },
+    columnStyles:{ 3:{ halign:'right', fontStyle:'bold' } },
+    margin:{ left:14, right:14 },
+    theme:'grid'
+  });
+
+  const fn = doc.lastAutoTable.finalY + 12;
+  doc.setFontSize(7.5); doc.setTextColor(...NDF_MU); doc.setFont('helvetica','italic');
+  doc.text(`Transfert interne entre deux comptes bancaires de ${ent.nom} : sans facture, sans TVA, sans contrepartie.`, 14, fn);
+  doc.text('À joindre dans Billit pour justifier les deux lignes bancaires (débit et crédit).', 14, fn+5);
+
+  doc.save(`justificatif_transfert_${from.nom}-vers-${to.nom}_${yr}-${mo}-${dy}.pdf`);
+}
 </script>
 </body>
 </html>
