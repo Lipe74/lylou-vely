@@ -340,7 +340,7 @@ nav{display:none}
 <div id="gate">
   <div class="box">
     <div class="mark">Lylou-Vely</div>
-    <div class="sub">Caisse · Build 5.0</div>
+    <div class="sub">Caisse · Build 5.1</div>
     <input type="email" id="gate-email" placeholder="Email" autocomplete="email" value="infos@lylou-vely.be" style="letter-spacing:0">
     <input type="password" id="gate-pw" placeholder="Mot de passe" autocomplete="current-password">
     <button onclick="doLogin()">Connexion</button>
@@ -352,7 +352,7 @@ nav{display:none}
 <div id="app" class="hidden">
   <header>
     <div class="hdr-top">
-      <div class="title">Lylou-Vely<small>Caisse · Build 5.0</small></div>
+      <div class="title">Lylou-Vely<small>Caisse · Build 5.1</small></div>
       <div style="display:flex;gap:6px;align-items:center">
         <button class="refresh-btn" onclick="openSettings()" style="font-size:12px;padding:6px 10px;font-weight:600" title="Réglages">⚙︎</button>
         <button id="hdr-mode-btn" class="refresh-btn" onclick="toggleMode()" title="Basculer Prod/Test" style="font-size:12px;padding:6px 10px;font-weight:600;letter-spacing:.5px">PROD</button>
@@ -494,13 +494,17 @@ nav{display:none}
           <button class="btn btn-outline" style="margin-bottom:12px" onclick="downloadClosuresMonthPDFs()">📄 Clôtures du mois (2 PDF : avant / après)</button>
           <button class="btn btn-outline" style="margin-bottom:12px" onclick="downloadMonthVersementsPDF()">🏦 Versements banque du mois (PDF)</button>
           <button class="btn btn-outline" style="margin-bottom:12px" onclick="downloadMonthRecapPDF()">📊 Récap comptable du mois (PDF)</button>
+          <button class="btn btn-outline" style="margin-bottom:12px" onclick="downloadMonthTicketsListPDF()">📋 Liste des tickets du mois (PDF)</button>
           <button class="btn btn-outline" style="margin-bottom:12px" onclick="downloadTicketsMonthPDF()">🧾 Tous les tickets du mois (1 PDF)</button>
+          <button class="btn btn-outline" style="margin-bottom:12px" onclick="downloadMonthDossierPDF()">🗂️ Dossier comptable complet du mois (1 PDF)</button>
         </div>
         <div id="jr-year-exports" style="display:none;margin-bottom:12px">
           <div style="font-size:12px;color:var(--muted);margin:4px 0 6px">Documents de l'année</div>
           <select id="jr-year-select" style="padding:8px 12px;border-radius:8px;border:1px solid #ddd;font-size:13px;margin-bottom:10px;width:100%"></select>
           <button class="btn btn-outline" style="margin-bottom:12px" onclick="downloadYearRecapPDF()">📊 Récap comptable de l'année (PDF)</button>
           <button class="btn btn-outline" style="margin-bottom:12px" onclick="downloadYearVersementsPDF()">🏦 Versements banque de l'année (PDF)</button>
+          <button class="btn btn-outline" style="margin-bottom:12px" onclick="downloadYearTicketsListPDF()">📋 Liste des tickets de l'année (PDF)</button>
+          <button class="btn btn-outline" style="margin-bottom:12px" onclick="downloadYearDossierPDF()">🗂️ Dossier comptable complet de l'année (1 PDF)</button>
         </div>
         <div id="jr-range-picker" style="display:none;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center" class="date-filter">
           <span style="font-size:13px;color:var(--muted)">Du</span>
@@ -4371,14 +4375,14 @@ function assoPeriod(prefix){
 }
 
 /* 3) Récap comptable (mois : jour par jour · année : mois par mois) + TVA + reversement asso */
-function makeRecapPDF(prefix, isYear, label){
+function makeRecapPDF(prefix, isYear, label, asInner){
   const byM = computeMarcheDateStats();
   const rows = [];
   Object.keys(byM).forEach(m=>Object.keys(byM[m]).forEach(d=>{ if(d.startsWith(prefix)) rows.push({date:d, marche:m, ...byM[m][d]}); }));
   const vers = bankVersements(prefix);
   const datesWithRow = new Set(rows.map(r=>r.date));
   vers.forEach(v=>{ if(!datesWithRow.has(v.date)){ datesWithRow.add(v.date); rows.push({date:v.date, marche:v.marche||'(sans marché)', esp:0, qr:0, carte:0, ca:0, count:0}); } });
-  if(rows.length===0){ toast("Aucune donnée pour cette période"); return; }
+  if(rows.length===0){ if(!asInner) toast("Aucune donnée pour cette période"); return ''; }
   rows.sort((a,b)=>a.date.localeCompare(b.date)||a.marche.localeCompare(b.marche));
   const tot = {ca:0, esp:0, qr:0, carte:0, count:0, vers:0};
   const byLabel = {};
@@ -4458,6 +4462,7 @@ function makeRecapPDF(prefix, isYear, label){
     ${tvaBlock}
     ${assoBlock}
     <p style="font-size:11px;color:#777">Les montants de vente sont TVA comprise. Le détail des versements (banque, association) figure dans le document « Versements banque ».</p>`;
+  if(asInner) return inner;
   const title = 'Récap comptable' + (isYear ? ' de l\'année - ' : ' - ') + label;
   htmlStringToPDFCompact(monthDocHTML(title, isYear ? 'Récap de l\'année' : 'Récap du mois', inner), title+'.pdf');
 }
@@ -4465,14 +4470,14 @@ window.downloadMonthRecapPDF = function(){ const m = currentExportMonth(); makeR
 window.downloadYearRecapPDF = function(){ const y = selectedExportYear(); makeRecapPDF(y, true, y); };
 
 /* 4) Versements banque (avec banque ING/CBC) + versements à l'association */
-function makeVersementsPDF(prefix, isYear, label){
+function makeVersementsPDF(prefix, isYear, label, asInner){
   const vers = bankVersements(prefix);
   const asso = [];
   Object.keys(state.asblPayouts||{}).forEach(k=>{
     asblPayments(k).forEach(p=>{ if((p.date||'').startsWith(prefix)) asso.push({date:p.date, periode:monthLongLabel(k), amount:p.amount, bank:p.bank}); });
   });
   asso.sort((a,b)=>a.date.localeCompare(b.date));
-  if(vers.length===0 && asso.length===0){ toast("Aucun versement pour cette période"); return; }
+  if(vers.length===0 && asso.length===0){ if(!asInner) toast("Aucun versement pour cette période"); return ''; }
   const per = isYear ? 'cette année' : 'ce mois-ci';
   const sub = {ING:0, CBC:0, none:0};
   vers.forEach(v=>{ sub[BANK_DOC[v.bank] ? v.bank : 'none'] += v.amount; });
@@ -4501,11 +4506,73 @@ function makeVersementsPDF(prefix, isYear, label){
       </tbody>
     </table>`;
   const inner = `<div class="md-h2">Versements en banque</div>${versTable}<div class="md-h2">Versements à l'association</div>${assoTable}`;
+  if(asInner) return inner;
   const title = 'Versements banque ' + (isYear ? 'de l\'année - ' : 'du mois - ') + label;
   htmlStringToPDFCompact(monthDocHTML(title, isYear ? 'Versements de l\'année' : 'Versements du mois', inner), title+'.pdf');
 }
 window.downloadMonthVersementsPDF = function(){ const m = currentExportMonth(); makeVersementsPDF(m, false, monthPdfLabel(m)); };
 window.downloadYearVersementsPDF = function(){ const y = selectedExportYear(); makeVersementsPDF(y, true, y); };
+
+/* 5) Liste des tickets (un seul document pour la compta : n°, date, heure, marché, paiement, montant TVAC) */
+function salePayLabel(s){
+  const ms = [...new Set((s.payments||[]).map(p=>p.method).filter(Boolean))];
+  if(s.method==='mix' || ms.length>1) return 'Mixte' + (ms.length ? ' ('+ms.map(m=>METHOD_LABEL[m]||m).join(' + ')+')' : '');
+  return METHOD_LABEL[s.method] || (ms[0] && METHOD_LABEL[ms[0]]) || '—';
+}
+function ticketsListInner(prefix, isYear){
+  const sales = state.sales.filter(s=>(s.date||'').startsWith(prefix))
+    .sort((a,b)=>a.date.localeCompare(b.date)||(a.time||'').localeCompare(b.time||''));
+  if(sales.length===0) return '';
+  const days = [...new Set(sales.map(s=>s.date))];
+  let totCa = 0, totN = 0, totCancel = 0;
+  const body = days.map(d=>{
+    const ds = sales.filter(s=>s.date===d);
+    let dayCa = 0, dayN = 0;
+    const lines = ds.map(s=>{
+      const ref = s.ref || makeRef(s.num);
+      if(s.cancelled){
+        totCancel++;
+        return `<tr style="color:#b0455b"><td><b>${esc(ref)}</b></td><td>${fr(s.date)}</td><td>${esc(s.time||'')}</td><td>${esc(s.marche||'—')}</td><td><b>Annulé</b></td><td class="r" style="text-decoration:line-through">${euro(s.total)}</td></tr>`;
+      }
+      dayCa += s.total; dayN++;
+      return `<tr><td><b>${esc(ref)}</b></td><td>${fr(s.date)}</td><td>${esc(s.time||'')}</td><td>${esc(s.marche||'—')}</td><td>${esc(salePayLabel(s))}</td><td class="r"><b>${euro(s.total)}</b></td></tr>`;
+    }).join('');
+    totCa += dayCa; totN += dayN;
+    return lines + `<tr><td colspan="5" style="background:#f1eaf9;font-weight:600">Total ${fr(d)} · ${dayN} ticket${dayN>1?'s':''}</td><td class="r" style="background:#f1eaf9;font-weight:600">${euro(dayCa)}</td></tr>`;
+  }).join('');
+  return `<div class="md-h2">Liste des tickets</div>
+    <table class="md-table" style="font-size:11px">
+      <thead><tr><th>N° ticket</th><th>Date</th><th>Heure</th><th>Marché</th><th>Paiement</th><th class="r">Montant TVAC</th></tr></thead>
+      <tbody>${body}
+        <tr class="tot"><td colspan="5">Total ${isYear ? 'de l\'année' : 'du mois'} · ${totN} ticket${totN>1?'s':''}</td><td class="r">${euro(totCa)}</td></tr>
+      </tbody>
+    </table>
+    <p style="font-size:11px;color:#777">Montants TVA comprise.${totCancel ? ' '+totCancel+' ticket'+(totCancel>1?'s':'')+' annulé'+(totCancel>1?'s':'')+' (non compté'+(totCancel>1?'s':'')+' dans les totaux).' : ''}</p>`;
+}
+function makeTicketsListPDF(prefix, isYear, label){
+  const inner = ticketsListInner(prefix, isYear);
+  if(!inner){ toast("Aucun ticket pour cette période"); return; }
+  const title = 'Liste des tickets ' + (isYear ? 'de l\'année - ' : 'du mois - ') + label;
+  htmlStringToPDFCompact(monthDocHTML(title, isYear ? 'Tickets de l\'année' : 'Tickets du mois', inner), title+'.pdf');
+}
+window.downloadMonthTicketsListPDF = function(){ const m = currentExportMonth(); makeTicketsListPDF(m, false, monthPdfLabel(m)); };
+window.downloadYearTicketsListPDF = function(){ const y = selectedExportYear(); makeTicketsListPDF(y, true, y); };
+
+/* 6) Dossier comptable complet : Récap + Versements banque + Liste des tickets dans un seul PDF */
+function makeDossierPDF(prefix, isYear, label){
+  const parts = [
+    ['Récap comptable', makeRecapPDF(prefix, isYear, label, true)],
+    ['Versements banque', makeVersementsPDF(prefix, isYear, label, true)],
+    ['Liste des tickets', ticketsListInner(prefix, isYear)]
+  ].filter(p=>p[1]);
+  if(parts.length===0){ toast("Aucune donnée pour cette période"); return; }
+  const sep = '<div style="margin:30px 0 0;border-top:2px solid #6B3FA0"></div>';
+  const inner = parts.map((p,i)=>(i===0 ? '' : sep) + p[1]).join('');
+  const title = 'Dossier comptable ' + (isYear ? 'de l\'année - ' : '- ') + label;
+  htmlStringToPDFCompact(monthDocHTML(title, isYear ? 'Dossier de l\'année' : 'Dossier du mois', inner), title+'.pdf');
+}
+window.downloadMonthDossierPDF = function(){ const m = currentExportMonth(); makeDossierPDF(m, false, monthPdfLabel(m)); };
+window.downloadYearDossierPDF = function(){ const y = selectedExportYear(); makeDossierPDF(y, true, y); };
 
 /* Génère le PDF (blob) d'un ticket de vente isolé, hors écran, même style que le téléchargement individuel */
 async function saleTicketToCanvas(sale, scale){
