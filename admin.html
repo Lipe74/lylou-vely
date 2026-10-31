@@ -161,7 +161,7 @@
 
     <div class="sidebar-foot">
       <button class="logout-btn" onclick="window.doLogout()">↩ Déconnexion</button>
-      <div style="text-align:center;margin-top:10px;font-size:10px;opacity:.5;letter-spacing:.5px">Build 5.6</div>
+      <div style="text-align:center;margin-top:10px;font-size:10px;opacity:.5;letter-spacing:.5px">Build 5.7</div>
     </div>
   </div>
 
@@ -578,6 +578,13 @@
             <option value="cbc">CBC</option>
             <option value="ing">ING</option>
             <option value="aucun">Aucun (espèces)</option>
+          </select>
+        </div>
+        <div class="form-group" id="ndf-typej-row">
+          <label>Type de justificatif</label>
+          <select id="ndf-typej" class="form-input">
+            <option value="sans">Sans facture — « Document établi en l'absence de facture officielle »</option>
+            <option value="avec">Avec facture en annexe — « Justificatif complémentaire de paiement »</option>
           </select>
         </div>
         <div class="form-group" id="ndf-don-banque-row" style="display:none">
@@ -1906,17 +1913,18 @@ async function ndfPdfLines(buffer){
 /* Remplit le formulaire depuis l'analyse ; ne touche que les champs vides sauf si overwrite. Retourne les champs trouvés. */
 function ndfApplyParsed(p, overwrite){
   const found = [];
-  const set = (id, val, label) => {
+  const set = (id, val, label, force) => {
     if(val === undefined || val === null || val === '') return;
     const el = document.getElementById(id);
     if(!el || el.readOnly) return;
-    if(overwrite || !el.value){ el.value = val; found.push(label); }
+    if(overwrite || force || !el.value){ if(el.value !== String(val)){ el.value = val; found.push(label); } }
   };
   set('ndf-fournisseur', p.fournisseur, 'Fournisseur');
   if(p.fournisseur && window.ndfFournisseurPick) window.ndfFournisseurPick(); // reprend aussi TVA, compte, paiement mémorisés
   set('ndf-tva', p.tva, 'TVA');
   set('ndf-adresse', p.adresse, 'Adresse');
-  set('ndf-date', p.date, 'Date');
+  const dEl = document.getElementById('ndf-date');
+  set('ndf-date', p.date, 'Date', dEl && dEl.value === new Date().toISOString().split('T')[0]);
   set('ndf-montant', p.montant !== undefined ? p.montant.toFixed(2) : '', 'Montant');
   set('ndf-description', p.description, 'Description');
   const ach = document.getElementById('ndf-acheteur');
@@ -1956,6 +1964,7 @@ window.ndfLoadFile = function(event) {
     const reader = new FileReader();
     reader.onload = function(e) {
       ndfFileData = { type:'image', dataUrl: e.target.result, name: file.name };
+      document.getElementById('ndf-typej').value = 'avec';
       preview.innerHTML = `<div style="font-size:12px;color:var(--muted);margin-bottom:6px">📷 ${file.name}</div>
         <img src="${e.target.result}" style="max-width:100%;max-height:260px;border-radius:8px;border:1px solid var(--line)">`;
     };
@@ -1965,6 +1974,7 @@ window.ndfLoadFile = function(event) {
     const reader = new FileReader();
     reader.onload = async function(e) {
       ndfFileData = { type:'pdf', name: file.name, buffer: e.target.result };
+      document.getElementById('ndf-typej').value = 'avec';
       await window.ndfReadPdf(false);
     };
     reader.readAsArrayBuffer(file);
@@ -2119,6 +2129,7 @@ window.ndfAcheteurChange = function(){
   if(!isDon) document.getElementById('ndf-don-banque').value = '';
   document.getElementById('ndf-compte-row').style.display = isDon ? 'none' : '';
   document.getElementById('ndf-frais-row').style.display  = isDon ? 'none' : '';
+  document.getElementById('ndf-typej-row').style.display  = isDon ? 'none' : '';
   if(isDon) document.getElementById('ndf-frais').value = '';
   const tva = document.getElementById('ndf-tva');
   document.getElementById('ndf-lbl-tva').textContent         = isDon ? 'N° d\'entreprise' : 'N° TVA (optionnel)';
@@ -2305,11 +2316,12 @@ window.generateNdfPDF = async function() {
   const totalDebite = Math.round((montant + frais) * 100) / 100;
   const compteTxt = compte ? `${compte.nom} · ${compte.iban}` : 'Aucun (espèces)';
   if(isDon) paiement = `Virement (${banqueDon.nom})`;
+  const avecFacture = !isDon && document.getElementById('ndf-typej').value === 'avec';
   const logo = await ndfLoadLogo(ach.logo);
 
   const [yr,mo,dy] = dateVal.split('-');
   const dateFr = `${parseInt(dy)} ${NDF_MONTHS[parseInt(mo)-1]} ${yr}`;
-  const refNum = `${isDon ? 'DON' : 'NDF'}-${yr}-${mo}-${ndfSlug(fournisseur).toUpperCase().substring(0,10)}`;
+  const refNum = `${isDon ? 'DON' : 'NDF'}-${yr}-${mo}-${ndfSlug(fournisseur).toUpperCase().substring(0,10).replace(/-+$/,'')}`;
   const now    = new Date();
   const genDate= `${now.getDate().toString().padStart(2,'0')}/${(now.getMonth()+1).toString().padStart(2,'0')}/${now.getFullYear()}`;
 
@@ -2319,7 +2331,7 @@ window.generateNdfPDF = async function() {
   /* ── Header ── */
   ndfDrawHeader(doc, PW, ach, logo,
     isDon ? 'Justificatif de don' : 'Justificatif de dépense',
-    isDon ? 'Don par virement — aucune facture émise (don à une ASBL)' : 'Document établi en l\'absence de facture officielle',
+    isDon ? 'Don par virement — aucune facture émise (don à une ASBL)' : (avecFacture ? 'Justificatif complémentaire de paiement – Facture fournisseur en annexe' : 'Document établi en l\'absence de facture officielle'),
     dateFr);
 
   /* ── Fournisseur (ou bénéficiaire) / Acheteur (ou donateur) ── */
@@ -2377,7 +2389,9 @@ window.generateNdfPDF = async function() {
     doc.text('À joindre dans Billit comme pièce justificative pour la transaction bancaire correspondante.', 14, fn+10);
     if(extra) doc.text(extra, 14, fn+15);
   } else {
-    doc.text(`Ce document est un justificatif de dépense établi par ${ach.societe || ach.nom} en l'absence de facture officielle.`, 14, fn);
+    doc.text(avecFacture
+      ? `Ce document est un justificatif complémentaire de paiement établi par ${ach.societe || ach.nom}. La facture du fournisseur est jointe en annexe.`
+      : `Ce document est un justificatif de dépense établi par ${ach.societe || ach.nom} en l'absence de facture officielle.`, 14, fn);
     doc.text('À joindre dans Billit comme pièce justificative pour la transaction bancaire correspondante.', 14, fn+5);
     if(extra) doc.text(extra, 14, fn+10);
     if(frais > 0) doc.text('Frais bancaires présumés (paiement à l\'étranger) : le relevé bancaire officiel est joint en annexe.', 14, fn + (extra ? 15 : 10));
