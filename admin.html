@@ -161,7 +161,7 @@
 
     <div class="sidebar-foot">
       <button class="logout-btn" onclick="window.doLogout()">↩ Déconnexion</button>
-      <div style="text-align:center;margin-top:10px;font-size:10px;opacity:.5;letter-spacing:.5px">Build 4.5</div>
+      <div style="text-align:center;margin-top:10px;font-size:10px;opacity:.5;letter-spacing:.5px">Build 4.6</div>
     </div>
   </div>
 
@@ -1842,6 +1842,7 @@ const NDF_BANQUES = {
   cbc:{ nom:'CBC', iban:'BE08 7320 8642 3213' },
   ing:{ nom:'ING', iban:'BE91 3632 8603 7276' }
 };
+const NDF_TVA = 'BE1035199737'; // Zen Connect SRL (Lylou-Vely, Phil-Mobile, Phil-Fixit)
 const NDF_ASBL = "L'Assiette des 4 pattes (ASBL)";
 const NDF_ASBL_ADRESSE = 'Rue des Écoles 9, 4140 Sprimont';
 const NDF_ASBL_NUM = 'BE0654.984.085';
@@ -2135,7 +2136,7 @@ window.generateNdfPDF = async function() {
   ndfDrawBloc(doc, 12, y, ach, isDon ? 'BÉNÉFICIAIRE' : 'FOURNISSEUR',
     [fournisseur, adresse, tva ? (isDon ? 'N° d\'entreprise : ' : 'TVA : ')+tva : '']);
   ndfDrawBloc(doc, 110, y, ach, isDon ? 'DONATEUR' : 'ACHETEUR',
-    [ach.nom, ach.email, ach.pays]);
+    [ach.nom, ach.email, ach.pays, 'TVA : ' + NDF_TVA]);
 
   /* ── Référence ── */
   y += 52;
@@ -2220,8 +2221,8 @@ async function ndfGenerateTransfert() {
     dateFr);
 
   let y = 48;
-  ndfDrawBloc(doc, 12, y, ent, 'COMPTE DÉBITÉ',  [`Banque ${from.nom}`, from.iban, 'Titulaire : ' + ent.nom]);
-  ndfDrawBloc(doc, 110, y, ent, 'COMPTE CRÉDITÉ', [`Banque ${to.nom}`,   to.iban,   'Titulaire : ' + ent.nom]);
+  ndfDrawBloc(doc, 12, y, ent, 'COMPTE DÉBITÉ',  [`Banque ${from.nom}`, from.iban, 'Titulaire : ' + ent.nom, 'TVA : ' + NDF_TVA]);
+  ndfDrawBloc(doc, 110, y, ent, 'COMPTE CRÉDITÉ', [`Banque ${to.nom}`,   to.iban,   'Titulaire : ' + ent.nom, 'TVA : ' + NDF_TVA]);
 
   y += 52;
   doc.setFontSize(8); doc.setFont('helvetica','normal'); doc.setTextColor(...NDF_MU);
