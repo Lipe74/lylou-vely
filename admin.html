@@ -161,7 +161,7 @@
 
     <div class="sidebar-foot">
       <button class="logout-btn" onclick="window.doLogout()">↩ Déconnexion</button>
-      <div style="text-align:center;margin-top:10px;font-size:10px;opacity:.5;letter-spacing:.5px">Build 4.4</div>
+      <div style="text-align:center;margin-top:10px;font-size:10px;opacity:.5;letter-spacing:.5px">Build 4.5</div>
     </div>
   </div>
 
@@ -1833,10 +1833,10 @@ window.ndfLoadFile = function(event) {
 
 /* ---- Entités : couleurs + logos (dossier images/ du dépôt) ---- */
 const NDF_ENT = {
-  zenconnect:{ nom:'Zen-Connect SRL',                email:'infos@zen-connect.be', pays:'Belgique', logo:'images/zen-connect.png',      c1:[24,98,168],  c2:[76,168,84]  },
-  zen:       { nom:'Lylou-Vely by Zen Connect SRL',  email:'infos@lylou-vely.be',  pays:'Belgique', logo:'images/lylou-vely logo.png', c1:[107,63,160], c2:[170,140,210] },
-  phil:      { nom:'Phil-Mobile by Zen Connect SRL', email:'infos@phil-mobile.be', pays:'Belgique', logo:'images/phil-mobile.png',     c1:[16,72,168],  c2:[245,130,20] },
-  philfixit: { nom:'Phil-Fixit by Zen Connect SRL',  email:'infos@phil-fixit.be',  pays:'Belgique', logo:'images/phil-fixit.png',      c1:[28,28,32],   c2:[240,130,20] }
+  zenconnect:{ nom:'Zen-Connect SRL',                email:'infos@zen-connect.be', pays:'Belgique', logo:['images/zen-connect.png'],      c1:[24,98,168],  c2:[76,168,84]  },
+  zen:       { nom:'Lylou-Vely by Zen Connect SRL',  email:'infos@lylou-vely.be',  pays:'Belgique', logo:['images/lylou-vely logo.png','images/lylou-vely-logo.png','images/lylou-vely.png','images/logo.png'], c1:[107,63,160], c2:[170,140,210] },
+  phil:      { nom:'Phil-Mobile by Zen Connect SRL', email:'infos@phil-mobile.be', pays:'Belgique', logo:['images/phil-mobile.png'],     c1:[16,72,168],  c2:[245,130,20] },
+  philfixit: { nom:'Phil-Fixit by Zen Connect SRL',  email:'infos@phil-fixit.be',  pays:'Belgique', logo:['images/phil-fixit.png'],      c1:[28,28,32],   c2:[240,130,20] }
 };
 const NDF_BANQUES = {
   cbc:{ nom:'CBC', iban:'BE08 7320 8642 3213' },
@@ -1853,9 +1853,9 @@ function ndfTint(c){ return c.map(v => Math.round(v + (255 - v) * 0.9)); }
 function ndfSlug(s){ return String(s).normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-zA-Z0-9]+/g,'-').replace(/^-+|-+$/g,''); }
 function ndfFmtMontant(v){ return v.toFixed(2).replace('.',',') + ' €'; }
 
-/* Charge un logo en PNG (data URL) ; null si indisponible → le PDF se génère sans logo */
-function ndfLoadLogo(url){
-  return new Promise(resolve => {
+/* Charge un logo en PNG (data URL) en essayant chaque chemin de la liste ; null si aucun → le PDF se génère sans logo */
+function ndfLoadLogo(urls){
+  const tryOne = url => new Promise(resolve => {
     const img = new Image();
     img.onload = () => {
       try {
@@ -1868,6 +1868,13 @@ function ndfLoadLogo(url){
     img.onerror = () => resolve(null);
     img.src = encodeURI(url);
   });
+  return (async () => {
+    for(const u of [].concat(urls)){
+      const d = await tryOne(u);
+      if(d) return d;
+    }
+    return null;
+  })();
 }
 
 /* Bandeau d'en-tête aux couleurs de l'entité + logo + badge date */
