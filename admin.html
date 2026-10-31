@@ -161,7 +161,7 @@
 
     <div class="sidebar-foot">
       <button class="logout-btn" onclick="window.doLogout()">↩ Déconnexion</button>
-      <div style="text-align:center;margin-top:10px;font-size:10px;opacity:.5;letter-spacing:.5px">Build 4.8</div>
+      <div style="text-align:center;margin-top:10px;font-size:10px;opacity:.5;letter-spacing:.5px">Build 4.9</div>
     </div>
   </div>
 
@@ -579,7 +579,7 @@
         <h3>Transfert interne — Zen-Connect SRL</h3>
         <div class="form-group">
           <label>Sens du transfert *</label>
-          <select id="ndf-t-sens" class="form-input">
+          <select id="ndf-t-sens" class="form-input" onchange="window.ndfTransfertSens()">
             <option value="cbc-ing">CBC → ING</option>
             <option value="ing-cbc">ING → CBC</option>
           </select>
@@ -596,7 +596,7 @@
         </div>
         <div class="form-group">
           <label>Communication</label>
-          <input type="text" id="ndf-t-comm" class="form-input" placeholder="ex: Alimentation compte ING">
+          <input type="text" id="ndf-t-comm" class="form-input" placeholder="Alimentation du compte ING (par défaut)">
         </div>
       </div>
 
@@ -1937,6 +1937,15 @@ function ndfDrawBloc(doc, x, y, ent, label, lines, h = 44){
   });
 }
 
+/* Communication par défaut du transfert : « Alimentation du compte <banque qui reçoit> » */
+function ndfCommDefaut(){
+  const to = NDF_BANQUES[document.getElementById('ndf-t-sens').value.split('-')[1]];
+  return 'Alimentation du compte ' + to.nom;
+}
+window.ndfTransfertSens = function(){
+  document.getElementById('ndf-t-comm').placeholder = ndfCommDefaut() + ' (par défaut)';
+};
+
 /* Affichage selon le type de document (dépense/don ou transfert) */
 window.ndfSwitchType = function(){
   const t = document.getElementById('ndf-type').value === 'transfert';
@@ -2215,7 +2224,7 @@ async function ndfGenerateTransfert() {
   const sens    = document.getElementById('ndf-t-sens').value; // 'cbc-ing' | 'ing-cbc'
   const dateVal = document.getElementById('ndf-t-date').value;
   const montant = parseFloat(document.getElementById('ndf-t-montant').value)||0;
-  const comm    = (document.getElementById('ndf-t-comm').value||'').trim() || 'Transfert entre comptes';
+  const comm    = (document.getElementById('ndf-t-comm').value||'').trim() || ndfCommDefaut();
 
   if(!dateVal || !montant) {
     alert('Veuillez remplir la date et le montant (*)');
@@ -2265,7 +2274,7 @@ async function ndfGenerateTransfert() {
 
   const fn = doc.lastAutoTable.finalY + 12;
   doc.setFontSize(7.5); doc.setTextColor(...NDF_MU); doc.setFont('helvetica','italic');
-  doc.text(`Transfert interne entre deux comptes bancaires de ${ent.nom} : sans facture, sans TVA, sans contrepartie.`, 14, fn);
+  doc.text(`Transfert interne entre deux comptes bancaires de ${ent.nom} : sans facture, sans TVA, sans opération commerciale.`, 14, fn);
   doc.text('À joindre dans Billit pour justifier les deux lignes bancaires (débit et crédit).', 14, fn+5);
 
   doc.save(`justificatif_transfert_${from.nom}-vers-${to.nom}_${yr}-${mo}-${dy}.pdf`);
