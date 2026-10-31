@@ -161,7 +161,7 @@
 
     <div class="sidebar-foot">
       <button class="logout-btn" onclick="window.doLogout()">↩ Déconnexion</button>
-      <div style="text-align:center;margin-top:10px;font-size:10px;opacity:.5;letter-spacing:.5px">Build 4.6</div>
+      <div style="text-align:center;margin-top:10px;font-size:10px;opacity:.5;letter-spacing:.5px">Build 4.7</div>
     </div>
   </div>
 
@@ -1839,10 +1839,13 @@ const NDF_ENT = {
   philfixit: { nom:'Phil-Fixit by Zen Connect SRL',  email:'infos@phil-fixit.be',  pays:'Belgique', logo:['images/phil-fixit.png'],      c1:[28,28,32],   c2:[240,130,20] }
 };
 const NDF_BANQUES = {
-  cbc:{ nom:'CBC', iban:'BE08 7320 8642 3213' },
-  ing:{ nom:'ING', iban:'BE91 3632 8603 7276' }
+  cbc:{ nom:'CBC', iban:'BE08 7320 8642 3213', bic:'CREGBEBB' },
+  ing:{ nom:'ING', iban:'BE91 3632 8603 7276', bic:'BBRUBEBB' }
 };
 const NDF_TVA = 'BE1035199737'; // Zen Connect SRL (Lylou-Vely, Phil-Mobile, Phil-Fixit)
+const NDF_ADRESSE = 'Oudesmisestraat 20, 1700 Dilbeek – Belgique';
+const NDF_TEL = '+32 475 24 02 05 / +32 498 59 42 42';
+const NDF_FACTURATION = 'facturation@zen-connect.be';
 const NDF_ASBL = "L'Assiette des 4 pattes (ASBL)";
 const NDF_ASBL_ADRESSE = 'Rue des Écoles 9, 4140 Sprimont';
 const NDF_ASBL_NUM = 'BE0654.984.085';
@@ -1911,9 +1914,9 @@ function ndfDrawHeader(doc, PW, ent, logo, titre, sousTitre, dateFr){
 }
 
 /* Bloc d'information (étiquette + lignes ; la première ligne est en gras) */
-function ndfDrawBloc(doc, x, y, ent, label, lines){
+function ndfDrawBloc(doc, x, y, ent, label, lines, h = 44){
   doc.setFillColor(...ndfTint(ent.c1));
-  doc.roundedRect(x, y, 84, 44, 4, 4, 'F');
+  doc.roundedRect(x, y, 84, h, 4, 4, 'F');
   doc.setFontSize(7.5); doc.setFont('helvetica','bold'); doc.setTextColor(...ent.c1);
   doc.text(label, x + 6, y + 8);
   let ly = y + 16;
@@ -2134,12 +2137,12 @@ window.generateNdfPDF = async function() {
   /* ── Fournisseur (ou bénéficiaire) / Acheteur (ou donateur) ── */
   let y = 48;
   ndfDrawBloc(doc, 12, y, ach, isDon ? 'BÉNÉFICIAIRE' : 'FOURNISSEUR',
-    [fournisseur, adresse, tva ? (isDon ? 'N° d\'entreprise : ' : 'TVA : ')+tva : '']);
+    [fournisseur, adresse, tva ? (isDon ? 'N° d\'entreprise : ' : 'TVA : ')+tva : ''], 50);
   ndfDrawBloc(doc, 110, y, ach, isDon ? 'DONATEUR' : 'ACHETEUR',
-    [ach.nom, ach.email, ach.pays, 'TVA : ' + NDF_TVA]);
+    [ach.nom, NDF_ADRESSE, ach.email, 'Facturation : ' + NDF_FACTURATION, 'Tél. : ' + NDF_TEL, 'TVA : ' + NDF_TVA], 50);
 
   /* ── Référence ── */
-  y += 52;
+  y += 58;
   doc.setFontSize(8); doc.setFont('helvetica','normal'); doc.setTextColor(...NDF_MU);
   doc.text(`Réf. ${refNum}   ·   Date : ${dateFr}   ·   Mode de paiement : ${paiement}   ·   Généré le : ${genDate}`, 14, y);
   y += 8;
@@ -2221,10 +2224,10 @@ async function ndfGenerateTransfert() {
     dateFr);
 
   let y = 48;
-  ndfDrawBloc(doc, 12, y, ent, 'COMPTE DÉBITÉ',  [`Banque ${from.nom}`, from.iban, 'Titulaire : ' + ent.nom, 'TVA : ' + NDF_TVA]);
-  ndfDrawBloc(doc, 110, y, ent, 'COMPTE CRÉDITÉ', [`Banque ${to.nom}`,   to.iban,   'Titulaire : ' + ent.nom, 'TVA : ' + NDF_TVA]);
+  ndfDrawBloc(doc, 12, y, ent, 'COMPTE DÉBITÉ',  [`Banque ${from.nom}`, from.iban, 'BIC : ' + from.bic, 'Titulaire : ' + ent.nom, NDF_ADRESSE, 'TVA : ' + NDF_TVA], 50);
+  ndfDrawBloc(doc, 110, y, ent, 'COMPTE CRÉDITÉ', [`Banque ${to.nom}`,   to.iban,   'BIC : ' + to.bic,   'Titulaire : ' + ent.nom, NDF_ADRESSE, 'TVA : ' + NDF_TVA], 50);
 
-  y += 52;
+  y += 58;
   doc.setFontSize(8); doc.setFont('helvetica','normal'); doc.setTextColor(...NDF_MU);
   doc.text(`Réf. ${refNum}   ·   Date : ${dateFr}   ·   Généré le : ${genDate}`, 14, y);
   y += 8;
