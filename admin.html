@@ -161,7 +161,7 @@
 
     <div class="sidebar-foot">
       <button class="logout-btn" onclick="window.doLogout()">↩ Déconnexion</button>
-      <div style="text-align:center;margin-top:10px;font-size:10px;opacity:.5;letter-spacing:.5px">Build 4.7</div>
+      <div style="text-align:center;margin-top:10px;font-size:10px;opacity:.5;letter-spacing:.5px">Build 4.8</div>
     </div>
   </div>
 
@@ -563,6 +563,14 @@
             <option value="phil">Phil-Mobile by Zen Connect SRL</option>
             <option value="philfixit">Phil-Fixit by Zen Connect SRL</option>
             <option value="animal">🐾 Don à L'Assiette des 4 pattes (ASBL) — par Lylou-Vely</option>
+          </select>
+        </div>
+        <div class="form-group" id="ndf-don-banque-row" style="display:none">
+          <label>Compte débité pour le don *</label>
+          <select id="ndf-don-banque" class="form-input">
+            <option value="">— Choisir la banque —</option>
+            <option value="cbc">CBC</option>
+            <option value="ing">ING</option>
           </select>
         </div>
       </div>
@@ -1944,6 +1952,8 @@ window.ndfAcheteurChange = function(){
   const isDon = document.getElementById('ndf-acheteur').value === 'animal';
   const f = document.getElementById('ndf-fournisseur');
   const adr = document.getElementById('ndf-adresse');
+  document.getElementById('ndf-don-banque-row').style.display = isDon ? '' : 'none';
+  if(!isDon) document.getElementById('ndf-don-banque').value = '';
   const tva = document.getElementById('ndf-tva');
   document.getElementById('ndf-lbl-tva').textContent         = isDon ? 'N° d\'entreprise' : 'N° TVA (optionnel)';
   document.getElementById('ndf-h-fournisseur').textContent   = isDon ? 'Bénéficiaire du don' : 'Fournisseur';
@@ -2107,7 +2117,7 @@ window.generateNdfPDF = async function() {
   const montant    = parseFloat(document.getElementById('ndf-montant').value)||0;
   const description= (document.getElementById('ndf-description').value||'').trim();
   const acheteurSel= document.getElementById('ndf-acheteur').value;
-  const paiement   = document.querySelector('input[name="ndf-paiement"]:checked')?.value || 'Bancontact';
+  let paiement     = document.querySelector('input[name="ndf-paiement"]:checked')?.value || 'Bancontact';
 
   if(!fournisseur || !dateVal || !montant || !description) {
     alert('Veuillez remplir tous les champs obligatoires (*)');
@@ -2117,6 +2127,10 @@ window.generateNdfPDF = async function() {
   /* Don à l'ASBL : le donateur est Lylou-Vely, le « fournisseur » devient le bénéficiaire */
   const isDon = acheteurSel === 'animal';
   const ach = NDF_ENT[isDon ? 'zen' : acheteurSel];
+  /* Don : le compte débité (ING ou CBC) est obligatoire pour le comptable */
+  const banqueDon = isDon ? NDF_BANQUES[document.getElementById('ndf-don-banque').value] : null;
+  if(isDon && !banqueDon){ alert('Choisis le compte débité pour le don (CBC ou ING).'); return; }
+  if(isDon) paiement = `Virement (${banqueDon.nom})`;
   const logo = await ndfLoadLogo(ach.logo);
 
   const [yr,mo,dy] = dateVal.split('-');
@@ -2169,7 +2183,11 @@ window.generateNdfPDF = async function() {
   const attachPages = await ndfPrepareAttachment();
 
   /* ── Note pied ── */
-  const fn = doc.lastAutoTable.finalY + 12;
+  if(isDon){
+    doc.setFontSize(8.5); doc.setFont('helvetica','bold'); doc.setTextColor(44,34,51);
+    doc.text(`Versé à ${fournisseur} par virement bancaire depuis ${banqueDon.nom} · ${banqueDon.iban} · ${banqueDon.bic}`, 14, doc.lastAutoTable.finalY + 10);
+  }
+  const fn = doc.lastAutoTable.finalY + (isDon ? 22 : 12);
   const extra = !ndfFileData ? '' :
     (attachPages.length ? `Pièce jointe aux pages suivantes : ${ndfFileData.name}` :
     (ndfFileData.type === 'pdf' ? `Fichier joint séparé : ${ndfFileData.name}` : ''));
