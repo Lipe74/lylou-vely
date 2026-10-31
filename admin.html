@@ -161,7 +161,7 @@
 
     <div class="sidebar-foot">
       <button class="logout-btn" onclick="window.doLogout()">↩ Déconnexion</button>
-      <div style="text-align:center;margin-top:10px;font-size:10px;opacity:.5;letter-spacing:.5px">Build 5.4</div>
+      <div style="text-align:center;margin-top:10px;font-size:10px;opacity:.5;letter-spacing:.5px">Build 5.5</div>
     </div>
   </div>
 
@@ -533,6 +533,10 @@
             <label id="ndf-lbl-montant">Montant payé (€ TVAC) *</label>
             <input type="number" id="ndf-montant" class="form-input" placeholder="0.00" step="0.01" min="0">
           </div>
+        </div>
+        <div class="form-group" id="ndf-frais-row">
+          <label>Frais bancaires présumés (€) — optionnel</label>
+          <input type="number" id="ndf-frais" class="form-input" placeholder="ex : 0.61 (paiement international)" step="0.01" min="0">
         </div>
         <div class="form-group">
           <label>Description / motif *</label>
@@ -1977,6 +1981,8 @@ window.ndfAcheteurChange = function(){
   document.getElementById('ndf-don-banque-row').style.display = isDon ? '' : 'none';
   if(!isDon) document.getElementById('ndf-don-banque').value = '';
   document.getElementById('ndf-compte-row').style.display = isDon ? 'none' : '';
+  document.getElementById('ndf-frais-row').style.display  = isDon ? 'none' : '';
+  if(isDon) document.getElementById('ndf-frais').value = '';
   const tva = document.getElementById('ndf-tva');
   document.getElementById('ndf-lbl-tva').textContent         = isDon ? 'N° d\'entreprise' : 'N° TVA (optionnel)';
   document.getElementById('ndf-h-fournisseur').textContent   = isDon ? 'Bénéficiaire du don' : 'Fournisseur';
@@ -2158,6 +2164,8 @@ window.generateNdfPDF = async function() {
   const compteSel = isDon ? '' : document.getElementById('ndf-compte').value;
   if(!isDon && !compteSel){ alert('Choisis le compte débité (CBC, ING ou Aucun si espèces).'); return; }
   const compte = NDF_BANQUES[compteSel] || null;
+  const frais = isDon ? 0 : Math.max(0, parseFloat(document.getElementById('ndf-frais').value) || 0);
+  const totalDebite = Math.round((montant + frais) * 100) / 100;
   const compteTxt = compte ? `${compte.nom} · ${compte.iban}` : 'Aucun (espèces)';
   if(isDon) paiement = `Virement (${banqueDon.nom})`;
   const logo = await ndfLoadLogo(ach.logo);
@@ -2201,8 +2209,10 @@ window.generateNdfPDF = async function() {
   doc.autoTable({
     startY: y,
     head: [['Description / Motif', 'Montant (EUR)']],
-    body: isDon ? [bodyRow, ['Mode de paiement', paiement]] : [bodyRow, ['Mode de paiement', paiement], ['Compte débité', compteTxt]],
-    foot: [[isDon ? 'TOTAL DONNÉ' : 'TOTAL PAYÉ', ndfFmtMontant(montant)]],
+    body: isDon ? [bodyRow, ['Mode de paiement', paiement]] : [bodyRow,
+      ...(frais > 0 ? [['Frais bancaires présumés (paiement international)' + (compte ? ' — ' + compte.nom : ''), ndfFmtMontant(frais)]] : []),
+      ['Mode de paiement', paiement], ['Compte débité', compteTxt]],
+    foot: [[isDon ? 'TOTAL DONNÉ' : (frais > 0 ? 'TOTAL DÉBITÉ' : 'TOTAL PAYÉ'), ndfFmtMontant(isDon ? montant : totalDebite)]],
     headStyles:{ fillColor:ach.c1, textColor:NDF_WH, fontSize:9, fontStyle:'bold' },
     footStyles:{ fillColor:ndfTint(ach.c1), textColor:ach.c1, fontSize:10, fontStyle:'bold' },
     bodyStyles:{ fontSize:9 },
@@ -2233,6 +2243,7 @@ window.generateNdfPDF = async function() {
     doc.text(`Ce document est un justificatif de dépense établi par ${ach.societe || ach.nom} en l'absence de facture officielle.`, 14, fn);
     doc.text('À joindre dans Billit comme pièce justificative pour la transaction bancaire correspondante.', 14, fn+5);
     if(extra) doc.text(extra, 14, fn+10);
+    if(frais > 0) doc.text('Frais bancaires présumés (paiement à l\'étranger) : le relevé bancaire officiel est joint en annexe.', 14, fn + (extra ? 15 : 10));
   }
   ndfAddAttachmentPages(doc, ach, attachPages);
 
