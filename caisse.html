@@ -340,7 +340,7 @@ nav{display:none}
 <div id="gate">
   <div class="box">
     <div class="mark">Lylou-Vely</div>
-    <div class="sub">Caisse · Build 5.7</div>
+    <div class="sub">Caisse · Build 5.8</div>
     <input type="email" id="gate-email" placeholder="Email" autocomplete="email" value="infos@lylou-vely.be" style="letter-spacing:0">
     <input type="password" id="gate-pw" placeholder="Mot de passe" autocomplete="current-password">
     <button onclick="doLogin()">Connexion</button>
@@ -352,7 +352,7 @@ nav{display:none}
 <div id="app" class="hidden">
   <header>
     <div class="hdr-top">
-      <div class="title">Lylou-Vely<small>Caisse · Build 5.7</small></div>
+      <div class="title">Lylou-Vely<small>Caisse · Build 5.8</small></div>
       <div style="display:flex;gap:6px;align-items:center">
         <button class="refresh-btn" onclick="openSettings()" style="font-size:12px;padding:6px 10px;font-weight:600" title="Réglages">⚙︎</button>
         <button id="hdr-mode-btn" class="refresh-btn" onclick="toggleMode()" title="Basculer Prod/Test" style="font-size:12px;padding:6px 10px;font-weight:600;letter-spacing:.5px">PROD</button>
@@ -881,7 +881,7 @@ nav{display:none}
     <p style="font-size:13px;color:var(--muted);text-align:center;margin-bottom:12px">Renomme un libellé dans tout l'historique (ventes, mouvements, clôtures Z). Les montants ne changent pas.</p>
     <div class="field"><label>Libellé à corriger</label><select id="label-old" onchange="onLabelOldChange()"></select></div>
     <div class="field"><label>Nouveau libellé</label><select id="label-new" onchange="onLabelNewChange()"></select></div>
-    <div class="field" id="label-custom-field" style="display:none"><label>Autre nom</label><input type="text" id="label-custom" placeholder="Ex. : Marché de Tilff" autocomplete="off"></div>
+    <div class="field" id="label-custom-field" style="display:none"><label>Autre nom</label><input type="text" id="label-custom" placeholder="Ex. : Tilff  →  Marché de Tilff" autocomplete="off" oninput="updateMarchePreview('label-custom','label-custom-preview')"><div id="label-custom-preview" style="font-size:13px;color:var(--violet);margin-top:6px;min-height:18px"></div></div>
     <div class="row-btns" style="margin-top:14px">
       <button class="btn btn-outline" onclick="closeLabelFix()">Annuler</button>
       <button class="btn btn-primary" onclick="applyLabelFix()">Appliquer</button>
@@ -1024,7 +1024,7 @@ nav{display:none}
       <button type="button" class="btn btn-outline" id="dm-marche" style="margin-bottom:8px" onclick="pickDayMode('marche')">🏪 Marché</button>
       <button type="button" class="btn btn-outline" id="dm-hors" style="margin-bottom:8px" onclick="pickDayMode('hors')">🏠 Vente hors marché</button>
       <button type="button" class="btn btn-outline" id="dm-admin" style="margin-bottom:8px" onclick="pickDayMode('admin')">🗂 Administration</button>
-      <div class="field" id="marche-field" style="margin-top:10px;display:none"><label>Nom du marché (obligatoire)</label><input type="text" id="marche-input" placeholder="Ex. : Marché de Tilff" autocomplete="off"></div>
+      <div class="field" id="marche-field" style="margin-top:10px;display:none"><label>Nom du marché (obligatoire)</label><input type="text" id="marche-input" placeholder="Ex. : Tilff  →  Marché de Tilff" autocomplete="off" oninput="updateMarchePreview('marche-input','marche-preview')"><div id="marche-preview" style="font-size:13px;color:var(--violet);margin-top:6px;min-height:18px"></div></div>
     </div>
     <div id="fond-field">
       <div style="text-align:center;font-family:'Cormorant Garamond',serif;font-size:36px;color:var(--violet);font-weight:600;margin-bottom:6px" id="fond-current"></div>
@@ -1552,6 +1552,30 @@ function normalizeLabel(name){
   };
   return t.split(' ').map((w,i)=> w.split('-').map((p,j)=>fixWord(p, i===0 && j===0)).join('-')).join(' ');
 }
+/* Nom complet d'un marché saisi : « Rouvreux » → « Marché de Rouvreux », « Esneux » → « Marché d'Esneux »,
+   « la Batte » → « Marché de la Batte », « des Fruits » → « Marché des Fruits ». Un nom qui commence déjà par
+   « Marché » (ou brocante, foire…) et les libellés fixes ne reçoivent pas de préfixe. */
+function marcheFullName(input){
+  const t = (input||'').trim().replace(/\s+/g,' ');
+  if(!t) return '';
+  const fixed = normalizeLabel(t);
+  if([LBL_HORS, LBL_ADMIN, LBL_TEST, 'Repos / Pas de marché'].includes(fixed)) return fixed;
+  const first = t.split(' ')[0].toLowerCase();
+  if(/^(march[eé]|brocante|foire|braderie|salon|kermesse|f[eê]te|festival|bourse|expo|exposition|vide-?grenier)$/.test(first)) return fixed;
+  let full;
+  if(/^(de|du|des|aux|au|à)$/.test(first) || /^d['’]/.test(first)) full = 'Marché ' + t;
+  else if(first === 'la') full = 'Marché de ' + t;
+  else if(first === 'le') full = 'Marché du ' + t.split(' ').slice(1).join(' ');
+  else if(first === 'les') full = 'Marché des ' + t.split(' ').slice(1).join(' ');
+  else if(/^l['’]/.test(first)) full = 'Marché de ' + t;
+  else full = (/^[aeiouy]/i.test(t.normalize('NFD').replace(/[\u0300-\u036f]/g,'')) ? "Marché d'" : 'Marché de ') + t;
+  return normalizeLabel(full);
+}
+window.updateMarchePreview = function(srcId, dstId){
+  const dst = document.getElementById(dstId); if(!dst) return;
+  const v = marcheFullName(document.getElementById(srcId).value);
+  dst.textContent = v ? '→ ' + v : '';
+};
 let dayMode = '';
 function isForcedTest(){ return typeof FORCE_TEST !== 'undefined' && FORCE_TEST; }
 function applyDayModeUI(){
@@ -1571,6 +1595,7 @@ function showFondConfirmation(){
   document.getElementById('fond-current').textContent = euro(state.fond);
   document.getElementById('fond-input').value = t>0 ? t.toFixed(2) : (state.fond>0 ? state.fond.toFixed(2) : '');
   document.getElementById('marche-input').value = '';
+  document.getElementById('marche-preview').textContent = '';
   const forced = isForcedTest();
   dayMode = forced ? 'test' : '';
   document.getElementById('day-modes').style.display = forced ? 'none' : 'block';
@@ -1582,7 +1607,7 @@ window.confirmFond = async function(){
   if(!dayMode){ toast("Choisis le type de journée"); return; }
   let marche;
   if(dayMode==='marche'){
-    marche = normalizeLabel(document.getElementById('marche-input').value);
+    marche = marcheFullName(document.getElementById('marche-input').value);
     if(!marche){ toast("Indique le nom du marché"); return; }
   } else if(dayMode==='hors') marche = LBL_HORS;
   else if(dayMode==='admin') marche = LBL_ADMIN;
@@ -5319,7 +5344,7 @@ window.closeLabelFix = function(){ document.getElementById('label-overlay').clas
 window.applyLabelFix = async function(){
   const oldL = document.getElementById('label-old').value;
   let newL = document.getElementById('label-new').value;
-  if(newL==='__custom__') newL = normalizeLabel(document.getElementById('label-custom').value);
+  if(newL==='__custom__') newL = marcheFullName(document.getElementById('label-custom').value);
   if(!newL){ toast("Indique le nouveau libellé"); return; }
   if(newL===oldL){ toast("Le libellé est identique"); return; }
   const c = collectLabels()[oldL] || {sales:0,mvs:0,cl:0};
@@ -5393,7 +5418,7 @@ window.promptRenameMarche = async function(){
   if(!oldName) return;
   const input = prompt("Renommer le marché du jour :", oldName);
   if(input===null) return;
-  const newName = normalizeLabel(input);
+  const newName = marcheFullName(input);
   if(!newName || newName===oldName) return;
 
   state.marche = newName;
