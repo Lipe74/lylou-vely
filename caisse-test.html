@@ -340,7 +340,7 @@ nav{display:none}
 <div id="gate">
   <div class="box">
     <div class="mark">Lylou-Vely</div>
-    <div class="sub">Caisse · Build 5.8</div>
+    <div class="sub">Caisse · Build 5.9</div>
     <input type="email" id="gate-email" placeholder="Email" autocomplete="email" value="infos@lylou-vely.be" style="letter-spacing:0">
     <input type="password" id="gate-pw" placeholder="Mot de passe" autocomplete="current-password">
     <button onclick="doLogin()">Connexion</button>
@@ -352,7 +352,7 @@ nav{display:none}
 <div id="app" class="hidden">
   <header>
     <div class="hdr-top">
-      <div class="title">Lylou-Vely<small>Caisse · Build 5.8</small></div>
+      <div class="title">Lylou-Vely<small>Caisse · Build 5.9</small></div>
       <div style="display:flex;gap:6px;align-items:center">
         <button class="refresh-btn" onclick="openSettings()" style="font-size:12px;padding:6px 10px;font-weight:600" title="Réglages">⚙︎</button>
         <button id="hdr-mode-btn" class="refresh-btn" onclick="toggleMode()" title="Basculer Prod/Test" style="font-size:12px;padding:6px 10px;font-weight:600;letter-spacing:.5px">PROD</button>
@@ -2460,7 +2460,7 @@ function buildSaleTicketBodyHTML(sale){
     </div>
     <div class="t-meta"><span>Reçu n°</span><span><b>${ref}</b></span></div>
     <div class="t-meta"><span>${sale.date.split('-').reverse().join('/')}</span><span>${sale.time}</span></div>
-    ${sale.marche ? `<div style="text-align:center;font-size:11px;color:#555;margin:2px 0">Marché : ${esc(sale.marche)}</div>` : ''}
+    ${sale.marche ? `<div style="text-align:center;font-size:11px;color:#555;margin:2px 0">${esc(labelDisplay(sale.marche))}</div>` : ''}
     ${items}
     ${discountBlock}
     ${tvaBlock}
@@ -3563,7 +3563,7 @@ function renderJournal(){
         ? `<span class="jr-badge">ANNULÉ</span><button class="del" onclick="quickDownloadTicketPDF(${sale.id})" style="color:var(--muted);font-size:15px" title="PDF">📄</button>`
         : `<button class="del" onclick="quickDownloadTicketPDF(${sale.id})" style="color:var(--violet);font-size:15px" title="PDF">📄</button>
            <button class="del" onclick="cancelSale(${sale.id})" style="color:var(--red);font-size:15px">⊘</button>`;
-      const marcheTag = (groupes.length===1 && sale.marche) ? `<span style="font-size:10px;color:var(--violet);margin-left:4px">Marché : ${esc(sale.marche)}</span>` : '';
+      const marcheTag = (groupes.length===1 && sale.marche) ? `<span style="font-size:10px;color:var(--violet);margin-left:4px">${esc(labelDisplay(sale.marche))}</span>` : '';
       div.innerHTML = `
         <div class="pill ${cls}">${ic}</div>
         <div class="j-info"><div class="t">${esc(ref)} · ${esc(names)}${marcheTag}</div><div class="d">${sale.date.split('-').reverse().join('/')} ${sale.time} · ${METHOD_LABEL[sale.method]}</div></div>
@@ -3571,6 +3571,25 @@ function renderJournal(){
       box.appendChild(div);
     });
   });
+}
+
+/* Libellé de la journée à l'affichage : « Marché de Rouvreux » tel quel ; les libellés fixes
+   (Vente hors marché, Administration, Test) sont précédés de « Libellé : » */
+function labelDisplay(m){
+  return /^(march[eé]|brocante|foire|braderie|salon|kermesse|f[eê]te|festival|bourse|expo|exposition|vide)/i.test(m||'') ? m : 'Libellé : ' + m;
+}
+/* Détail des sorties d'argent (stands, achats, versements…) pour la clôture Z */
+function zOutDetailHTML(mvs){
+  const outs = (mvs||[]).filter(m=>m.type==='out');
+  if(!outs.length) return '';
+  const lab = m => {
+    const r = (m.reason||'').trim();
+    if(r.startsWith('Paiement stand')){ const n = r.slice(14).replace(/^\s*[—-]\s*/,''); return '🏪 Stand' + (n ? ' — ' + n : ''); }
+    if(r.startsWith('Versement banque')) return '🏦 Versement banque';
+    return r || 'Sortie';
+  };
+  return `<div style="font-size:11px;font-weight:600;color:#555;margin:6px 0 2px">Détail des sorties</div>` +
+    outs.map(m=>`<div class="t-sub" style="gap:8px"><span style="min-width:0;overflow-wrap:anywhere">${esc(lab(m))}${m.payMode==='card' ? ' (carte)' : ' (liquide)'}</span><span style="white-space:nowrap">−${euro(m.amount)}</span></div>`).join('');
 }
 
 /* Catégorie d'un mouvement */
@@ -4188,8 +4207,8 @@ function getMonthClosureDates(month){
    Utilise le même style large "A5" que le bouton A4 de l'app, pour un rendu cohérent avec le reste. */
 async function ticketToCanvas(day, marche, mode){
   const excludeVersement = mode==='avant';
-  const {ca,esp,qr,carte,cancelledN,theo,inTotal,outTotal,cashOut,cardOut,fondForDay} = buildZHTML(day, marche, excludeVersement);
-  const bodyHtml = buildZTicketHTML(day, marche, ca, esp, qr, carte, cancelledN, theo, inTotal, outTotal, cashOut, cardOut, fondForDay);
+  const {ca,esp,qr,carte,cancelledN,theo,inTotal,outTotal,cashOut,cardOut,fondForDay,mvs} = buildZHTML(day, marche, excludeVersement);
+  const bodyHtml = buildZTicketHTML(day, marche, ca, esp, qr, carte, cancelledN, theo, inTotal, outTotal, cashOut, cardOut, fondForDay, mvs);
 
   const wrap = document.createElement('div');
   wrap.style.cssText = 'position:fixed;left:-99999px;top:0;background:#fff;width:560px;padding:24px;font-family:Arial,Helvetica,sans-serif;color:#000';
@@ -4923,13 +4942,13 @@ function buildZAsblSection(day){
     <div style="font-size:9px;color:#999;text-align:center;margin-top:2px">Virement mensuel — sans impact sur la caisse</div>`;
 }
 
-function buildZTicketHTML(day, marche, ca, esp, qr, carte, cancelledN, theo, inTotal, outTotal, cashOut, cardOut, fondForDay){
+function buildZTicketHTML(day, marche, ca, esp, qr, carte, cancelledN, theo, inTotal, outTotal, cashOut, cardOut, fondForDay, mvs){
   const valid = state.sales.filter(x=>x.date===day && !x.cancelled);
   const fond = typeof fondForDay==='number' ? fondForDay : state.fond;
   return `
     <div class="t-head"><div class="lg">${esc(SELLER.brand)}</div><div class="sl">Clôture Z</div>
       <div class="t-legal">${esc(SELLER.legal)}<br>TVA ${esc(SELLER.vat)}</div></div>
-    ${marche ? `<div style="text-align:center;font-weight:600;font-size:14px;margin-bottom:4px">Marché : ${esc(marche)}</div>` : ''}
+    ${marche ? `<div style="text-align:center;font-weight:600;font-size:14px;margin-bottom:4px">${esc(labelDisplay(marche))}</div>` : ''}
     <div class="t-meta"><span>${day.split('-').reverse().join('/')}</span><span>${nowTime()}</span></div>
     <div class="t-item"><span>Nombre de ventes</span><span>${valid.length}</span></div>
     <div class="t-item"><span>Tickets annulés</span><span>${cancelledN}</span></div>
@@ -4952,7 +4971,8 @@ function buildZTicketHTML(day, marche, ca, esp, qr, carte, cancelledN, theo, inT
     <div class="t-item"><span>Fond de caisse</span><span>${euro(fond)}</span></div>
     <div class="t-item"><span>Entrées</span><span>${euro(inTotal)}</span></div>
     <div class="t-item"><span>Sorties totales</span><span>${euro(outTotal)}</span></div>
-    ${(cashOut>0||cardOut>0)?`<div class="t-sub"><span>dont Liquide</span><span>-${euro(cashOut)}</span></div><div class="t-sub"><span>dont Carte</span><span>-${euro(cardOut)}</span></div>`:''}
+    ${(cashOut>0||cardOut>0)?`<div class="t-sub"><span>dont Liquide</span><span>${cashOut>0.004?'-':''}${euro(cashOut)}</span></div><div class="t-sub"><span>dont Carte</span><span>${cardOut>0.004?'-':''}${euro(cardOut)}</span></div>`:''}
+    ${zOutDetailHTML(mvs !== undefined ? mvs : dayMovements(day))}
     <div class="t-tot"><span>Espèces en caisse</span><span>${euro(theo)}</span></div>
     ${(()=>{
       const gapRaw = theo - FOND_CIBLE;
@@ -4971,7 +4991,7 @@ function buildZTicketHTML(day, marche, ca, esp, qr, carte, cancelledN, theo, inT
         ${cashOut > 0 ? `<div class="t-sub"><span>Sorties liquide</span><span>−${euro(cashOut)}</span></div>` : ''}
         ${fond < FOND_CIBLE ? `<div class="t-sub" style="color:#2e7d32"><span>Reconstitution du fond de caisse</span><span>−${euro(Math.min(FOND_CIBLE-fond, gapRaw))}</span></div>` : ''}
         <div class="t-sep"></div>
-        <div style="text-align:center;border:2px solid #000;border-radius:6px;padding:8px 4px;margin:6px 0;white-space:nowrap;overflow:hidden">
+        <div style="text-align:center;border:2px solid #000;border-radius:6px;padding:8px 6px;margin:6px 0">
           <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:1px;margin-bottom:2px">A retirer (versement)</div>
           <div style="font-size:18px;font-weight:900;letter-spacing:1px">${euro(versementSuggere)}</div>
           <div style="font-size:9px;margin-top:2px">Fond conservé : ${euro(fondConserve)}</div>
@@ -4996,8 +5016,8 @@ function zPdfName(day, marche, mode){
 
 function renderZTicket(day, marche, mode){
   const excludeVersement = mode==='avant';
-  const {ca,esp,qr,carte,cancelledN,theo,inTotal,outTotal,cashOut,cardOut,fondForDay} = buildZHTML(day, marche, excludeVersement);
-  document.getElementById('ticket-area').innerHTML = buildZTicketHTML(day, marche, ca, esp, qr, carte, cancelledN, theo, inTotal, outTotal, cashOut, cardOut, fondForDay);
+  const {ca,esp,qr,carte,cancelledN,theo,inTotal,outTotal,cashOut,cardOut,fondForDay,mvs} = buildZHTML(day, marche, excludeVersement);
+  document.getElementById('ticket-area').innerHTML = buildZTicketHTML(day, marche, ca, esp, qr, carte, cancelledN, theo, inTotal, outTotal, cashOut, cardOut, fondForDay, mvs);
   document.getElementById('ztoggle-apres').classList.toggle('btn-primary', mode!=='avant');
   document.getElementById('ztoggle-avant').classList.toggle('btn-primary', mode==='avant');
   currentPdfFilename = zPdfName(day, marche, mode);
@@ -5018,7 +5038,7 @@ window.printZ = function(){
   const d = state.day;
   reprintZContext = null;
   document.getElementById('ticket-z-toggle').classList.add('hidden');
-  const {ca,esp,qr,carte,cancelledN,theo,inTotal,outTotal,cashOut,cardOut,fondForDay} = buildZHTML(d, state.marche);
+  const {ca,esp,qr,carte,cancelledN,theo,inTotal,outTotal,cashOut,cardOut,fondForDay,mvs} = buildZHTML(d, state.marche);
   // Tant que le versement (si un surplus le déclenche) n'est pas confirmé, le ticket affiché
   // reflète encore l'état "avant" — le nom du fichier doit le refléter aussi.
   const surplus = theo - FOND_CIBLE;
@@ -5026,7 +5046,7 @@ window.printZ = function(){
   const versementPending = suggestion >= VERSEMENT_MIN;
   currentPdfFilename = zPdfName(d, state.marche, versementPending ? 'avant' : 'apres');
   const area=document.getElementById('ticket-area');
-  area.innerHTML = buildZTicketHTML(d, state.marche, ca, esp, qr, carte, cancelledN, theo, inTotal, outTotal, cashOut, cardOut, fondForDay);
+  area.innerHTML = buildZTicketHTML(d, state.marche, ca, esp, qr, carte, cancelledN, theo, inTotal, outTotal, cashOut, cardOut, fondForDay, mvs);
   document.getElementById('ticket-overlay').classList.remove('hidden');
   markClosureDone(d, state.marche);
   // Proposer versement banque si surplus
@@ -5067,8 +5087,8 @@ window.confirmVersementPrompt = function(){
   closeVersementPrompt();
   // Le ticket affiché doit maintenant refléter l'état réel après versement (plus de "À retirer")
   if(!reprintZContext){
-    const {ca,esp,qr,carte,cancelledN,theo,inTotal,outTotal,cashOut,cardOut,fondForDay} = buildZHTML(state.day, state.marche);
-    document.getElementById('ticket-area').innerHTML = buildZTicketHTML(state.day, state.marche, ca, esp, qr, carte, cancelledN, theo, inTotal, outTotal, cashOut, cardOut, fondForDay);
+    const {ca,esp,qr,carte,cancelledN,theo,inTotal,outTotal,cashOut,cardOut,fondForDay,mvs} = buildZHTML(state.day, state.marche);
+    document.getElementById('ticket-area').innerHTML = buildZTicketHTML(state.day, state.marche, ca, esp, qr, carte, cancelledN, theo, inTotal, outTotal, cashOut, cardOut, fondForDay, mvs);
     currentPdfFilename = zPdfName(state.day, state.marche, 'apres');
   }
 };
@@ -5240,7 +5260,7 @@ function buildVirementDoc(){
         <hr>
       </div>
       <div class="vb-titre">Versement Lylou-Vely – ${esc(titreMois)}</div>
-      <div class="vb-meta"><b>Date du versement :</b> ${dateLabel}${state.marche?' &nbsp;·&nbsp; <b>Marché :</b> '+esc(state.marche):''}<br><b>Versé sur :</b> ${esc(bankDocLine(virtBank))}</div>
+      <div class="vb-meta"><b>Date du versement :</b> ${dateLabel}${state.marche?' &nbsp;·&nbsp; <b>'+esc(labelDisplay(state.marche))+'</b>':''}<br><b>Versé sur :</b> ${esc(bankDocLine(virtBank))}</div>
       <table class="vb-table">
         <thead><tr><th>Réf.</th><th>Date/Heure</th><th>Marché</th><th>Description</th><th class="r">Montant</th></tr></thead>
         <tbody>${rows}</tbody>
