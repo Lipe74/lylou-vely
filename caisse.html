@@ -340,7 +340,7 @@ nav{display:none}
 <div id="gate">
   <div class="box">
     <div class="mark">Lylou-Vely</div>
-    <div class="sub">Caisse · Build 5.9</div>
+    <div class="sub">Caisse · Build 6.0</div>
     <input type="email" id="gate-email" placeholder="Email" autocomplete="email" value="infos@lylou-vely.be" style="letter-spacing:0">
     <input type="password" id="gate-pw" placeholder="Mot de passe" autocomplete="current-password">
     <button onclick="doLogin()">Connexion</button>
@@ -352,7 +352,7 @@ nav{display:none}
 <div id="app" class="hidden">
   <header>
     <div class="hdr-top">
-      <div class="title">Lylou-Vely<small>Caisse · Build 5.9</small></div>
+      <div class="title">Lylou-Vely<small>Caisse · Build 6.0</small></div>
       <div style="display:flex;gap:6px;align-items:center">
         <button class="refresh-btn" onclick="openSettings()" style="font-size:12px;padding:6px 10px;font-weight:600" title="Réglages">⚙︎</button>
         <button id="hdr-mode-btn" class="refresh-btn" onclick="toggleMode()" title="Basculer Prod/Test" style="font-size:12px;padding:6px 10px;font-weight:600;letter-spacing:.5px">PROD</button>
@@ -811,9 +811,8 @@ nav{display:none}
     <div class="no-print" style="margin-top:16px">
       <div class="row-btns">
         <button class="btn btn-outline" onclick="closeTicket()">Fermer</button>
-        <button class="btn btn-ghost" onclick="downloadPDF()">PDF</button>
+        <button class="btn btn-primary" onclick="downloadPDF()">PDF</button>
         <button class="btn btn-ghost" onclick="imprimerTicket()">🖨 58mm</button>
-        <button class="btn btn-primary" onclick="imprimerA4()">🖨 A4</button>
       </div>
     </div>
   </div>
@@ -1288,6 +1287,7 @@ let countQty = {};
 let mvType = 'in';
 let payParts = [];
 let currentTicketRef = '';
+let currentZInfo = null; // {day, marche, mode} tant qu'un ticket de clôture Z est affiché (sinon null)
 let currentPdfFilename = ''; // nom de fichier complet (sans préfixe "recu-"), prioritaire s'il est défini — utilisé pour les clôtures Z
 let journalFilter = 'day';
 let journalDate = todayStr();
@@ -2476,6 +2476,7 @@ function showTicket(sale){
   const ref = sale.ref || makeRef(sale.num);
   currentTicketRef = ref + '-' + saleModeSuffix(sale) + (sale.cancelled ? '-Annule' : '');
   currentPdfFilename = '';
+  currentZInfo = null;
 
   area.innerHTML = buildSaleTicketBodyHTML(sale);
   const totalTVAC = sale.total;
@@ -2505,16 +2506,25 @@ window.imprimerTicket = function(){
   const w = openPrintWindow(area.innerHTML, '58mm');
   if(w) setTimeout(()=>w.print(), 400);
 };
-window.imprimerA4 = function(){
-  const area = document.getElementById('ticket-area');
-  if(!area) return;
-  const w = openPrintWindow(area.innerHTML, 'a4');
-  if(w) setTimeout(()=>w.print(), 400);
-};
 
 /* Export PDF du ticket */
-window.downloadPDF = function(){
+window.downloadPDF = async function(){
   const area = document.getElementById('ticket-area');
+  /* Clôture Z / Infos versement : page A4 pleine largeur, 1 seule page */
+  if(currentZInfo && window.html2canvas && window.jspdf){
+    try{
+      toast("Génération du PDF…");
+      const z = currentZInfo;
+      const canvas = await ticketToCanvas(z.day, z.marche, z.mode, true);
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF({unit:'mm', format:'a4'});
+      const w = 190, h = canvas.height * w / canvas.width;
+      pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 10, 10, w, Math.min(h, 277));
+      pdf.save(currentPdfFilename ? `${currentPdfFilename}.pdf` : 'Cloture.pdf');
+      toast("PDF téléchargé");
+    }catch(e){ console.warn('downloadPDF Z:', e); toast("Erreur PDF"); }
+    return;
+  }
   if(!window.html2canvas || !window.jspdf){
     toast("PDF indisponible hors-ligne → impression"); window.print(); return;
   }
@@ -4202,7 +4212,7 @@ function getMonthClosureDates(month){
 
 /* Génère le PDF (blob) d'un ticket de clôture Z isolé, hors écran, sans passer par la modale visible.
    Utilise le même style large "A5" que le bouton A4 de l'app, pour un rendu cohérent avec le reste. */
-async function ticketToCanvas(day, marche, mode){
+async function ticketToCanvas(day, marche, mode, a4){
   const excludeVersement = mode==='avant';
   const {ca,esp,qr,carte,cancelledN,theo,inTotal,outTotal,cashOut,cardOut,fondForDay,mvs} = buildZHTML(day, marche, excludeVersement);
   const bodyHtml = buildZTicketHTML(day, marche, ca, esp, qr, carte, cancelledN, theo, inTotal, outTotal, cashOut, cardOut, fondForDay, mvs);
@@ -4225,6 +4235,21 @@ async function ticketToCanvas(day, marche, mode){
   </style>${bodyHtml}`;
   document.body.appendChild(wrap);
   await new Promise(r=>setTimeout(r,30));
+  if(a4){
+    /* Page A4 : 794 px de large ; on agrandit le ticket (transform) au maximum tant que sa hauteur tient sur 1 page (rapport 277/190) */
+    const css = wrap.querySelector('style').outerHTML;
+    wrap.innerHTML = css + '<div id="zt-inner" style="transform-origin:top left;box-sizing:border-box">' + bodyHtml + '</div>';
+    const inner = wrap.querySelector('#zt-inner');
+    wrap.style.cssText = 'position:fixed;left:-99999px;top:0;background:#fff;width:794px;padding:0;font-family:Arial,Helvetica,sans-serif;color:#000';
+    let k = 1.7, h = 0;
+    for(; k >= 1; k = Math.round((k-0.05)*100)/100){
+      inner.style.width = (794/k) + 'px'; inner.style.padding = '12px 24px';
+      inner.style.transform = 'scale('+k+')';
+      h = inner.offsetHeight * k;
+      if(h <= 794*277/190) break;
+    }
+    wrap.style.height = Math.ceil(h) + 'px';
+  }
   const canvas = await html2canvas(wrap, {scale:2, backgroundColor:'#ffffff'});
   wrap.remove();
   return canvas;
@@ -5018,6 +5043,7 @@ function renderZTicket(day, marche, mode){
   document.getElementById('ztoggle-apres').classList.toggle('btn-primary', mode!=='avant');
   document.getElementById('ztoggle-avant').classList.toggle('btn-primary', mode==='avant');
   currentPdfFilename = zPdfName(day, marche, mode);
+  currentZInfo = {day, marche, mode};
 }
 window.toggleZReprint = function(mode){
   if(!reprintZContext) return;
@@ -5042,6 +5068,7 @@ window.printZ = function(){
   const suggestion = surplus > 0.01 ? Math.floor(surplus/VERSEMENT_MIN)*VERSEMENT_MIN : 0;
   const versementPending = suggestion >= VERSEMENT_MIN;
   currentPdfFilename = zPdfName(d, state.marche, versementPending ? 'avant' : 'apres');
+  currentZInfo = {day:d, marche:state.marche, mode: versementPending ? 'avant' : 'apres'};
   const area=document.getElementById('ticket-area');
   area.innerHTML = buildZTicketHTML(d, state.marche, ca, esp, qr, carte, cancelledN, theo, inTotal, outTotal, cashOut, cardOut, fondForDay, mvs);
   document.getElementById('ticket-overlay').classList.remove('hidden');
@@ -5087,6 +5114,7 @@ window.confirmVersementPrompt = function(){
     const {ca,esp,qr,carte,cancelledN,theo,inTotal,outTotal,cashOut,cardOut,fondForDay,mvs} = buildZHTML(state.day, state.marche);
     document.getElementById('ticket-area').innerHTML = buildZTicketHTML(state.day, state.marche, ca, esp, qr, carte, cancelledN, theo, inTotal, outTotal, cashOut, cardOut, fondForDay, mvs);
     currentPdfFilename = zPdfName(state.day, state.marche, 'apres');
+    currentZInfo = {day:state.day, marche:state.marche, mode:'apres'};
   }
 };
 
