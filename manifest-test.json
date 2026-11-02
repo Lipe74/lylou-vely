@@ -3,7 +3,7 @@
   "short_name": "LV Test",
   "description": "Caisse Lylou-Vely — Mode test",
   "start_url": "/caisse-test.html",
-  "scope": "/",
+  "scope": "/caisse-test.html",
   "display": "standalone",
   "background_color": "#FDF8F0",
   "theme_color": "#E65100",
@@ -27,5 +27,6 @@
     "business",
     "productivity"
   ],
-  "screenshots": []
+  "screenshots": [],
+  "id": "/caisse-test.html"
 }

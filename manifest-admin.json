@@ -3,7 +3,7 @@
   "short_name": "LV Admin",
   "description": "Administration Lylou-Vely",
   "start_url": "/admin.html",
-  "scope": "/",
+  "scope": "/admin.html",
   "display": "standalone",
   "background_color": "#FDF8F0",
   "theme_color": "#C62828",
@@ -27,5 +27,6 @@
     "business",
     "productivity"
   ],
-  "screenshots": []
+  "screenshots": [],
+  "id": "/admin.html"
 }

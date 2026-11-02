@@ -3,7 +3,7 @@
   "short_name": "LV Caisse",
   "description": "Caisse Lylou-Vely — Système de caisse pour marchés",
   "start_url": "/caisse.html",
-  "scope": "/",
+  "scope": "/caisse.html",
   "display": "standalone",
   "background_color": "#FDF8F0",
   "theme_color": "#2E7D32",
@@ -27,5 +27,6 @@
     "business",
     "productivity"
   ],
-  "screenshots": []
+  "screenshots": [],
+  "id": "/caisse.html"
 }
