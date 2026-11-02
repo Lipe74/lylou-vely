@@ -10,7 +10,7 @@
 <link rel="manifest" href="manifest-admin.json">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
-  :root{--violet:#6B3FA0;--violet-d:#512e7a;--violet-wash:#f3eeff;--card:#ffffff;--muted:#7a7086;--line:#e7dff0;--red:#c0475e;--green:#1a8f5e;--gold:#c99a2e}
+  :root{--violet:#C62828;--violet-d:#8E1B1B;--violet-wash:#fdeeee;--card:#ffffff;--muted:#7a7070;--line:#eadcdc;--red:#c0475e;--green:#1a8f5e;--gold:#c99a2e}
   *{box-sizing:border-box;margin:0;padding:0}
   body{font-family:'Jost',sans-serif;background:var(--violet-wash);min-height:100vh;color:#2c2233}
 
@@ -50,7 +50,7 @@
   .panel-title{font-family:'Cormorant Garamond',serif;font-size:32px;color:var(--violet-d);margin-bottom:2px}
   .panel-sub{color:var(--muted);font-size:13px;margin-bottom:26px}
 
-  .card{background:#fff;border-radius:16px;padding:24px;box-shadow:0 4px 20px rgba(107,63,160,.08);margin-bottom:24px}
+  .card{background:#fff;border-radius:16px;padding:24px;box-shadow:0 4px 20px rgba(198,40,40,.08);margin-bottom:24px}
   .card h3{font-family:'Cormorant Garamond',serif;font-size:20px;color:var(--violet-d);margin-bottom:16px}
 
   .form-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
@@ -80,15 +80,15 @@
   .variant-photo-row{display:flex;align-items:center;gap:8px}
   .variant-photo-row input[type=file]{font-size:11px;flex:1}
   .form-group label{display:block;font-size:12.5px;font-weight:600;color:var(--muted);margin-bottom:5px;letter-spacing:.3px}
-  .form-group input,.form-group select,.form-group textarea{width:100%;padding:10px 12px;border:1.5px solid var(--line);border-radius:10px;font-family:'Jost',sans-serif;font-size:14px;background:#fbf9fe;color:#2c2233}
+  .form-group input,.form-group select,.form-group textarea{width:100%;padding:10px 12px;border:1.5px solid var(--line);border-radius:10px;font-family:'Jost',sans-serif;font-size:14px;background:#fdf9f9;color:#2c2233}
   .form-group input:focus,.form-group select:focus,.form-group textarea:focus{outline:none;border-color:var(--violet)}
   .form-group textarea{resize:vertical;min-height:70px}
 
   .btn{padding:11px 22px;border:none;border-radius:10px;font-weight:600;font-size:13.5px;cursor:pointer;font-family:'Jost',sans-serif;letter-spacing:.3px}
   .btn-primary{background:var(--violet);color:#fff}
   .btn-primary:hover{background:var(--violet-d)}
-  .btn-ghost{background:#f1ecf9;color:var(--violet-d)}
-  .btn-ghost:hover{background:#e4d9f5}
+  .btn-ghost{background:#f9eeee;color:var(--violet-d)}
+  .btn-ghost:hover{background:#f1d9d9}
   .btn-danger{background:#fbe9ec;color:var(--red)}
   .btn-danger:hover{background:#f6d3d9}
   .btn-row{display:flex;gap:10px;margin-top:6px}
@@ -100,17 +100,17 @@
   .badge-fixe{background:#fbf0f3;color:#8a3050}
   .badge-hebdo{background:#e8f5ef;color:#1a6b50}
   .badge-mensuel{background:#fff0e0;color:#8a5200}
-  .badge-passe{background:#efeaf5;color:#8a7fa0}
+  .badge-passe{background:#f5ecec;color:#8a7f7f}
   .list-item .nom{font-weight:600;font-size:15px;color:#2c2233}
   .list-item .meta{font-size:12.5px;color:var(--muted);margin-top:2px}
   .list-item .actions{display:flex;gap:8px;flex-shrink:0}
   .icon-btn{width:34px;height:34px;border-radius:9px;border:none;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center}
-  .icon-btn.edit{background:#f1ecf9;color:var(--violet-d)}
+  .icon-btn.edit{background:#f9eeee;color:var(--violet-d)}
   .icon-btn.del{background:#fbe9ec;color:var(--red)}
   .stars{color:var(--gold);letter-spacing:1px}
   .empty-msg{color:var(--muted);font-size:13.5px;text-align:center;padding:20px}
 
-  .iframe-wrap{background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 20px rgba(107,63,160,.08);height:calc(100vh - 130px)}
+  .iframe-wrap{background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 20px rgba(198,40,40,.08);height:calc(100vh - 130px)}
   .iframe-wrap iframe{width:100%;height:100%;border:none}
 
   /* Mobile */
@@ -163,7 +163,7 @@
 
     <div class="sidebar-foot">
       <button class="logout-btn" onclick="window.doLogout()">↩ Déconnexion</button>
-      <div style="text-align:center;margin-top:10px;font-size:10px;opacity:.5;letter-spacing:.5px">Build 6.5</div>
+      <div style="text-align:center;margin-top:10px;font-size:10px;opacity:.5;letter-spacing:.5px">Build 6.6</div>
     </div>
   </div>
 
@@ -1609,7 +1609,7 @@ function renderEtsyPreview() {
     if (net !== null && isPayment) total += net;
     const color = net !== null && net < 0 ? 'color:var(--red)' : net !== null && net > 0 ? 'color:var(--green)' : '';
     const tr = document.createElement('tr');
-    tr.style.borderBottom = '1px solid #f0edf7';
+    tr.style.borderBottom = '1px solid #f6eded';
     if (isPayment) tr.style.opacity = '0.45';
     tr.innerHTML = `
       <td style="padding:8px 6px;white-space:nowrap">${row.date}</td>
