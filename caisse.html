@@ -340,7 +340,7 @@ nav{display:none}
 <div id="gate">
   <div class="box">
     <div class="mark">Lylou-Vely</div>
-    <div class="sub">Caisse · Build 6.0</div>
+    <div class="sub">Caisse · Build 6.2</div>
     <input type="email" id="gate-email" placeholder="Email" autocomplete="email" value="infos@lylou-vely.be" style="letter-spacing:0">
     <input type="password" id="gate-pw" placeholder="Mot de passe" autocomplete="current-password">
     <button onclick="doLogin()">Connexion</button>
@@ -352,10 +352,9 @@ nav{display:none}
 <div id="app" class="hidden">
   <header>
     <div class="hdr-top">
-      <div class="title">Lylou-Vely<small>Caisse · Build 6.0</small></div>
+      <div class="title">Lylou-Vely<small>Caisse · Build 6.2</small></div>
       <div style="display:flex;gap:6px;align-items:center">
         <button class="refresh-btn" onclick="openSettings()" style="font-size:12px;padding:6px 10px;font-weight:600" title="Réglages">⚙︎</button>
-        <button id="hdr-mode-btn" class="refresh-btn" onclick="toggleMode()" title="Basculer Prod/Test" style="font-size:12px;padding:6px 10px;font-weight:600;letter-spacing:.5px">PROD</button>
         <button class="refresh-btn" onclick="doRefresh()" title="Recharger les données">🔄</button>
       </div>
     </div>
@@ -786,7 +785,8 @@ nav{display:none}
       <div class="qr-amount-lbl">Montant à taper dans l'app ING SoftPOS</div>
       <div class="pay-amt" id="ing-amount">0,00 €</div>
       <div class="confirm-icon">💳</div>
-      <p class="confirm-steps">Ouvre l'app ING, tape le montant, fais taper la carte du client.<br>Une fois accepté, reviens ici et choisis le type de carte.</p>
+      <p class="confirm-steps">L'app ING s'ouvre : tape le montant ci-dessus, fais taper la carte du client.<br>Une fois accepté, reviens ici et choisis le type de carte.</p>
+      <button class="btn btn-outline" onclick="launchIngSoftPOS(true)" style="width:auto;padding:6px 14px;font-size:12px;margin:0 6px 14px 0">📲 Ouvrir l'app ING</button>
       <button class="btn btn-outline" onclick="copyIngAmount()" style="width:auto;padding:6px 14px;font-size:12px;margin-bottom:14px">📋 Copier le montant</button>
       <button class="btn btn-primary" onclick="confirmExternal('carte','ing','bancontact')" style="margin-bottom:8px">💳 Bancontact — Paiement accepté ✓</button>
       <button class="btn btn-primary" onclick="confirmExternal('carte','ing','debit')" style="margin-bottom:8px">💳 Visa/Mastercard débit — Paiement accepté ✓</button>
@@ -995,8 +995,6 @@ nav{display:none}
         <span class="mode-lbl">Mode actuel</span>
         <span class="mode-val prod" id="settings-mode">PRODUCTION</span>
       </div>
-      <button class="btn btn-outline" id="settings-to-test" style="margin-top:12px" onclick="closeSettings();switchMode('test')">Passer en mode Test</button>
-      <button class="btn btn-outline" id="settings-to-prod" style="margin-top:12px;display:none" onclick="closeSettings();switchMode('prod')">Revenir en mode Production</button>
     </div>
 
     <button class="btn btn-outline" style="margin-top:8px" onclick="closeSettings()">Fermer</button>
@@ -1152,9 +1150,7 @@ const TVA_RATE = 0.21;
 /* Modes */
 const STORE_PROD = "lylou_caisse_prod_v2";
 const STORE_TEST = "lylou_caisse_test_v2";
-const _filename = location.pathname.split('/').pop().replace('.html','') || 'caisse';
-const MODE_KEY = "lylou_mode_" + _filename;
-let mode = localStorage.getItem(MODE_KEY) || 'prod';
+let mode = 'prod'; // caisse.html = production uniquement (caisse-test.html est verrouillé en Test)
 function storeKey(){ return mode==='test' ? STORE_TEST : STORE_PROD; }
 
 const QR_IMAGE = "qr-bancontact.png";
@@ -1704,53 +1700,14 @@ window.addEventListener('online', silentAutoRefresh);
 
 
 /* ============ MODE PROD/TEST ============ */
-window.switchMode = async function(target){
-  if(target===mode) return;
-  const msg = target==='test'
-    ? "Passer en MODE TEST ?\nTu bascules sur une caisse d'essai séparée."
-    : "Passer en MODE PRODUCTION ?\nTu reviens sur ta vraie caisse.";
-  if(!confirm(msg)) return;
-  mode = target;
-  localStorage.setItem(MODE_KEY, mode);
-  state = load();
-  cart = []; countQty = {}; payParts = [];
-  toast("Chargement des données "+(mode==='test'?'de test':'réelles')+"…");
-  await loadConfig();
-  await loadSales();
-  await loadMovements();
-  await loadClosures();
-  await backfillMovementMarches();
-  save();
-  initDenoms(); updateModeUI(); renderAll();
-  loadArticlesFromFirebase();
-  toast(mode==='test' ? "Mode Test activé" : "Mode Production activé");
-  window.go('vente');
-  checkDayTransition();
-};
-window.toggleMode = function(){
-  const target = mode==='prod' ? 'test' : 'prod';
-  const msg = target==='test'
-    ? "Passer en MODE TEST ?\nCaisse d'essai séparée."
-    : "Revenir en MODE PRODUCTION ?\nRetour à la vraie caisse.";
-  if(!confirm(msg)) return;
-  window.switchMode(target);
-};
-
 function updateModeUI(){
   const test = mode==='test';
   document.getElementById('test-banner').style.display = test ? 'block' : 'none';
   document.getElementById('reset-zone').style.display = test ? 'block' : 'none';
   document.querySelector('header').classList.toggle('test-mode', test);
-  // Bouton bascule header
-  const btn = document.getElementById('hdr-mode-btn');
-  if(btn){ btn.textContent = test ? 'TEST' : 'PROD'; btn.style.background = test ? 'rgba(255,255,255,0.35)' : 'rgba(255,255,255,0.18)'; }
   // Réglages
   const sm = document.getElementById('settings-mode');
   if(sm){ sm.textContent = test ? 'TEST' : 'PRODUCTION'; sm.className = 'mode-val '+(test?'test':'prod'); }
-  const st = document.getElementById('settings-to-test');
-  const sp = document.getElementById('settings-to-prod');
-  if(st) st.style.display = test?'none':'block';
-  if(sp) sp.style.display = test?'block':'none';
 }
 
 /* ---- Réglages (modale) ---- */
@@ -2205,6 +2162,7 @@ window.startExternal = function(method){
   } else if(method==='carte-ing'){
     document.getElementById('pay-ing').classList.remove('hidden');
     document.getElementById('ing-amount').textContent = euro(payRemaining());
+    setTimeout(()=>launchIngSoftPOS(false), 250);
   } else {
     document.getElementById('pay-sumup').classList.remove('hidden');
     document.getElementById('sumup-amount').textContent = euro(payRemaining());
@@ -2234,6 +2192,30 @@ window.copySumUpAmount = function(){
   }
 };
 
+/* Sauvegarde la vente en cours avant de quitter la page (retour d'une app externe) */
+function savePendingCart(){
+  try{
+    localStorage.setItem('sumup_pending', JSON.stringify({
+      cart, cartDiscount, payParts, marche: state.marche, ticketCounter: state.ticketCounter,
+      ts: Date.now()
+    }));
+  }catch(e){}
+}
+
+/* Ouvre l'app ING SoftPOS (Android). Pas de lien documenté pour pré-remplir le montant :
+   il reste affiché en grand à l'écran. Play Store si l'app n'est pas installée. */
+const ING_SOFTPOS_PKG = 'be.ing.SoftPOS';
+window.launchIngSoftPOS = function(manual){
+  if(!/Android/i.test(navigator.userAgent)){
+    if(manual) toast("Ouvre l'app ING SoftPOS sur ton téléphone Android");
+    return;
+  }
+  savePendingCart();
+  const store = 'https://play.google.com/store/apps/details?id='+ING_SOFTPOS_PKG;
+  window.location.href = 'intent://#Intent;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;package='
+    + ING_SOFTPOS_PKG + ';S.browser_fallback_url=' + encodeURIComponent(store) + ';end';
+};
+
 /* Lance l'app SumUp via le lien d'affiliation, avec le montant pré-rempli */
 window.launchSumUpApp = function(){
   const amt = payRemaining();
@@ -2241,12 +2223,7 @@ window.launchSumUpApp = function(){
   const callback = location.origin + location.pathname; // retour sur caisse.html
   // Sauvegarde la vente en cours (le retour SumUp peut recharger la page,
   // parfois dans un nouvel onglet → localStorage, pas sessionStorage)
-  try{
-    localStorage.setItem('sumup_pending', JSON.stringify({
-      cart, cartDiscount, payParts, marche: state.marche, ticketCounter: state.ticketCounter,
-      ts: Date.now()
-    }));
-  }catch(e){}
+  savePendingCart();
   const url = 'sumupmerchant://pay/1.0'
     + '?affiliate-key=' + encodeURIComponent(SUMUP_AFFILIATE_KEY)
     + '&app-id=' + encodeURIComponent(SUMUP_APP_ID)
