@@ -53,10 +53,10 @@ header.test-mode{background:linear-gradient(160deg,#e65c00 0%,#c44b00 100%);box-
 .hdr-top .title{font-family:'Cormorant Garamond',serif;font-size:22px;line-height:1}
 .hdr-top .title small{display:block;font-family:'Jost';font-size:10px;letter-spacing:3px;opacity:.8;text-transform:uppercase;margin-top:2px}
 .hdr-top .refresh-btn{background:rgba(255,255,255,.18);border-radius:10px;padding:8px 10px;font-size:15px;line-height:1}
-.hdr-kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:10px}
-.hdr-kpi{background:rgba(255,255,255,.12);border-radius:10px;padding:6px 10px;text-align:center}
+.hdr-kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:5px;margin-top:8px}
+.hdr-kpi{background:rgba(255,255,255,.12);border-radius:9px;padding:4px 8px;text-align:center}
 .hdr-kpi span{display:block;font-size:9px;letter-spacing:1px;text-transform:uppercase;opacity:.8}
-.hdr-kpi b{font-size:16px;font-weight:500}
+.hdr-kpi b{font-size:15px;font-weight:500}
 @media (max-width:700px){
   .hdr-kpis{grid-template-columns:repeat(6,1fr)}
   .hdr-kpi{grid-column:span 2}
@@ -341,7 +341,7 @@ nav{display:none}
 <div id="gate">
   <div class="box">
     <div class="mark">Lylou-Vely</div>
-    <div class="sub">Caisse · Build 7.1</div>
+    <div class="sub">Caisse · Build 7.2</div>
     <input type="email" id="gate-email" placeholder="Email" autocomplete="email" value="infos@lylou-vely.be" style="letter-spacing:0">
     <input type="password" id="gate-pw" placeholder="Mot de passe" autocomplete="current-password">
     <button onclick="doLogin()">Connexion</button>
@@ -353,7 +353,7 @@ nav{display:none}
 <div id="app" class="hidden">
   <header>
     <div class="hdr-top">
-      <div class="title">Lylou-Vely<small>Caisse · Build 7.1</small></div>
+      <div class="title">Lylou-Vely<small>Caisse · Build 7.2</small></div>
       <div style="display:flex;gap:6px;align-items:center">
         <button class="refresh-btn" onclick="openSettings()" style="font-size:12px;padding:6px 10px;font-weight:600" title="Réglages">⚙︎</button>
         <button class="refresh-btn" onclick="doRefresh()" title="Recharger les données">🔄</button>
@@ -364,7 +364,7 @@ nav{display:none}
       <div class="hdr-kpi"><span>Vente Cash</span><b id="hdr-cash">0,00 €</b></div>
       <div class="hdr-kpi"><span>Vente QR Code</span><b id="hdr-qr">0,00 €</b></div>
       <div class="hdr-kpi"><span>Vente carte</span><b id="hdr-sumup">0,00 €</b></div>
-      <div class="hdr-kpi" onclick="go('etsy')" style="cursor:pointer" title="Total Etsy du mois en cours"><span>Vente Etsy · mois</span><b id="hdr-etsy">0,00 €</b></div>
+      <div class="hdr-kpi" onclick="go('asbl')" style="cursor:pointer" title="Reversé à L'Assiette des 4 pattes aujourd'hui"><span>🐾 4 pattes</span><b id="hdr-asbl">0,00 €</b></div>
     </div>
     <div id="hdr-marche" onclick="promptRenameMarche()" style="text-align:center;font-size:13px;color:rgba(255,255,255,0.85);margin-top:6px;font-weight:500;cursor:pointer" title="Modifier le nom du marché"></div>
     <div class="hdr-nav" id="hdr-nav">
@@ -5341,8 +5341,8 @@ function renderHeaderKPIs(){
   document.getElementById('hdr-cash').textContent = euro(sumCashSales(d));
   document.getElementById('hdr-qr').textContent = euro(sumQRSales(d));
   document.getElementById('hdr-sumup').textContent = euro(sumCarteSales(d));
-  const hEtsy = document.getElementById('hdr-etsy');
-  if(hEtsy) hEtsy.textContent = euro(etsyMonthAmount(todayStr().slice(0,7)));
+  const hAsbl = document.getElementById('hdr-asbl');
+  if(hAsbl) hAsbl.textContent = euro(daySales(d).reduce((a,x)=>a+asblOfSale(x),0));
   // CA nav
   const navCA = document.getElementById('nav-ca-val');
   if(navCA){
