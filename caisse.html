@@ -341,7 +341,7 @@ nav{display:none}
 <div id="gate">
   <div class="box">
     <div class="mark">Lylou-Vely</div>
-    <div class="sub">Caisse · Build 7.0</div>
+    <div class="sub">Caisse · Build 7.1</div>
     <input type="email" id="gate-email" placeholder="Email" autocomplete="email" value="infos@lylou-vely.be" style="letter-spacing:0">
     <input type="password" id="gate-pw" placeholder="Mot de passe" autocomplete="current-password">
     <button onclick="doLogin()">Connexion</button>
@@ -353,7 +353,7 @@ nav{display:none}
 <div id="app" class="hidden">
   <header>
     <div class="hdr-top">
-      <div class="title">Lylou-Vely<small>Caisse · Build 7.0</small></div>
+      <div class="title">Lylou-Vely<small>Caisse · Build 7.1</small></div>
       <div style="display:flex;gap:6px;align-items:center">
         <button class="refresh-btn" onclick="openSettings()" style="font-size:12px;padding:6px 10px;font-weight:600" title="Réglages">⚙︎</button>
         <button class="refresh-btn" onclick="doRefresh()" title="Recharger les données">🔄</button>
@@ -564,13 +564,13 @@ nav{display:none}
             <button id="mvp-card" onclick="setMvPayMode('card')">💳 Carte</button>
           </div>
         </div>
-        <!-- Raccourci paiement stand -->
+        <!-- Dépense rapide (stand, repas, carburant…) -->
         <div style="margin-top:12px;padding-top:12px;border-top:1px dashed var(--line)">
+          <div id="qe-cats" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px"></div>
           <div style="display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap">
-            <span style="font-size:13px;color:var(--muted);padding-top:11px;white-space:nowrap">🏪 Stand</span>
-            <input type="number" inputmode="decimal" id="qm-stand-amt" placeholder="Montant €" step="0.01" style="flex:0 0 110px;padding:10px;border:1.5px solid var(--line);border-radius:10px;font-size:14px">
-            <input type="text" id="qm-stand-note" placeholder="Ex. : Marché Beaufays" style="flex:1;min-width:120px;padding:10px;border:1.5px solid var(--line);border-radius:10px;font-size:14px">
-            <button class="btn btn-danger" style="flex:0 0 auto;padding:10px 16px;font-size:13px" onclick="quickStand()">OK</button>
+            <input type="number" inputmode="decimal" id="qe-amt" placeholder="Montant €" step="0.01" style="flex:0 0 110px;padding:10px;border:1.5px solid var(--line);border-radius:10px;font-size:14px">
+            <input type="text" id="qe-note" placeholder="Note (facultatif)" style="flex:1;min-width:120px;padding:10px;border:1.5px solid var(--line);border-radius:10px;font-size:14px">
+            <button class="btn btn-danger" style="flex:0 0 auto;padding:10px 16px;font-size:13px" onclick="quickExpense()">OK</button>
           </div>
           <div class="seg" style="max-width:280px;margin-top:8px">
             <button id="qs-cash" class="on" onclick="setQsMode('cash')">💶 Liquide</button>
@@ -3154,17 +3154,26 @@ window.delMovement = async function(id){
 };
 
 /* Raccourcis mouvements */
-window.quickStand = async function(){
-  const amt = parseNum(document.getElementById('qm-stand-amt').value);
-  const note = document.getElementById('qm-stand-note').value.trim();
+let qeCat = 'stand';
+function renderQeCats(){
+  const box = document.getElementById('qe-cats'); if(!box) return;
+  box.innerHTML = MV_CATS.filter(c=>c.quick).map(c=>
+    `<button class="btn ${c.key===qeCat?'btn-primary':'btn-outline'}" style="width:auto;padding:7px 12px;font-size:13px" onclick="setQeCat('${c.key}')">${c.icon} ${c.short}</button>`).join('');
+}
+window.setQeCat = function(k){ qeCat = k; renderQeCats(); };
+window.quickExpense = async function(){
+  const amt = parseNum(document.getElementById('qe-amt').value);
+  const note = document.getElementById('qe-note').value.trim();
   if(amt<=0){ toast("Montant invalide"); return; }
-  const motif = "Paiement stand" + (note ? " — " + note : "");
+  const cat = MV_CATS.find(c=>c.key===qeCat) || MV_CATS[0];
+  if(cat.key==='other' && !note){ toast("Ajoute une note pour « Autre »"); return; }
+  const motif = cat.prefix + (note ? " — " + note : "");
   const mv = {id:Date.now(), type:'out', amount:amt, reason:motif, payMode:qsPayMode, time:nowTime(), date:state.day, marche: state.marche || ''};
   state.movements.push(mv); save(); saveMovement(mv);
-  document.getElementById('qm-stand-amt').value='';
-  document.getElementById('qm-stand-note').value='';
+  document.getElementById('qe-amt').value='';
+  document.getElementById('qe-note').value='';
   renderMovements(); renderHeaderKPIs(); renderCaisse();
-  toast("Paiement stand : −"+euro(amt)+" ("+(qsPayMode==='cash'?'Liquide':'Carte')+")");
+  toast(cat.short+" : −"+euro(amt)+" ("+(qsPayMode==='cash'?'Liquide':'Carte')+")");
 };
 window.quickBank = async function(){
   const amt = parseNum(document.getElementById('qm-bank-amt').value);
@@ -3481,12 +3490,7 @@ function renderJournal(){
   const mvs = getFilteredMovements();
   const wrap = document.getElementById('jr-mv-groups');
   wrap.innerHTML = '';
-  const bank  = mvs.filter(m=>mvCategory(m)==='bank');
-  const stand = mvs.filter(m=>mvCategory(m)==='stand');
-  const other = mvs.filter(m=>mvCategory(m)==='other');
-  renderMvGroup(wrap, 'bank',  '🏦 Versements banque', bank);
-  renderMvGroup(wrap, 'stand', '🏪 Paiement stand',    stand);
-  renderMvGroup(wrap, 'other', '🔁 Autres mouvements', other);
+  MV_CATS.forEach(c=>renderMvGroup(wrap, c.key, c.icon+' '+c.title, mvs.filter(m=>mvCategory(m)===c.key)));
 
   renderBoutiqueJournal();
   if(filtered.length===0){ box.innerHTML='<div class="empty">Aucune vente</div>'; return; }
@@ -3571,18 +3575,34 @@ function zOutDetailHTML(mvs){
     const r = (m.reason||'').trim();
     if(r.startsWith('Paiement stand')){ const n = r.slice(14).replace(/^\s*[—-]\s*/,''); return '🏪 Stand' + (n ? ' — ' + n : ''); }
     if(r.startsWith('Versement banque')) return '🏦 Versement banque';
-    return r || 'Sortie';
+    const ci = mvCatInfo(mvCategory(m));
+    return (ci.key==='other' ? '' : ci.icon+' ') + (r || 'Sortie');
   };
   return `<div style="font-size:11px;font-weight:600;color:#555;margin:6px 0 2px">Détail des sorties</div>` +
     outs.map(m=>`<div class="t-sub" style="gap:8px"><span style="min-width:0;overflow-wrap:anywhere">${esc(lab(m))}${m.payMode==='card' ? ' (carte)' : ' (liquide)'}</span><span style="white-space:nowrap">−${euro(m.amount)}</span></div>`).join('');
 }
 
+/* Catégories de mouvements : clé, icône, libellés, préfixe du motif (raccourci) et mots-clés de détection */
+const MV_CATS = [
+  {key:'bank',     icon:'🏦', short:'Versement',  title:'Versements banque',    prefix:'Versement banque'},
+  {key:'stand',    icon:'🏪', short:'Stand',      title:'Paiement stand',       prefix:'Paiement stand', quick:true},
+  {key:'repas',    icon:'🍽️', short:'Repas',      title:'Repas',                prefix:'Repas',        quick:true, re:/repas|resto|restaurant|dejeuner|diner|sandwich|snack|boisson/},
+  {key:'carburant',icon:'⛽', short:'Carburant',  title:'Carburant',            prefix:'Carburant',    quick:true, re:/carburant|essence|diesel|gasoil|mazout/},
+  {key:'parking',  icon:'🅿️', short:'Parking',    title:'Parking',              prefix:'Parking',      quick:true, re:/parking|stationnement/},
+  {key:'materiel', icon:'📦', short:'Matériel',   title:'Matériel / emballages',prefix:'Matériel',     quick:true, re:/materiel|emballage|sachet|packaging|fourniture/},
+  {key:'other',    icon:'🔁', short:'Autre',      title:'Autres mouvements',    prefix:'Autre',        quick:true}
+];
+const mvCatInfo = k => MV_CATS.find(c=>c.key===k) || MV_CATS[MV_CATS.length-1];
 /* Catégorie d'un mouvement */
 function mvCategory(m){
   const r = m.reason || '';
   if(r.startsWith('Versement banque')) return 'bank';
   if(r.startsWith('Versement Etsy'))   return 'bank';
   if(r.startsWith('Paiement stand'))   return 'stand';
+  if(m.type!=='out') return 'other';
+  // Catégories de dépenses : préfixe du raccourci, ou mot-clé dans le motif (anciens mouvements saisis à la main)
+  const rn = r.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+  for(const c of MV_CATS){ if(c.re && c.re.test(rn)) return c.key; }
   return 'other';
 }
 
@@ -3785,7 +3805,7 @@ window.downloadJournalMvPDF = function(mode){
 };
 
 /* ---- Mouvements par catégorie (bank / stand / other) ---- */
-const MV_CAT_LABEL = { bank:'Versements banque', stand:'Paiement stand', other:'Autres mouvements' };
+const MV_CAT_LABEL = Object.fromEntries(MV_CATS.map(c=>[c.key,c.title]));
 function getMovementsByCat(cat){
   return getFilteredMovements().filter(m=>mvCategory(m)===cat);
 }
@@ -6061,7 +6081,7 @@ window.printStatsBank = function(mode){
 function renderAll(){
   renderProdGrid(); renderCart(); renderCaisse();
   renderMovements(); renderJournal(); renderHeaderKPIs();
-  updateCountTotals(); renderAsbl(); renderEtsyList();
+  updateCountTotals(); renderAsbl(); renderEtsyList(); renderQeCats();
 }
 
 /* Fermeture overlays en cliquant sur le fond */
