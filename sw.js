@@ -1,78 +1,109 @@
-// Lylou-Vely Service Worker
-// Change ce numéro à chaque mise à jour du site pour forcer le rechargement
-const CACHE_VERSION = 'lylou-vely';
-const FICHIERS_A_CACHER = [
+// IMPORTANT : importScripts('version.js') a été retiré — il empêchait l'installation PWA sur Android
+// (Chrome Android est strict : un échec d'importScripts bloque toute la PWA, contrairement à Chrome desktop).
+// Le CACHE_NAME doit donc être synchronisé MANUELLEMENT avec version.js à chaque changement de version.
+const CACHE_NAME = 'phil-mobile-Build 14.92';
+const ASSETS = [
   '/',
-  '/index.html',
-  '/fidelite.html',
-  '/qrcode-fidelite.html',
-  '/manifest.json',
-  '/images/logo.png',
-  '/images/post-facebook.png',
-  '/images/collage-stand.png',
-  '/images/marche-vaux.png',
-  '/images/marche-ninane.png',
-  '/images/marche-rouvreux.png',
-  '/images/marche-boncelles.png',
-  '/images/marche-tilff.png',
-  '/images/marche-theux.png',
-    '/images/marche-comblain.png',
+    '/wp_consultant_hub.html',
+  '/wp_rem.html',
+  '/wp_orange.html',
+  '/wp_comparatif.html',
+  '/wp_eneco.html',
+
+  // Note: les PDF (manuels/commissions/Orange) sont désormais gérés via Firebase
+  // Storage (collection Firestore "documents", admin > Gestion des documents) —
+  // ils ne sont plus des fichiers statiques du repo, retirés du precache PWA.
+
+  // Images
+  'https://app.phil-mobile.be/images/logo.png',
+  'https://app.phil-mobile.be/images/splash.png',
+
+  // Librairies externes
+  'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js'
 ];
 
-// ===== INSTALLATION : mise en cache de tous les fichiers =====
+// Installation — mise en cache des assets
 self.addEventListener('install', event => {
   event.waitUntil(
-    caches.open(CACHE_VERSION).then(cache => {
-      return cache.addAll(FICHIERS_A_CACHER);
+    caches.open(CACHE_NAME).then(cache => {
+      return Promise.allSettled(
+        ASSETS.map(url =>
+          cache.add(url).catch(() => console.warn('Cache miss:', url))
+        )
+      );
     }).then(() => self.skipWaiting())
   );
 });
 
-// ===== ACTIVATION : supprime les anciens caches =====
+// Activation — suppression des anciens caches
 self.addEventListener('activate', event => {
   event.waitUntil(
     caches.keys().then(keys =>
       Promise.all(
         keys
-          .filter(key => key !== CACHE_VERSION)
-          .map(key => caches.delete(key))
+          .filter(k => k !== CACHE_NAME)
+          .map(k => caches.delete(k))
       )
     ).then(() => self.clients.claim())
   );
 });
 
-// ===== STRATÉGIE : Network First avec fallback cache =====
-// Essaie toujours le réseau en premier (pour avoir le contenu à jour)
-// Si pas de réseau, sert depuis le cache (fonctionne hors ligne)
+// Fetch — Network First pour HTML/JS (toujours la dernière version en ligne, cache en secours hors-ligne),
+// Cache First pour les assets vraiment statiques (images, PDF, libs externes qui ne changent jamais)
 self.addEventListener('fetch', event => {
-  // Ignore les requêtes non-GET et externes (Facebook, Google Fonts...)
-  if (event.request.method !== 'GET') return;
   const url = new URL(event.request.url);
-  if (url.origin !== location.origin) return;
 
-  event.respondWith(
-    fetch(event.request)
-      .then(response => {
-        // Mise en cache de la réponse fraîche
-        if (response.ok) {
+  if (event.request.method !== 'GET') return;
+  if (url.protocol === 'chrome-extension:') return;
+
+  const isAppShell =
+    event.request.url.endsWith('.html') ||
+    event.request.url.endsWith('.js');
+
+  const isStatic =
+    !isAppShell && (
+      ASSETS.some(a => event.request.url.includes(a)) ||
+      event.request.url.endsWith('.pdf') ||
+      event.request.url.endsWith('.png') ||
+      event.request.url.endsWith('.css')
+    );
+
+  if (isAppShell) {
+    event.respondWith(
+      fetch(event.request).then(response => {
+        if (response && response.status === 200) {
           const clone = response.clone();
-          caches.open(CACHE_VERSION).then(cache => cache.put(event.request, clone));
+          caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
         }
         return response;
+      }).catch(() => caches.match(event.request))
+    );
+  } else if (isStatic) {
+    event.respondWith(
+      caches.match(event.request).then(cached => {
+        if (cached) return cached;
+
+        return fetch(event.request).then(response => {
+          if (response && response.status === 200) {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then(cache =>
+              cache.put(event.request, clone)
+            );
+          }
+          return response;
+        }).catch(() => cached);
       })
-      .catch(() => {
-        // Réseau indisponible → on sert depuis le cache
-        return caches.match(event.request).then(cached => {
-          if (cached) return cached;
-          // Fallback vers index.html pour les pages inconnues
-          return caches.match('/index.html');
-        });
-      })
-  );
+    );
+  } else {
+    event.respondWith(
+      fetch(event.request).catch(() => caches.match(event.request))
+    );
+  }
 });
 
-// ===== NOTIFICATION DE MISE À JOUR =====
-// Quand une nouvelle version est disponible, on notifie le site
+// Message : forcer la mise à jour du cache
 self.addEventListener('message', event => {
-  if (event.data === 'SKIP_WAITING') self.skipWaiting();
+  if (event.data === 'skipWaiting') {
+    self.skipWaiting();
+  }
 });
