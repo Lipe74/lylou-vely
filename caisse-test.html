@@ -341,7 +341,7 @@ nav{display:none}
 <div id="gate">
   <div class="box">
     <div class="mark">Lylou-Vely</div>
-    <div class="sub">Caisse · Build 7.2</div>
+    <div class="sub">Caisse · Build 7.4</div>
     <input type="email" id="gate-email" placeholder="Email" autocomplete="email" value="infos@lylou-vely.be" style="letter-spacing:0">
     <input type="password" id="gate-pw" placeholder="Mot de passe" autocomplete="current-password">
     <button onclick="doLogin()">Connexion</button>
@@ -353,7 +353,7 @@ nav{display:none}
 <div id="app" class="hidden">
   <header>
     <div class="hdr-top">
-      <div class="title">Lylou-Vely<small>Caisse · Build 7.2</small></div>
+      <div class="title">Lylou-Vely<small>Caisse · Build 7.4</small></div>
       <div style="display:flex;gap:6px;align-items:center">
         <button class="refresh-btn" onclick="openSettings()" style="font-size:12px;padding:6px 10px;font-weight:600" title="Réglages">⚙︎</button>
         <button class="refresh-btn" onclick="doRefresh()" title="Recharger les données">🔄</button>
@@ -412,6 +412,11 @@ nav{display:none}
           <p class="section-sub">Touche un article pour l'ajouter au panier.</p>
         </div>
       </div>
+      <div id="past-banner" style="display:none;align-items:center;justify-content:space-between;gap:10px;background:#fff6e5;border:1.5px solid #f0c36d;color:#7a5200;border-radius:12px;padding:10px 14px;margin-bottom:10px;font-size:14px">
+        <span id="past-banner-txt"></span>
+        <button class="btn btn-outline" style="width:auto;padding:6px 12px;font-size:12px" onclick="cancelPastSale()">Annuler</button>
+      </div>
+      <div style="text-align:right;margin-bottom:8px"><button class="btn btn-outline" id="past-open-btn" style="width:auto;padding:7px 14px;font-size:13px" onclick="openPastSale()">🕘 Vente à une date passée</button></div>
       <div class="card">
         <div class="cat-scroll" id="cat-tabs"></div>
         <div class="prod-search-wrap">
@@ -698,6 +703,25 @@ nav{display:none}
 
 </div>
 
+<!-- ===== MODALE VENTE À UNE DATE PASSÉE ===== -->
+<div class="overlay center hidden" id="past-overlay">
+  <div class="sheet" style="max-width:380px">
+    <h2>🕘 Vente à une date passée</h2>
+    <p style="text-align:center;color:var(--muted);font-size:13.5px;margin:8px 0 14px">Pour une vente payée par QR code ou carte, oubliée ou reçue après coup. L'espèces n'est pas disponible.</p>
+    <div class="field"><label>Date de la vente</label><input type="date" id="past-date"></div>
+    <div class="field" style="margin-top:10px"><label>Libellé</label>
+      <select id="past-label" onchange="document.getElementById('past-marche-field').style.display = this.value==='__marche__' ? 'block' : 'none'" style="width:100%;padding:10px;border:1.5px solid var(--line);border-radius:10px;font-size:14px">
+        <option value="livin">🧸 Dépôt Dr Livin</option>
+        <option value="hors">🏠 Vente hors marché</option>
+        <option value="__marche__">🏪 Un marché…</option>
+      </select>
+    </div>
+    <div class="field" id="past-marche-field" style="margin-top:10px;display:none"><label>Nom du marché</label><input type="text" id="past-marche" placeholder="Ex. : Rouvreux  →  Marché de Rouvreux" oninput="updateMarchePreview('past-marche','past-marche-preview')"><div id="past-marche-preview" style="font-size:12px;color:var(--violet);margin-top:4px"></div></div>
+    <button class="btn btn-primary" style="margin-top:14px" onclick="confirmPastSale()">Continuer</button>
+    <button class="btn btn-outline" style="margin-top:8px" onclick="closePastSale()">Annuler</button>
+  </div>
+</div>
+
 <!-- ===== MODALE PAIEMENT ===== -->
 <div class="overlay hidden" id="pay-overlay">
   <div class="sheet">
@@ -708,7 +732,7 @@ nav{display:none}
       <div class="pay-amt" id="pay-amt">0,00 €</div>
       <div id="partial-recap"></div>
       <div class="pay-methods">
-        <button class="pay-btn" onclick="startCash()">
+        <button class="pay-btn" id="pay-cash-btn" onclick="startCash()">
           <div class="ic esp">💶</div>
           <div class="tx"><b>Espèces</b><span>Liquide, avec calcul du rendu</span></div>
           <div class="arr">›</div>
@@ -1021,6 +1045,7 @@ nav{display:none}
       <div class="field" style="margin-bottom:8px"><label>Type de journée</label></div>
       <button type="button" class="btn btn-outline" id="dm-marche" style="margin-bottom:8px" onclick="pickDayMode('marche')">🏪 Marché</button>
       <button type="button" class="btn btn-outline" id="dm-hors" style="margin-bottom:8px" onclick="pickDayMode('hors')">🏠 Vente hors marché</button>
+      <button type="button" class="btn btn-outline" id="dm-livin" style="margin-bottom:8px" onclick="pickDayMode('livin')">🧸 Dépôt Dr Livin</button>
       <button type="button" class="btn btn-outline" id="dm-admin" style="margin-bottom:8px" onclick="pickDayMode('admin')">🗂 Administration</button>
       <div class="field" id="marche-field" style="margin-top:10px;display:none"><label>Nom du marché (obligatoire)</label><input type="text" id="marche-input" placeholder="Ex. : Tilff  →  Marché de Tilff" autocomplete="off" oninput="updateMarchePreview('marche-input','marche-preview')"><div id="marche-preview" style="font-size:13px;color:var(--violet);margin-top:6px;min-height:18px"></div></div>
     </div>
@@ -1285,6 +1310,7 @@ let countQty = {};
 let mvType = 'in';
 let payParts = [];
 let currentTicketRef = '';
+let pastSale = null; // {date, marche} tant que le mode est actif
 let currentZInfo = null; // {day, marche, mode} tant qu'un ticket de clôture Z est affiché (sinon null)
 let currentPdfFilename = ''; // nom de fichier complet (sans préfixe "recu-"), prioritaire s'il est défini — utilisé pour les clôtures Z
 let journalFilter = 'day';
@@ -1532,13 +1558,13 @@ window.ignoreRequiredClosure = function(){
 };
 
 /* Libellés fixes des journées (jamais saisis à la main → pas de variantes "Maison", "maison"...) */
-const LBL_HORS = 'Vente hors marché', LBL_ADMIN = 'Administration', LBL_TEST = 'Test';
+const LBL_HORS = 'Vente hors marché', LBL_ADMIN = 'Administration', LBL_TEST = 'Test', LBL_LIVIN = 'Dépôt Dr Livin';
 const SMALL_WORDS = new Set(['de','du','des','la','le','les','et','en','à','au','aux','sur','sous']);
 /* Met un nom de marché en forme : majuscule à chaque mot important, petits mots en minuscules,
    "marche" en tête de nom → "Marché". Les libellés fixes ne sont jamais modifiés. */
 function normalizeLabel(name){
   const t = (name||'').trim().replace(/\s+/g,' ');
-  if(!t || [LBL_HORS, LBL_ADMIN, LBL_TEST, 'Repos / Pas de marché'].includes(t)) return t;
+  if(!t || [LBL_HORS, LBL_ADMIN, LBL_TEST, LBL_LIVIN, 'Repos / Pas de marché'].includes(t)) return t;
   const cap = w => w ? w.charAt(0).toUpperCase()+w.slice(1) : w;
   const fixWord = (w, first)=>{
     const low = w.toLowerCase();
@@ -1557,7 +1583,7 @@ function marcheFullName(input){
   const t = (input||'').trim().replace(/\s+/g,' ');
   if(!t) return '';
   const fixed = normalizeLabel(t);
-  if([LBL_HORS, LBL_ADMIN, LBL_TEST, 'Repos / Pas de marché'].includes(fixed)) return fixed;
+  if([LBL_HORS, LBL_ADMIN, LBL_TEST, LBL_LIVIN, 'Repos / Pas de marché'].includes(fixed)) return fixed;
   const first = t.split(' ')[0].toLowerCase();
   if(/^(march[eé]|brocante|foire|braderie|salon|kermesse|f[eê]te|festival|bourse|expo|exposition|vide-?grenier)$/.test(first)) return fixed;
   let full;
@@ -1577,7 +1603,7 @@ window.updateMarchePreview = function(srcId, dstId){
 let dayMode = '';
 function isForcedTest(){ return typeof FORCE_TEST !== 'undefined' && FORCE_TEST; }
 function applyDayModeUI(){
-  ['marche','hors','admin'].forEach(k=>{
+  ['marche','hors','livin','admin'].forEach(k=>{
     const b = document.getElementById('dm-'+k);
     if(b) b.className = 'btn ' + (dayMode===k ? 'btn-primary' : 'btn-outline');
   });
@@ -1608,6 +1634,7 @@ window.confirmFond = async function(){
     marche = marcheFullName(document.getElementById('marche-input').value);
     if(!marche){ toast("Indique le nom du marché"); return; }
   } else if(dayMode==='hors') marche = LBL_HORS;
+  else if(dayMode==='livin') marche = LBL_LIVIN;
   else if(dayMode==='admin') marche = LBL_ADMIN;
   else marche = LBL_TEST;
   // Administration : pas de vente, le fond de caisse reste inchangé
@@ -2039,6 +2066,7 @@ window.closePay = function(){ document.getElementById('pay-overlay').classList.a
 
 function showPayChoice(){
   ['pay-cash','pay-qr','pay-sumup','pay-ing'].forEach(id=>document.getElementById(id).classList.add('hidden'));
+  document.getElementById('pay-cash-btn').style.display = pastSale ? 'none' : '';
   document.getElementById('pay-choice').classList.remove('hidden');
   const rem = payRemaining();
   document.getElementById('pay-amt').textContent = euro(rem);
@@ -2164,6 +2192,7 @@ window.startExternal = function(method){
   } else if(method==='carte-ing'){
     document.getElementById('pay-ing').classList.remove('hidden');
     document.getElementById('ing-amount').textContent = euro(payRemaining());
+    ingTry = 0;
     setTimeout(()=>launchIngSoftPOS(false), 250);
   } else {
     document.getElementById('pay-sumup').classList.remove('hidden');
@@ -2198,7 +2227,7 @@ window.copySumUpAmount = function(){
 function savePendingCart(){
   try{
     localStorage.setItem('sumup_pending', JSON.stringify({
-      cart, cartDiscount, payParts, marche: state.marche, ticketCounter: state.ticketCounter,
+      cart, cartDiscount, payParts, marche: state.marche, ticketCounter: state.ticketCounter, pastSale,
       ts: Date.now()
     }));
   }catch(e){}
@@ -2207,6 +2236,7 @@ function savePendingCart(){
 /* Ouvre l'app ING SoftPOS (Android). Pas de lien documenté pour pré-remplir le montant :
    il reste affiché en grand à l'écran. Play Store si l'app n'est pas installée. */
 const ING_SOFTPOS_PKG = 'be.ing.SoftPOS';
+let ingTry = 0; // essai en cours : chaque appui manuel passe à une autre méthode de lancement
 window.launchIngSoftPOS = function(manual){
   if(!/Android/i.test(navigator.userAgent)){
     if(manual) toast("Ouvre l'app ING SoftPOS sur ton téléphone Android");
@@ -2214,8 +2244,16 @@ window.launchIngSoftPOS = function(manual){
   }
   savePendingCart();
   const store = 'https://play.google.com/store/apps/details?id='+ING_SOFTPOS_PKG;
-  window.location.href = 'intent://#Intent;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;package='
-    + ING_SOFTPOS_PKG + ';S.browser_fallback_url=' + encodeURIComponent(store) + ';end';
+  const launcher = 'action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;package='+ING_SOFTPOS_PKG;
+  const variants = [
+    'intent:#Intent;'+launcher+';S.browser_fallback_url='+encodeURIComponent(store)+';end',
+    'android-app://'+ING_SOFTPOS_PKG,
+    'intent:#Intent;action=android.intent.action.MAIN;package='+ING_SOFTPOS_PKG+';end'
+  ];
+  const n = manual ? ingTry % variants.length : 0;
+  ingTry = manual ? ingTry + 1 : 1;
+  if(manual) toast('Ouverture ING — essai '+(n+1)+'/'+variants.length);
+  window.location.href = variants[n];
 };
 
 /* Lance l'app SumUp via le lien d'affiliation, avec le montant pré-rempli */
@@ -2254,6 +2292,7 @@ function restorePendingCart(){
     cartDiscount = pending.cartDiscount || null;
     payParts = pending.payParts || [];
     if(pending.marche) state.marche = pending.marche;
+    if(pending.pastSale && pending.pastSale.date){ pastSale = pending.pastSale; renderPastBanner(); }
     renderCart();
     toast('🛒 Panier en cours restauré');
   }
@@ -2316,6 +2355,50 @@ async function adjustStockForSale(items, delta){
   }
 }
 
+/* ============ VENTE À UNE DATE PASSÉE (QR / carte uniquement) ============ */
+function renderPastBanner(){
+  const b = document.getElementById('past-banner'); if(!b) return;
+  b.style.display = pastSale ? 'flex' : 'none';
+  if(pastSale) document.getElementById('past-banner-txt').textContent = '🕘 Vente datée du '+pastSale.date.split('-').reverse().join('/')+' · '+labelDisplay(pastSale.marche)+' · QR / carte uniquement';
+  const ob = document.getElementById('past-open-btn'); if(ob) ob.style.display = pastSale ? 'none' : '';
+}
+window.openPastSale = function(){
+  const d = new Date(); d.setDate(d.getDate()-1);
+  const y = d.toISOString().slice(0,10);
+  const inp = document.getElementById('past-date');
+  inp.max = y; inp.value = y;
+  document.getElementById('past-label').value = 'livin';
+  document.getElementById('past-marche-field').style.display = 'none';
+  document.getElementById('past-marche').value = ''; document.getElementById('past-marche-preview').textContent = '';
+  document.getElementById('past-overlay').classList.remove('hidden');
+};
+window.closePastSale = function(){ document.getElementById('past-overlay').classList.add('hidden'); };
+window.confirmPastSale = function(){
+  const date = document.getElementById('past-date').value;
+  if(!date || date >= todayStr()){ toast("Choisis une date avant aujourd'hui (sinon, fais une vente normale)"); return; }
+  const k = document.getElementById('past-label').value;
+  let marche;
+  if(k==='livin') marche = LBL_LIVIN;
+  else if(k==='hors') marche = LBL_HORS;
+  else { marche = marcheFullName(document.getElementById('past-marche').value); if(!marche){ toast("Indique le nom du marché"); return; } }
+  if(hasClosureFor(date) && !confirm("La clôture Z du "+date.split('-').reverse().join('/')+" existe déjà.\n\nLa vente QR / carte sera ajoutée à cette journée : tu pourras réimprimer la clôture depuis le Journal (elle se recalcule).\n\nContinuer ?")) return;
+  pastSale = {date, marche};
+  closePastSale(); renderPastBanner();
+  window.go('vente');
+  toast("Vente datée du "+date.split('-').reverse().join('/')+" — compose la vente puis encaisse en QR ou carte");
+};
+window.cancelPastSale = function(){ pastSale = null; renderPastBanner(); toast("Retour à la vente du jour"); };
+/* Après une vente datée : propose la clôture Z de cette date si elle n'existe pas encore (trace) */
+function offerClosureForPastSale(date, marche){
+  const dl = date.split('-').reverse().join('/');
+  if(hasClosureFor(date)){ toast("Clôture du "+dl+" existante : réimprime-la depuis le Journal pour l'actualiser"); return; }
+  setTimeout(()=>{
+    if(!confirm("Créer la clôture Z du "+dl+" (trace de cette journée) ?\n\nElle sera datée du "+dl+" et n'a aucun impact sur le tiroir-caisse.")) return;
+    markClosureDone(date, marche);
+    window.reprintZ(date, marche);
+  }, 600);
+}
+
 async function finalizeSale(){
   const total = cartTotal();
   state.ticketCounter += 1;
@@ -2324,7 +2407,7 @@ async function finalizeSale(){
   const saleMethod = methods.length > 1 ? 'mix' : methods[0];
   const sale = {
     id: Date.now(), num: state.ticketCounter, ref,
-    time: nowTime(), date: state.day, marche: state.marche || '',
+    time: nowTime(), date: pastSale ? pastSale.date : state.day, marche: pastSale ? pastSale.marche : (state.marche || ''),
     items: cart.map(l=>{
       const it = {name:l.name,price:l.price,qty:l.qty,baseName:l.baseName||l.name,variant:l.variant||null};
       const rev = asblUnitFor(l);
@@ -2337,6 +2420,8 @@ async function finalizeSale(){
     payments: payParts.slice(),
     extra: payParts.find(p=>p.method==='especes')?.extra || {},
   };
+  const wasPast = pastSale ? {date: pastSale.date, marche: pastSale.marche} : null;
+  if(wasPast) sale.enteredAt = {date: todayStr(), time: nowTime()}; // transparence : vente saisie après coup
   state.sales.push(sale);
   save();
   saveSale(sale);      // Firestore async (non bloquant)
@@ -2345,7 +2430,9 @@ async function finalizeSale(){
   closePay();
   showTicket(sale);
   cart=[]; payParts=[]; cartDiscount=null;
+  pastSale = null; renderPastBanner();
   renderCart(); renderHeaderKPIs();
+  if(wasPast) offerClosureForPastSale(wasPast.date, wasPast.marche);
 }
 
 
@@ -2436,6 +2523,7 @@ function buildSaleTicketBodyHTML(sale){
     </div>
     <div class="t-meta"><span>Reçu n°</span><span><b>${ref}</b></span></div>
     <div class="t-meta"><span>${sale.date.split('-').reverse().join('/')}</span><span>${sale.time}</span></div>
+    ${sale.enteredAt ? `<div class="t-meta" style="font-size:10px;font-style:italic"><span>Saisie après coup le</span><span>${sale.enteredAt.date.split('-').reverse().join('/')} ${sale.enteredAt.time}</span></div>` : ''}
     ${sale.marche ? `<div style="text-align:center;font-size:11px;color:#555;margin:2px 0">${esc(labelDisplay(sale.marche))}</div>` : ''}
     ${items}
     ${discountBlock}
@@ -3556,7 +3644,7 @@ function renderJournal(){
       const marcheTag = (groupes.length===1 && sale.marche) ? `<span style="font-size:10px;color:var(--violet);margin-left:4px">${esc(labelDisplay(sale.marche))}</span>` : '';
       div.innerHTML = `
         <div class="pill ${cls}">${ic}</div>
-        <div class="j-info"><div class="t">${esc(ref)} · ${esc(names)}${marcheTag}</div><div class="d">${sale.date.split('-').reverse().join('/')} ${sale.time} · ${METHOD_LABEL[sale.method]}</div></div>
+        <div class="j-info"><div class="t">${esc(ref)} · ${esc(names)}${marcheTag}</div><div class="d">${sale.date.split('-').reverse().join('/')} ${sale.time} · ${METHOD_LABEL[sale.method]}${sale.enteredAt ? ' · 🕘 saisie le '+sale.enteredAt.date.split('-').reverse().join('/')+' '+sale.enteredAt.time : ''}</div></div>
         <div class="amt">${euro(sale.total)}</div>${actions}`;
       box.appendChild(div);
     });
@@ -5378,8 +5466,8 @@ window.openLabelFix = function(){
 };
 window.onLabelOldChange = function(){
   const old = document.getElementById('label-old').value;
-  const others = (window._labelKeys||[]).filter(k=>k && k!==old && k!==LBL_HORS && k!==LBL_ADMIN);
-  const opts = [LBL_HORS, LBL_ADMIN].filter(k=>k!==old).concat(others);
+  const others = (window._labelKeys||[]).filter(k=>k && k!==old && k!==LBL_HORS && k!==LBL_ADMIN && k!==LBL_LIVIN);
+  const opts = [LBL_HORS, LBL_ADMIN, LBL_LIVIN].filter(k=>k!==old).concat(others);
   document.getElementById('label-new').innerHTML = opts.map(k=>`<option value="${esc(k)}">${esc(k)}</option>`).join('') + '<option value="__custom__">✏️ Autre nom…</option>';
   onLabelNewChange();
 };
