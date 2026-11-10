@@ -341,7 +341,7 @@ nav{display:none}
 <div id="gate">
   <div class="box">
     <div class="mark">Lylou-Vely</div>
-    <div class="sub">Caisse · Build 7.5</div>
+    <div class="sub">Caisse · Build 7.6</div>
     <input type="email" id="gate-email" placeholder="Email" autocomplete="email" value="infos@lylou-vely.be" style="letter-spacing:0">
     <input type="password" id="gate-pw" placeholder="Mot de passe" autocomplete="current-password">
     <button onclick="doLogin()">Connexion</button>
@@ -353,7 +353,7 @@ nav{display:none}
 <div id="app" class="hidden">
   <header>
     <div class="hdr-top">
-      <div class="title">Lylou-Vely<small>Caisse · Build 7.5</small></div>
+      <div class="title">Lylou-Vely<small>Caisse · Build 7.6</small></div>
       <div style="display:flex;gap:6px;align-items:center">
         <button class="refresh-btn" onclick="openSettings()" style="font-size:12px;padding:6px 10px;font-weight:600" title="Réglages">⚙︎</button>
         <button class="refresh-btn" onclick="doRefresh()" title="Recharger les données">🔄</button>
@@ -520,7 +520,7 @@ nav{display:none}
         <div class="big-total"><div class="k">Chiffre d'affaires</div><div class="v" id="jr-ca">0,00 €</div></div>
         <div class="summary">
           <div class="s"><div class="k">Espèces</div><div class="v" id="jr-esp">0,00 €</div></div>
-          <div class="s"><div class="k">QR Code</div><div class="v" id="jr-qr">0,00 €</div></div>
+          <div class="s"><div class="k">QR Code</div><div class="v" id="jr-qr">0,00 €</div><div id="jr-qr-bank" style="font-size:11px;color:var(--violet);margin-top:2px"></div></div>
           <div class="s"><div class="k">Carte</div><div class="v" id="jr-carte">0,00 €</div><div id="jr-sumup-fee" style="font-size:11px;color:#a15c00;margin-top:2px"></div></div>
         </div>
         <div class="summary" style="margin-top:0">
@@ -780,7 +780,7 @@ nav{display:none}
       </div>
       <p class="qr-steps">Le client scanne avec son app bancaire.<br>Le montant est pré-rempli — il n'a qu'à confirmer.<br><span id="qr-bank-txt">Virement instantané sur ton compte ING.</span></p>
       <button class="btn btn-outline" id="qr-switch" onclick="toggleQrBank()" style="width:auto;padding:6px 14px;font-size:12px;margin:0 auto 14px;display:block">QR ING ne fonctionne pas ? Afficher le QR CBC</button>
-      <button class="btn btn-primary" onclick="confirmExternal('qr')">Paiement confirmé ✓</button>
+      <button class="btn btn-primary" id="qr-confirm-btn" onclick="confirmExternal('qr')">Paiement confirmé ✓</button>
       <div class="confirm-refused">
         <button class="btn btn-outline" onclick="backToChoice()">Retour</button>
         <button class="btn btn-danger" onclick="backToChoice()">Refusé / Annulé</button>
@@ -904,6 +904,7 @@ nav{display:none}
     <h2>✏️ Corriger un libellé</h2>
     <p style="font-size:13px;color:var(--muted);text-align:center;margin-bottom:12px">Renomme un libellé dans tout l'historique (ventes, mouvements, clôtures Z). Les montants ne changent pas.</p>
     <div class="field"><label>Libellé à corriger</label><select id="label-old" onchange="onLabelOldChange()"></select></div>
+    <div class="field"><label>Limiter à une date</label><select id="label-date"></select></div>
     <div class="field"><label>Nouveau libellé</label><select id="label-new" onchange="onLabelNewChange()"></select></div>
     <div class="field" id="label-custom-field" style="display:none"><label>Autre nom</label><input type="text" id="label-custom" placeholder="Ex. : Tilff  →  Marché de Tilff" autocomplete="off" oninput="updateMarchePreview('label-custom','label-custom-preview')"><div id="label-custom-preview" style="font-size:13px;color:var(--violet);margin-top:6px;min-height:18px"></div></div>
     <div class="row-btns" style="margin-top:14px">
@@ -1208,6 +1209,27 @@ const DEFAULT_PRODUCTS = [
 const COINS = [0.01,0.02,0.05,0.10,0.20,0.50,1,2];
 const BILLS = [5,10,20,50,100,200,500];
 const METHOD_LABEL = {especes:'Espèces', qr:'QR Code', carte:'Carte', mix:'Mixte'};
+const QR_BANK_LABEL = {ing:'ING', cbc:'CBC'};
+/* Ventilation des paiements QR par compte bancaire ({ing, cbc, none}) ; « none » = anciennes ventes sans compte enregistré */
+function qrBankBreakdown(sales){
+  const r = {ing:0, cbc:0, none:0};
+  sales.forEach(s=>{
+    if(s.cancelled) return;
+    if(s.payments) s.payments.forEach(p=>{ if(p.method==='qr') r[QR_BANK_LABEL[p.bank] ? p.bank : 'none'] += p.amount; });
+    else if(s.method==='qr') r.none += s.total;
+  });
+  return r;
+}
+/* Texte « ING 40,00 € · CBC 15,00 € » ; vide s'il n'y a aucun compte enregistré */
+function qrBankText(sales){
+  const b = qrBankBreakdown(sales);
+  if(b.ing<=0 && b.cbc<=0) return '';
+  const parts = [];
+  if(b.ing>0) parts.push(`ING ${euro(b.ing)}`);
+  if(b.cbc>0) parts.push(`CBC ${euro(b.cbc)}`);
+  if(b.none>0) parts.push(`non précisé ${euro(b.none)}`);
+  return parts.join(' · ');
+}
 
 /* --- SumUp : commission & lien direct --- */
 const SUMUP_RATE = 0.0169; // 1,69% — confirmé par rapport de versement réel (35€ vendus, 0,59€ de frais). Remettre à 0.0275 si retour au terminal.
@@ -2170,6 +2192,7 @@ function applyQrBank(){
   document.getElementById('qr-title').textContent = 'Paiement QR — Virement ' + (ing?'ING':'CBC');
   document.getElementById('qr-bank-txt').textContent = 'Virement instantané sur ton compte ' + (ing?'ING.':'CBC.');
   document.getElementById('qr-switch').textContent = ing ? 'QR ING ne fonctionne pas ? Afficher le QR CBC' : '← Revenir au QR ING';
+  document.getElementById('qr-confirm-btn').textContent = 'Paiement confirmé ✓ (compte ' + (ing?'ING':'CBC') + ')';
 }
 window.toggleQrBank = function(){
   qrBank = qrBank==='ing' ? 'cbc' : 'ing';
@@ -2318,6 +2341,7 @@ function checkSumUpCallback(){
 window.confirmExternal = function(method, provider, cardType){
   const rem = payRemaining();
   const part = {method, amount:rem};
+  if(method==='qr') part.bank = qrBank; // compte réellement affiché au moment de la validation ('ing' | 'cbc')
   if(method==='carte'){ part.provider = provider || 'sumup'; if(cardType) part.cardType = cardType; }
   payParts.push(part);
   finalizeSale();
@@ -2488,7 +2512,7 @@ function buildSaleTicketBodyHTML(sale){
     <div class="t-sub"><span>Sous-total HTVA</span><span>${euro(totalHTVA)}</span></div>
     <div class="t-sub"><span>TVA 21 %</span><span>${euro(totalTVA)}</span></div>`;
 
-  const paymentLabel = (p)=> p.method==='carte' ? `Carte (${PROVIDER_LABEL[normalizeProvider(p)]})` : METHOD_LABEL[p.method];
+  const paymentLabel = (p)=> p.method==='carte' ? `Carte (${PROVIDER_LABEL[normalizeProvider(p)]})` : (p.method==='qr' && QR_BANK_LABEL[p.bank]) ? `QR Code (${QR_BANK_LABEL[p.bank]})` : METHOD_LABEL[p.method];
   let payInfo = '';
   if(sale.payments && sale.payments.length > 1){
     payInfo = sale.payments.map(p=>
@@ -3507,6 +3531,7 @@ function renderJournal(){
   document.getElementById('jr-ca').textContent = euro(ca);
   document.getElementById('jr-esp').textContent = euro(esp);
   document.getElementById('jr-qr').textContent = euro(qr);
+  document.getElementById('jr-qr-bank').textContent = qr>0 ? qrBankText(s) : '';
   document.getElementById('jr-carte').textContent = euro(carte);
   const jrFee = document.getElementById('jr-sumup-fee');
   if(carte>0){
@@ -5067,6 +5092,7 @@ function buildZTicketHTML(day, marche, ca, esp, qr, carte, cancelledN, theo, inT
     <div class="t-sep"></div>
     <div class="t-item"><span>Espèces</span><span>${euro(esp)}</span></div>
     <div class="t-item"><span>QR Code</span><span>${euro(qr)}</span></div>
+    ${(()=>{ const t=qrBankText(valid); return t ? `<div class="t-sub"><span>dont ${t}</span><span></span></div>` : ''; })()}
     <div class="t-item"><span>Carte</span><span>${euro(carte)}</span></div>
     ${(()=>{ const bd=cardBreakdown(valid); let h='';
       if(bd.sumup.amount>0) h+=`<div class="t-sub" style="color:#a15c00"><span>dont commission SumUp</span><span>−${euro(bd.sumup.commission)}</span></div>`;
@@ -5452,6 +5478,12 @@ function collectLabels(){
   return map;
 }
 const labelText = l => l || '(sans marché)';
+/* Dates (JJ/MM/AAAA) où un libellé est utilisé, pour limiter la correction à un seul jour */
+function labelDates(l){
+  const set = new Set();
+  [state.sales, state.movements, state.closures].forEach(arr => arr.forEach(x => { if((x.marche||'')===l && x.date) set.add(x.date); }));
+  return [...set].sort().reverse();
+}
 window.openLabelFix = function(){
   const map = collectLabels();
   const keys = Object.keys(map).sort((a,b)=>labelText(a).localeCompare(labelText(b),'fr'));
@@ -5465,6 +5497,8 @@ window.openLabelFix = function(){
 };
 window.onLabelOldChange = function(){
   const old = document.getElementById('label-old').value;
+  document.getElementById('label-date').innerHTML = '<option value="">Toutes les dates</option>' +
+    labelDates(old).map(d=>`<option value="${d}">${d.split('-').reverse().join('/')}</option>`).join('');
   const others = (window._labelKeys||[]).filter(k=>k && k!==old && k!==LBL_HORS && k!==LBL_ADMIN && k!==LBL_LIVIN);
   const opts = [LBL_HORS, LBL_ADMIN, LBL_LIVIN].filter(k=>k!==old).concat(others);
   document.getElementById('label-new').innerHTML = opts.map(k=>`<option value="${esc(k)}">${esc(k)}</option>`).join('') + '<option value="__custom__">✏️ Autre nom…</option>';
@@ -5481,18 +5515,23 @@ window.applyLabelFix = async function(){
   if(newL==='__custom__') newL = marcheFullName(document.getElementById('label-custom').value);
   if(!newL){ toast("Indique le nouveau libellé"); return; }
   if(newL===oldL){ toast("Le libellé est identique"); return; }
-  const c = collectLabels()[oldL] || {sales:0,mvs:0,cl:0};
-  if(!confirm(`Renommer « ${labelText(oldL)} » en « ${newL} » ?\n\n${c.sales} vente(s), ${c.mvs} mouvement(s), ${c.cl} clôture(s) Z concernés.\nLes montants ne changent pas.`)) return;
+  const onlyDate = document.getElementById('label-date').value;
+  const inScope = x => (x.marche||'')===oldL && (!onlyDate || x.date===onlyDate);
+  const c = onlyDate
+    ? {sales:state.sales.filter(inScope).length, mvs:state.movements.filter(inScope).length, cl:state.closures.filter(inScope).length}
+    : (collectLabels()[oldL] || {sales:0,mvs:0,cl:0});
+  const quand = onlyDate ? ` (uniquement le ${onlyDate.split('-').reverse().join('/')})` : '';
+  if(!confirm(`Renommer « ${labelText(oldL)} » en « ${newL} »${quand} ?\n\n${c.sales} vente(s), ${c.mvs} mouvement(s), ${c.cl} clôture(s) Z concernés.\nLes montants ne changent pas.`)) return;
   toast("Correction en cours…");
-  await renameLabelCore(oldL, newL);
+  await renameLabelCore(oldL, newL, onlyDate);
   save();
   closeLabelFix();
   renderAll(); renderStats();
   toast(`✓ Libellé corrigé : ${c.sales} vente(s), ${c.mvs} mouvement(s), ${c.cl} clôture(s)`);
 };
 /* Cœur du renommage : ventes, mouvements (+ motif des versements de clôture), clôtures Z, journée en cours */
-async function renameLabelCore(oldL, newL){
-  const same = x => (x.marche||'')===oldL;
+async function renameLabelCore(oldL, newL, onlyDate){
+  const same = x => (x.marche||'')===oldL && (!onlyDate || x.date===onlyDate);
   for(const sale of state.sales){
     if(!same(sale)) continue;
     sale.marche = newL; await saveSale(sale);
@@ -5517,7 +5556,7 @@ async function renameLabelCore(oldL, newL){
   }
   // évite les doublons de clôture (même date, même libellé) après une fusion
   state.closures = state.closures.filter((x,i,arr)=>arr.findIndex(y=>y.date===x.date && (y.marche||'')===(x.marche||''))===i);
-  if((state.marche||'')===oldL){ state.marche = newL; await saveConfig(); }
+  if(!onlyDate && (state.marche||'')===oldL){ state.marche = newL; await saveConfig(); }
 }
 
 /* ---- Normaliser tous les libellés d'un coup (aperçu puis confirmation) ---- */
