@@ -170,13 +170,14 @@
     <button class="nav-item" data-panel="caisse" onclick="window.showPanel('caisse')"><span class="ic">🛒</span> Caisse</button>
     <button class="nav-item" data-panel="etsy" onclick="window.showPanel('etsy')"><span class="ic">📄</span> Etsy → PDF</button>
     <button class="nav-item" data-panel="notedfrais" onclick="window.showPanel('notedfrais')"><span class="ic">🧾</span> Note de frais</button>
+    <button class="nav-item" data-panel="facturation" onclick="window.showPanel('facturation')"><span class="ic">📑</span> Facturation client</button>
     <div class="nav-section">🌐 Web &amp; visibilité</div>
     <button class="nav-item" data-panel="marches" onclick="window.showPanel('marches')"><span class="ic">📍</span> Marchés</button>
     <button class="nav-item" data-panel="avis" onclick="window.showPanel('avis')"><span class="ic">⭐</span> Avis Google</button>
 
     <div class="sidebar-foot">
       <button class="logout-btn" onclick="window.doLogout()">↩ Déconnexion</button>
-      <div style="text-align:center;margin-top:10px;font-size:10px;opacity:.5;letter-spacing:.5px">Build 7.4</div>
+      <div style="text-align:center;margin-top:10px;font-size:10px;opacity:.5;letter-spacing:.5px">Build 7.5</div>
     </div>
   </div>
 
@@ -658,6 +659,86 @@
       </div>
     </div>
 
+    <!-- ===== Facturation client ===== -->
+    <div class="panel" id="panel-facturation">
+      <div class="panel-title">Facturation client</div>
+      <div class="panel-sub">Facture PDF numérotée (LVmarche-année-numéro) à partir d'un ticket de caisse, déjà marquée « PAYÉE »</div>
+
+      <div class="card">
+        <h3>1 · Client</h3>
+        <div class="form-group">
+          <label>Client mémorisé</label>
+          <select id="fct-client-sel" class="form-input" onchange="window.fctPickClient()"><option value="">— Nouveau client —</option></select>
+        </div>
+        <div class="form-group">
+          <label>N° de TVA (recherche automatique du nom et de l'adresse)</label>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <input type="text" id="fct-tva" class="form-input" style="flex:1;min-width:200px" placeholder="BE0123456789" onkeydown="if(event.key==='Enter'){event.preventDefault();window.fctLookupVat();}">
+            <button type="button" class="btn btn-ghost" onclick="window.fctLookupVat()">🔎 Rechercher</button>
+          </div>
+          <div id="fct-vat-msg" style="font-size:12.5px;margin-top:6px;color:var(--muted)"></div>
+        </div>
+        <div class="form-group">
+          <label>Nom / société *</label>
+          <input type="text" id="fct-nom" class="form-input">
+        </div>
+        <div class="form-group">
+          <label>Adresse</label>
+          <textarea id="fct-adresse" class="form-input" rows="3" placeholder="Rue et numéro&#10;Code postal Ville&#10;Pays"></textarea>
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+          <label style="display:flex;align-items:center;gap:8px;font-weight:500;cursor:pointer">
+            <input type="checkbox" id="fct-save-client" checked> Mémoriser ce client
+          </label>
+          <button type="button" class="btn btn-ghost" id="fct-del-client" style="display:none;margin-top:8px" onclick="window.fctDeleteClient()">🗑️ Supprimer ce client mémorisé</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>2 · Ticket</h3>
+        <div class="form-group">
+          <label>N° de ticket (ex. LV-0135 ou simplement 135)</label>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <input type="text" id="fct-ticket" class="form-input" style="flex:1;min-width:200px" placeholder="LV-0135" onkeydown="if(event.key==='Enter'){event.preventDefault();window.fctLoadTicket();}">
+            <button type="button" class="btn btn-ghost" onclick="window.fctLoadTicket()">📥 Charger</button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>…ou importer le PDF du ticket (le n° est lu dans le nom du fichier ou le texte, puis la vente est relue dans la caisse)</label>
+          <input type="file" id="fct-pdf" accept=".pdf,application/pdf" onchange="window.fctImportPdf(event)">
+        </div>
+        <div id="fct-ticket-msg" style="font-size:12.5px;color:var(--muted)"></div>
+      </div>
+
+      <div class="card">
+        <h3>3 · Lignes de la facture</h3>
+        <div id="fct-lines"></div>
+        <button type="button" class="btn btn-ghost" style="margin-top:8px" onclick="window.fctAddLine()">＋ Ajouter une ligne</button>
+        <div class="form-group" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-top:16px">
+          <div><label>Date de vente / paiement</label><input type="date" id="fct-date" class="form-input"></div>
+          <div><label>Mode de paiement</label>
+            <select id="fct-pay" class="form-input">
+              <option value="Espèces">Espèces</option>
+              <option value="Carte bancaire">Carte bancaire</option>
+              <option value="QR code (Bancontact)">QR code (Bancontact)</option>
+              <option value="Paiement mixte">Paiement mixte</option>
+            </select></div>
+          <div><label>Taux de TVA (%)</label><input type="number" id="fct-rate" class="form-input" value="21" min="0" step="1" oninput="window.fctRenderLines()"></div>
+        </div>
+        <div id="fct-totals" style="margin-top:12px;padding:12px 14px;background:var(--violet-wash);border-radius:10px;font-size:14px"></div>
+      </div>
+
+      <div class="card">
+        <button class="btn btn-primary" id="fct-btn-generate" onclick="window.fctGenerate()">📥 Générer la facture PDF</button>
+        <div id="fct-gen-msg" style="font-size:12.5px;margin-top:8px;color:var(--muted)">Le numéro est attribué automatiquement au moment de la génération.</div>
+      </div>
+
+      <div class="card">
+        <h3>Factures émises</h3>
+        <div id="fct-history" style="font-size:13.5px;color:var(--muted)">Aucune facture pour l'instant.</div>
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -666,7 +747,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebas
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
 import {
   getFirestore, collection, addDoc, updateDoc, deleteDoc, doc,
-  onSnapshot, query, orderBy, serverTimestamp, getDoc, setDoc
+  onSnapshot, query, orderBy, serverTimestamp, getDoc, setDoc, getDocs, where, runTransaction
 } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
 import {
   getStorage, ref, uploadBytes, getDownloadURL, deleteObject
@@ -709,6 +790,52 @@ window.ndfPersistFournisseurs = async function(items){
   await setDoc(fournisseursDocRef, { items, updatedAt: new Date().toISOString() });
 };
 
+/* ---- Facturation client : clients mémorisés, ventes de la caisse, numérotation atomique ---- */
+const clientsDocRef = doc(db, "lylou_vely", "clients");
+const factCounterRef = doc(db, "lylou_vely", "facturation");
+const facturesCol = collection(db, "lylou_vely", "facturation", "factures");
+let clientsUnsub = null, facturesUnsub = null;
+window._fctClients = [];
+window._fctInvoices = [];
+function startFacturation(){
+  if(!clientsUnsub) clientsUnsub = onSnapshot(clientsDocRef, snap=>{
+    window._fctClients = snap.exists() ? (snap.data().items || []) : [];
+    if(window.fctRenderClients) window.fctRenderClients();
+  }, err=>console.warn('Clients :', err.message));
+  if(!facturesUnsub) facturesUnsub = onSnapshot(query(facturesCol, orderBy('createdAt','desc')), snap=>{
+    window._fctInvoices = snap.docs.map(d=>d.data());
+    if(window.fctRenderHistory) window.fctRenderHistory();
+  }, err=>console.warn('Factures :', err.message));
+}
+function stopFacturation(){
+  if(clientsUnsub){ clientsUnsub(); clientsUnsub = null; }
+  if(facturesUnsub){ facturesUnsub(); facturesUnsub = null; }
+  window._fctClients = []; window._fctInvoices = [];
+  if(window.fctRenderClients) window.fctRenderClients();
+  if(window.fctRenderHistory) window.fctRenderHistory();
+}
+window.fctPersistClients = async function(items){
+  await setDoc(clientsDocRef, { items, updatedAt: new Date().toISOString() });
+};
+window.fctFindSale = async function(ref){
+  const snap = await getDocs(query(collection(db, "lylou_vely", "caisse_prod", "sales"), where('ref','==',ref)));
+  return snap.empty ? null : snap.docs[0].data();
+};
+/* Attribue le numéro suivant de l'année et enregistre la facture dans la même transaction (aucun trou, aucun doublon) */
+window.fctIssueInvoice = async function(inv){
+  const year = String(inv.year);
+  return runTransaction(db, async tx=>{
+    const cs = await tx.get(factCounterRef);
+    const counters = cs.exists() ? (cs.data().counters || {}) : {};
+    const seq = (counters[year] || 0) + 1;
+    const number = 'LVmarche-' + year + '-' + String(seq).padStart(4,'0');
+    const full = Object.assign({}, inv, { number, seq, createdAt: new Date().toISOString() });
+    tx.set(factCounterRef, { counters: Object.assign({}, counters, { [year]: seq }), updatedAt: full.createdAt });
+    tx.set(doc(db, "lylou_vely", "facturation", "factures", number), full);
+    return full;
+  });
+};
+
 /* ---- Auth ---- */
 window.doLogin = async function(){
   const email = document.getElementById('gate-email').value.trim();
@@ -739,12 +866,14 @@ onAuthStateChanged(auth, user=>{
     document.getElementById('iframe-caisse').src = 'caisse.html';
     document.getElementById('iframe-fidelite').src = 'admin-fidelite.html';
     startFournisseurs();
+    startFacturation();
   } else {
     document.getElementById('gate').classList.remove('hidden');
     document.getElementById('app').classList.remove('visible');
     document.getElementById('iframe-caisse').src = '';
     document.getElementById('iframe-fidelite').src = '';
     stopFournisseurs();
+    stopFacturation();
   }
 });
 
@@ -2540,6 +2669,296 @@ async function ndfGenerateTransfert() {
 
   doc.save(`justificatif_transfert_${from.nom}-vers-${to.nom}_${yr}-${mo}-${dy}.pdf`);
 }
+
+/* ================= FACTURATION CLIENT ================= */
+const fct = { lines: [], ticketRef: '', sale: null };
+const fctEl = id => document.getElementById(id);
+const fctMoney = c => (c/100).toFixed(2).replace('.',',').replace(/\B(?=(\d{3})+(?!\d))/g,' ') + ' €';
+const fctToday = () => { const d = new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); };
+const fctFrDate = iso => { const [y,m,d] = String(iso).split('-'); return `${d}/${m}/${y}`; };
+const fctNormVat = v => String(v||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
+
+/* Calcul en centimes : TVA sur le total, arrondi réparti sur la dernière ligne pour que tout concorde */
+function fctCompute(lines, rate){
+  const k = 1 + (parseFloat(rate)||0)/100;
+  const rows = lines.map(l => {
+    const qty = parseFloat(l.qty)||0;
+    const ttc = Math.round((parseFloat(l.ttc)||0) * qty * 100);
+    return { name: l.name, qty, ttc, ht: Math.round(ttc / k) };
+  });
+  const totalTtc = rows.reduce((a,r)=>a+r.ttc, 0);
+  const totalHt = Math.round(totalTtc / k);
+  if(rows.length){
+    const diff = totalHt - rows.reduce((a,r)=>a+r.ht, 0);
+    rows[rows.length-1].ht += diff;
+  }
+  rows.forEach(r => { r.unitHt = r.qty ? r.ht / r.qty : r.ht; });
+  return { rows, totalTtc, totalHt, tva: totalTtc - totalHt };
+}
+
+/* ---- Clients mémorisés ---- */
+window.fctRenderClients = function(){
+  const sel = fctEl('fct-client-sel'); if(!sel) return;
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">— Nouveau client —</option>' + window._fctClients.map((c,i) =>
+    `<option value="${i}">${ndfEsc(c.nom)}${c.tva ? ' · ' + ndfEsc(c.tva) : ''}</option>`).join('');
+  sel.value = (cur && window._fctClients[cur]) ? cur : '';
+  fctEl('fct-del-client').style.display = sel.value !== '' ? '' : 'none';
+};
+window.fctPickClient = function(){
+  const i = fctEl('fct-client-sel').value;
+  fctEl('fct-del-client').style.display = i !== '' ? '' : 'none';
+  if(i === '') return;
+  const c = window._fctClients[i];
+  fctEl('fct-tva').value = c.tva || ''; fctEl('fct-nom').value = c.nom || ''; fctEl('fct-adresse').value = c.adresse || '';
+  fctEl('fct-vat-msg').textContent = '';
+};
+window.fctDeleteClient = async function(){
+  const i = fctEl('fct-client-sel').value; if(i === '') return;
+  const c = window._fctClients[i];
+  if(!confirm('Supprimer le client « ' + c.nom + ' » de la liste mémorisée ?')) return;
+  await window.fctPersistClients(window._fctClients.filter((_,k) => k !== +i));
+  fctEl('fct-client-sel').value = '';
+};
+async function fctSaveClient(c){
+  const list = window._fctClients.slice();
+  const key = fctNormVat(c.tva);
+  const idx = list.findIndex(x => (key && fctNormVat(x.tva) === key) || x.nom.toLowerCase() === c.nom.toLowerCase());
+  if(idx >= 0) list[idx] = c; else list.push(c);
+  list.sort((a,b) => a.nom.localeCompare(b.nom, 'fr'));
+  await window.fctPersistClients(list);
+}
+
+/* ---- Recherche TVA (VIES, Commission européenne) ---- */
+window.fctLookupVat = async function(){
+  const msg = fctEl('fct-vat-msg');
+  let v = fctNormVat(fctEl('fct-tva').value);
+  if(!v){ msg.textContent = 'Tape un numéro de TVA.'; return; }
+  const known = window._fctClients.findIndex(c => fctNormVat(c.tva) === v);
+  if(known >= 0){ fctEl('fct-client-sel').value = String(known); window.fctPickClient(); msg.textContent = '✅ Client déjà mémorisé.'; return; }
+  let cc = v.slice(0,2), num = v.slice(2);
+  if(/^\d/.test(v)){ cc = 'BE'; num = v; }
+  if(cc === 'BE' && num.length === 9) num = '0' + num;
+  fctEl('fct-tva').value = cc + num;
+  msg.textContent = 'Recherche en cours…';
+  try{
+    const ctl = new AbortController(); const to = setTimeout(() => ctl.abort(), 12000);
+    const r = await fetch(`https://ec.europa.eu/taxation_customs/vies/rest-api/ms/${cc}/vat/${num}`, { signal: ctl.signal });
+    clearTimeout(to);
+    if(!r.ok) throw new Error('HTTP ' + r.status);
+    const d = await r.json();
+    if(d.isValid === false || d.valid === false){ msg.textContent = '⚠️ Numéro non valide selon VIES — vérifie-le ou complète à la main.'; return; }
+    const clean = t => (t && t.trim() !== '---') ? t.trim() : '';
+    const nom = clean(d.name), adr = clean(d.address);
+    if(nom) fctEl('fct-nom').value = nom;
+    if(adr) fctEl('fct-adresse').value = adr.split(/\n+/).map(x => x.trim()).filter(Boolean).join('\n');
+    msg.textContent = (nom || adr) ? '✅ Numéro valide — nom et adresse remplis (vérifie-les).' : '✅ Numéro valide, mais VIES ne communique pas le nom/adresse : complète à la main.';
+  }catch(e){
+    msg.textContent = '⚠️ Recherche automatique impossible (' + (e.name === 'AbortError' ? 'délai dépassé' : e.message) + ') : complète le nom et l\'adresse à la main.';
+  }
+};
+
+/* ---- Ticket ---- */
+function fctNormRef(t){
+  const s = String(t||'').trim().toUpperCase();
+  const m = s.match(/^(LV|TEST)?[-\s]*0*(\d{1,5})$/);
+  if(!m) return '';
+  return (m[1] || 'LV') + '-' + m[2].padStart(4,'0');
+}
+const FCT_PAY = { especes:'Espèces', carte:'Carte bancaire', qr:'QR code (Bancontact)', mix:'Paiement mixte' };
+
+window.fctLoadTicket = async function(){
+  const msg = fctEl('fct-ticket-msg');
+  const ref = fctNormRef(fctEl('fct-ticket').value);
+  if(!ref){ msg.textContent = '⚠️ Numéro de ticket invalide (ex. LV-0135).'; return; }
+  if(ref.startsWith('TEST-')){ msg.textContent = '⚠️ Un ticket de test ne peut pas être facturé.'; return; }
+  fctEl('fct-ticket').value = ref;
+  msg.textContent = 'Lecture de la vente…';
+  try{
+    const sale = await window.fctFindSale(ref);
+    if(!sale){ msg.textContent = '⚠️ Ticket ' + ref + ' introuvable dans la caisse. Saisis les lignes à la main ci-dessous.'; return; }
+    fct.ticketRef = ref; fct.sale = sale;
+    fct.lines = (sale.items || []).map(it => ({ name: it.name, qty: it.qty || 1, ttc: it.price }));
+    if(sale.discount > 0) fct.lines.push({ name: 'Remise', qty: 1, ttc: -sale.discount });
+    if(sale.date) fctEl('fct-date').value = sale.date;
+    const pays = (sale.payments || []).map(p => p.method);
+    const uniq = [...new Set(pays)];
+    const meth = uniq.length > 1 ? 'mix' : (uniq[0] || sale.method);
+    if(FCT_PAY[meth]) fctEl('fct-pay').value = FCT_PAY[meth];
+    window.fctRenderLines();
+    const calc = fctCompute(fct.lines, fctEl('fct-rate').value);
+    const diff = Math.round((sale.total||0)*100) - calc.totalTtc;
+    msg.textContent = '✅ Ticket ' + ref + ' chargé (' + fctFrDate(sale.date) + ' · ' + fctMoney(calc.totalTtc) + ' TVAC).' +
+      (diff ? ' ⚠️ Écart de ' + fctMoney(Math.abs(diff)) + ' avec le total du ticket : vérifie les lignes.' : '');
+  }catch(e){
+    msg.textContent = '⚠️ Lecture impossible : ' + e.message;
+  }
+};
+
+window.fctImportPdf = async function(ev){
+  const f = ev.target.files && ev.target.files[0]; if(!f) return;
+  const msg = fctEl('fct-ticket-msg');
+  const rx = /(LV|TEST)[-\s_]?(\d{3,5})/i;
+  let m = f.name.match(rx);
+  if(!m){
+    try{
+      const lines = await ndfPdfLines(await f.arrayBuffer());
+      m = lines.join('\n').match(rx);
+    }catch(e){ /* PDF sans texte (image) : on ignore */ }
+  }
+  ev.target.value = '';
+  if(!m){ msg.textContent = '⚠️ Numéro de ticket non détecté dans ce PDF : tape-le à la main.'; return; }
+  fctEl('fct-ticket').value = m[1].toUpperCase() + '-' + m[2];
+  window.fctLoadTicket();
+};
+
+/* ---- Lignes ---- */
+window.fctAddLine = function(){ fctSyncLines(); fct.lines.push({ name:'', qty:1, ttc:0 }); window.fctRenderLines(); };
+window.fctDelLine = function(i){ fctSyncLines(); fct.lines.splice(i,1); window.fctRenderLines(); };
+function fctSyncLines(){
+  const box = fctEl('fct-lines'); if(!box) return;
+  box.querySelectorAll('[data-fl]').forEach(r => {
+    const i = +r.dataset.fl; if(!fct.lines[i]) return;
+    fct.lines[i] = { name: r.querySelector('.fl-n').value, qty: r.querySelector('.fl-q').value, ttc: r.querySelector('.fl-p').value };
+  });
+}
+window.fctRenderLines = function(){
+  const box = fctEl('fct-lines'); if(!box) return;
+  if(!fct.lines.length) fct.lines.push({ name:'', qty:1, ttc:0 });
+  box.innerHTML = fct.lines.map((l,i) => `
+    <div data-fl="${i}" style="display:grid;grid-template-columns:1fr 70px 110px 36px;gap:8px;margin-bottom:8px;align-items:center">
+      <input type="text" class="form-input fl-n" value="${ndfEsc(l.name)}" placeholder="Description" oninput="window.fctUpdTotals()">
+      <input type="number" class="form-input fl-q" value="${ndfEsc(l.qty)}" min="1" step="1" title="Quantité" oninput="window.fctUpdTotals()">
+      <input type="number" class="form-input fl-p" value="${ndfEsc(l.ttc)}" step="0.01" title="Prix unitaire TVAC (€)" oninput="window.fctUpdTotals()">
+      <button type="button" class="btn btn-ghost" style="padding:6px" onclick="window.fctDelLine(${i})" title="Supprimer">✕</button>
+    </div>`).join('') + '<div style="font-size:11.5px;color:var(--muted)">Description · Quantité · Prix unitaire TVAC (€)</div>';
+  window.fctUpdTotals();
+};
+window.fctUpdTotals = function(){
+  fctSyncLines();
+  const c = fctCompute(fct.lines, fctEl('fct-rate').value);
+  fctEl('fct-totals').innerHTML =
+    `Total HTVA : <b>${fctMoney(c.totalHt)}</b> &nbsp;·&nbsp; TVA ${ndfEsc(fctEl('fct-rate').value||0)} % : <b>${fctMoney(c.tva)}</b> &nbsp;·&nbsp; Total TVAC : <b>${fctMoney(c.totalTtc)}</b>`;
+};
+
+/* ---- PDF ---- */
+async function fctBuildPdf(inv){
+  const { jsPDF } = window.jspdf;
+  const ent = Object.assign({}, NDF_ENT.zen, { nom:'Zen-Connect SRL', societe:'Zen-Connect SRL' });
+  const logo = await ndfLoadLogo(NDF_ENT.zen.logo);
+  const doc = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
+  const PW = doc.internal.pageSize.getWidth();
+  const money = c => (c/100).toFixed(2).replace('.',',').replace(/\B(?=(\d{3})+(?!\d))/g,' ') + ' EUR';
+  const calc = fctCompute(inv.lines, inv.rate);
+
+  ndfDrawHeader(doc, PW, ent, logo, 'Facture', 'N° ' + inv.number + '  ·  Lylou-Vely', fctFrDate(inv.date));
+
+  const adr = (inv.customer.adresse || '').split(/\n+/).filter(Boolean);
+  const cLines = [inv.customer.nom, ...adr, inv.customer.tva ? 'TVA : ' + inv.customer.tva : ''];
+  const h = Math.max(50, 16 + cLines.filter(Boolean).length * 5.4 + 6);
+  let y = 48;
+  ndfDrawBloc(doc, 12, y, ent, 'ÉMETTEUR', ['Zen-Connect SRL (Lylou-Vely)', NDF_ADRESSE, 'TVA : ' + NDF_TVA, 'Tél. : ' + NDF_TEL, 'infos@lylou-vely.be'], h);
+  ndfDrawBloc(doc, 110, y, ent, 'CLIENT', cLines, h);
+  y += h + 8;
+
+  doc.setFontSize(8); doc.setFont('helvetica','normal'); doc.setTextColor(...NDF_MU);
+  doc.text(`Facture ${inv.number}  ·  Date : ${fctFrDate(inv.date)}  ·  Vente du ${fctFrDate(inv.saleDate)}` + (inv.ticketRef ? `  ·  Ticket ${inv.ticketRef}` : ''), 14, y);
+  y += 5;
+
+  doc.autoTable({
+    startY: y,
+    head: [['Description', 'Qté', 'PU HTVA', 'TVA', 'Total HTVA']],
+    body: calc.rows.map(r => [r.name, String(r.qty), money(Math.round(r.unitHt)), inv.rate + ' %', money(r.ht)]),
+    headStyles:{ fillColor:ent.c1, textColor:NDF_WH, fontSize:9, fontStyle:'bold' },
+    bodyStyles:{ fontSize:9 },
+    columnStyles:{ 1:{ halign:'center', cellWidth:14 }, 2:{ halign:'right', cellWidth:28 }, 3:{ halign:'center', cellWidth:16 }, 4:{ halign:'right', cellWidth:30, fontStyle:'bold' } },
+    margin:{ left:14, right:14 }, theme:'grid'
+  });
+
+  let ty = doc.lastAutoTable.finalY + 8;
+  if(ty > 235){ doc.addPage(); ty = 20; }
+  const rx = PW - 14, lx = PW - 14 - 70;
+  doc.setFontSize(9.5); doc.setFont('helvetica','normal'); doc.setTextColor(60,50,75);
+  doc.text('Total HTVA', lx, ty); doc.text(money(calc.totalHt), rx, ty, { align:'right' });
+  doc.text('TVA ' + inv.rate + ' %', lx, ty + 6); doc.text(money(calc.tva), rx, ty + 6, { align:'right' });
+  doc.setDrawColor(...ent.c1); doc.setLineWidth(0.4); doc.line(lx, ty + 9, rx, ty + 9);
+  doc.setFont('helvetica','bold'); doc.setFontSize(12); doc.setTextColor(...ent.c1);
+  doc.text('Total TVAC', lx, ty + 16); doc.text(money(calc.totalTtc), rx, ty + 16, { align:'right' });
+
+  // Tampon PAYÉE
+  const sx = 14, sy = ty + 16;
+  doc.setTextColor(46,125,50); doc.setDrawColor(46,125,50); doc.setLineWidth(1);
+  doc.setFont('helvetica','bold'); doc.setFontSize(30);
+  doc.text('PAYÉE', sx + 4, sy, { angle: 8 });
+  doc.setFontSize(9); doc.setFont('helvetica','normal');
+  doc.text(`le ${fctFrDate(inv.saleDate)} — ${inv.payMode}`, sx + 4, sy + 9);
+  doc.setDrawColor(0); doc.setLineWidth(0.2);
+
+  doc.setFontSize(7.5); doc.setTextColor(...NDF_MU); doc.setFont('helvetica','italic');
+  const fy = ty + 34;
+  doc.text(`Facture acquittée : paiement reçu comptant le ${fctFrDate(inv.saleDate)} (${inv.payMode}).`, 14, fy);
+  doc.text(`Zen-Connect SRL · ${NDF_ADRESSE} · TVA ${NDF_TVA}`, 14, fy + 4.5);
+  return doc;
+}
+
+/* ---- Génération ---- */
+window.fctGenerate = async function(){
+  if(!window.jspdf){ alert('jsPDF non chargé — recharge la page et réessaie.'); return; }
+  fctSyncLines();
+  const nom = fctEl('fct-nom').value.trim();
+  const lines = fct.lines.filter(l => (l.name||'').trim() && (parseFloat(l.qty)||0) > 0);
+  const rate = parseFloat(fctEl('fct-rate').value);
+  if(!nom){ alert('Le nom du client est obligatoire.'); return; }
+  if(!lines.length){ alert('Ajoute au moins une ligne.'); return; }
+  if(isNaN(rate) || rate < 0){ alert('Taux de TVA invalide.'); return; }
+  const calc = fctCompute(lines, rate);
+  if(calc.totalTtc <= 0){ alert('Le total de la facture doit être positif.'); return; }
+  const saleDate = fctEl('fct-date').value || fctToday();
+  const ticketRef = fct.ticketRef && fctEl('fct-ticket').value.trim().toUpperCase() === fct.ticketRef ? fct.ticketRef : '';
+  const dup = ticketRef && window._fctInvoices.find(f => f.ticketRef === ticketRef);
+  if(dup && !confirm('Le ticket ' + ticketRef + ' a déjà été facturé (' + dup.number + ' — ' + dup.customer.nom + ').\nCréer quand même une nouvelle facture ?')) return;
+
+  const btn = fctEl('fct-btn-generate'); btn.disabled = true;
+  const msg = fctEl('fct-gen-msg'); msg.textContent = 'Génération en cours…';
+  try{
+    const customer = { nom, tva: fctEl('fct-tva').value.trim(), adresse: fctEl('fct-adresse').value.trim() };
+    const today = fctToday();
+    const inv = await window.fctIssueInvoice({
+      year: +today.slice(0,4), date: today, saleDate, payMode: fctEl('fct-pay').value, rate,
+      ticketRef, customer, lines: lines.map(l => ({ name:l.name.trim(), qty:parseFloat(l.qty), ttc:parseFloat(l.ttc) })),
+      totalTtc: calc.totalTtc / 100
+    });
+    const doc = await fctBuildPdf(inv);
+    doc.save('Facture_' + inv.number + '.pdf');
+    msg.textContent = '✅ Facture ' + inv.number + ' générée.';
+    if(fctEl('fct-save-client').checked){
+      try{ await fctSaveClient(customer); }catch(e){ console.warn('Client non mémorisé :', e.message); }
+    }
+  }catch(e){
+    msg.textContent = '⚠️ Erreur : ' + e.message + ' (aucun numéro consommé si l\'erreur vient de l\'enregistrement).';
+  }finally{ btn.disabled = false; }
+};
+
+/* ---- Historique ---- */
+window.fctRenderHistory = function(){
+  const box = fctEl('fct-history'); if(!box) return;
+  const list = window._fctInvoices;
+  if(!list.length){ box.textContent = 'Aucune facture pour l\'instant.'; return; }
+  box.innerHTML = list.map((f,i) => `
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #eee;flex-wrap:wrap">
+      <div><b style="color:var(--violet-d)">${ndfEsc(f.number)}</b> · ${fctFrDate(f.date)} · ${ndfEsc(f.customer.nom)}${f.ticketRef ? ' · ' + ndfEsc(f.ticketRef) : ''}</div>
+      <div style="display:flex;align-items:center;gap:10px"><b>${fctMoney(Math.round(f.totalTtc*100))}</b>
+        <button type="button" class="btn btn-ghost" style="padding:5px 10px;font-size:12px" onclick="window.fctRedownload(${i})">📥 PDF</button></div>
+    </div>`).join('');
+};
+window.fctRedownload = async function(i){
+  const f = window._fctInvoices[i]; if(!f) return;
+  const doc = await fctBuildPdf(f);
+  doc.save('Facture_' + f.number + '.pdf');
+};
+
+fctEl('fct-date').value = fctToday();
+window.fctRenderLines();
 </script>
 </body>
 </html>
