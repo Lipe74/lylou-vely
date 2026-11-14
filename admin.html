@@ -177,7 +177,7 @@
 
     <div class="sidebar-foot">
       <button class="logout-btn" onclick="window.doLogout()">↩ Déconnexion</button>
-      <div style="text-align:center;margin-top:10px;font-size:10px;opacity:.5;letter-spacing:.5px">Build 7.7</div>
+      <div style="text-align:center;margin-top:10px;font-size:10px;opacity:.5;letter-spacing:.5px">Build 7.8</div>
     </div>
   </div>
 
@@ -570,8 +570,25 @@
           <label>Frais bancaires présumés (€) — optionnel</label>
           <input type="number" id="ndf-frais" class="form-input" placeholder="ex : 0.61 (paiement international)" step="0.01" min="0">
         </div>
+        <div class="form-group" id="ndf-cat-row">
+          <label>Catégorie (motif)</label>
+          <select id="ndf-categorie" class="form-input" onchange="window.ndfCategorieChange()">
+            <option value="">— Choisir une catégorie —</option>
+            <option value="Repas">🍽️ Repas</option>
+            <option value="Carburant">⛽ Carburant / Essence</option>
+            <option value="Parking">🅿️ Parking</option>
+            <option value="Péage">🛣️ Péage</option>
+            <option value="Transport">🚆 Transport</option>
+            <option value="Matériel">🧰 Matériel</option>
+            <option value="Fournitures">📎 Fournitures</option>
+            <option value="Stand / Emplacement">🎪 Stand / Emplacement</option>
+            <option value="Abonnement / Logiciel">💻 Abonnement / Logiciel</option>
+            <option value="Frais bancaires">🏦 Frais bancaires</option>
+            <option value="Autre">📝 Autre (description obligatoire)</option>
+          </select>
+        </div>
         <div class="form-group">
-          <label>Description / motif *</label>
+          <label id="ndf-lbl-description">Description / motif *</label>
           <input type="text" id="ndf-description" class="form-input" placeholder="ex: Abonnement Amazon Prime — octobre 2026">
         </div>
         <div class="form-group">
@@ -2325,9 +2342,21 @@ window.ndfSwitchType = function(){
   document.getElementById('ndf-btn-generate').textContent = t ? '📥 Générer le justificatif de transfert' : '📥 Générer le justificatif PDF';
 };
 
+/* Catégorie choisie (sauf « Autre ») : la description devient facultative */
+window.ndfCategorieChange = function(){
+  const cat = document.getElementById('ndf-categorie').value;
+  const isDon = document.getElementById('ndf-acheteur').value === 'animal';
+  const needed = isDon || !cat || cat === 'Autre';
+  document.getElementById('ndf-lbl-description').textContent = needed ? 'Description / motif *' : 'Détails (optionnel — la catégorie suffit)';
+  document.getElementById('ndf-description').placeholder = needed ? 'ex: Abonnement Amazon Prime — octobre 2026' : 'ex: repas avec un client, plein Shell… (facultatif)';
+};
+
 /* Choix « Don à L'Assiette des 4 pattes » : bénéficiaire pré-rempli, paiement par virement */
 window.ndfAcheteurChange = function(){
   const isDon = document.getElementById('ndf-acheteur').value === 'animal';
+  document.getElementById('ndf-cat-row').style.display = isDon ? 'none' : '';
+  if(isDon) document.getElementById('ndf-categorie').value = '';
+  window.ndfCategorieChange();
   const f = document.getElementById('ndf-fournisseur');
   const adr = document.getElementById('ndf-adresse');
   document.getElementById('ndf-don-banque-row').style.display = isDon ? '' : 'none';
@@ -2502,10 +2531,14 @@ window.generateNdfPDF = async function() {
   const acheteurSel= document.getElementById('ndf-acheteur').value;
   let paiement     = document.querySelector('input[name="ndf-paiement"]:checked')?.value || 'Bancontact';
 
-  if(!fournisseur || !dateVal || !montant || !description) {
-    alert('Veuillez remplir tous les champs obligatoires (*)');
+  const catSel = acheteurSel === 'animal' ? '' : (document.getElementById('ndf-categorie').value || '');
+  const motifOk = description || (catSel && catSel !== 'Autre');
+  if(!fournisseur || !dateVal || !montant || !motifOk) {
+    alert('Veuillez remplir tous les champs obligatoires (*) — choisis une catégorie ou saisis une description.');
     return;
   }
+  /* Motif affiché sur le PDF : catégorie + détails éventuels */
+  const motif = (catSel && catSel !== 'Autre') ? (description ? catSel + ' — ' + description : catSel) : description;
 
   /* Don à l'ASBL : le donateur est Lylou-Vely, le « fournisseur » devient le bénéficiaire */
   const isDon = acheteurSel === 'animal';
@@ -2558,7 +2591,7 @@ window.generateNdfPDF = async function() {
   /* ── Tableau ── */
   // Mention fichier joint si présent
   const fileNote = ndfFileData ? `Pièce jointe : ${ndfFileData.name}` : '';
-  const bodyRow = [description + (fileNote ? `\n${fileNote}` : ''), ndfFmtMontant(montant)];
+  const bodyRow = [motif + (fileNote ? `\n${fileNote}` : ''), ndfFmtMontant(montant)];
 
   doc.autoTable({
     startY: y,
