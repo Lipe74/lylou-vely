@@ -153,7 +153,7 @@
     <input type="password" id="gate-pw" placeholder="Mot de passe" autocomplete="current-password">
     <button onclick="window.doLogin()">Connexion</button>
     <div class="err" id="gate-err"></div>
-    <div class="build-tag">Build 7.10</div>
+    <div class="build-tag">Build 7.11</div>
   </div>
 </div>
 
@@ -161,7 +161,7 @@
 <div id="app">
   <div class="sidebar">
     <div class="brand">Lylou-Vely</div>
-    <div class="brand-sub">Espace Admin · Build 7.10</div>
+    <div class="brand-sub">Espace Admin · Build 7.11</div>
 
     <div class="nav-section">🛍️ Lylou-Vely</div>
     <button class="nav-item active" data-panel="articles" onclick="window.showPanel('articles')"><span class="ic">🏷️</span> Articles</button>
@@ -179,7 +179,7 @@
 
     <div class="sidebar-foot">
       <button class="logout-btn" onclick="window.doLogout()">↩ Déconnexion</button>
-      <div style="text-align:center;margin-top:10px;font-size:11px;opacity:.85;letter-spacing:.5px">Build 7.10</div>
+      <div style="text-align:center;margin-top:10px;font-size:11px;opacity:.85;letter-spacing:.5px">Build 7.11</div>
     </div>
   </div>
 
@@ -586,6 +586,9 @@
             <option value="Fournitures">📎 Fournitures</option>
             <option value="Stand / Emplacement">🎪 Stand / Emplacement</option>
             <option value="Abonnement / Logiciel">💻 Abonnement / Logiciel</option>
+            <option value="Assurance auto">🚗 Assurance auto</option>
+            <option value="Assurance informatique / matériel">🖥️ Assurance informatique / matériel</option>
+            <option value="Assurance RC pro">🛡️ Assurance RC pro</option>
             <option value="Frais bancaires">🏦 Frais bancaires</option>
             <option value="Autre">📝 Autre (description obligatoire)</option>
           </select>
@@ -601,6 +604,10 @@
         <div class="form-group" id="ndf-desc-row">
           <label id="ndf-lbl-description">Description / motif *</label>
           <input type="text" id="ndf-description" class="form-input" placeholder="ex: Abonnement Amazon Prime — octobre 2026">
+        </div>
+        <div class="form-group" id="ndf-ref-row">
+          <label>N° de facture / référence (facultatif)</label>
+          <input type="text" id="ndf-reference" class="form-input" placeholder="ex: 11553345 78 (repris dans la communication bancaire)">
         </div>
         <div class="form-group" id="ndf-pay-row">
           <label>Mode de paiement</label>
@@ -2182,6 +2189,7 @@ function ndfApplyParsed(p, overwrite){
   set('ndf-date', p.date, 'Date', dEl && dEl.value === new Date().toISOString().split('T')[0]);
   set('ndf-montant', p.montant !== undefined ? p.montant.toFixed(2) : '', 'Montant');
   set('ndf-description', p.description, 'Description');
+  set('ndf-reference', (p.numero && p.numero.length <= 24) ? p.numero : '', 'N° facture');
   const ach = document.getElementById('ndf-acheteur');
   if(p.acheteur && ach && !ndfIsDon() && NDF_ENT[p.acheteur] && ach.value !== p.acheteur){
     ach.value = p.acheteur; window.ndfAcheteurChange(); found.push('Acheteur');
@@ -2232,7 +2240,11 @@ function ndfRenderFiles(){
       </div>${body}</div>`;
   }).join('');
 }
-window.ndfRemoveFile = function(i){ ndfFiles.splice(i, 1); ndfRenderFiles(); };
+window.ndfRemoveFile = function(i){
+  ndfFiles.splice(i, 1);
+  if(!ndfFiles.some(d => d.type !== 'csv')) document.getElementById('ndf-typej').value = 'sans'; // plus de pièce jointe : retour à « Sans facture »
+  ndfRenderFiles();
+};
 
 const ndfReadAs = (file, mode) => new Promise((res, rej) => {
   const r = new FileReader();
@@ -2444,7 +2456,7 @@ function ndfApplyDonUI(){
   const show = (id, on) => { document.getElementById(id).style.display = on ? '' : 'none'; };
   show('ndf-don-banque-row', isDon);
   if(!isDon) document.getElementById('ndf-don-banque').value = '';
-  ['ndf-acheteur-row','ndf-compte-row','ndf-frais-row','ndf-typej-row','ndf-cat-row','ndf-pay-row','ndf-desc-row'].forEach(id => show(id, !isDon));
+  ['ndf-acheteur-row','ndf-compte-row','ndf-frais-row','ndf-typej-row','ndf-cat-row','ndf-pay-row','ndf-desc-row','ndf-ref-row'].forEach(id => show(id, !isDon));
   show('ndf-don-periode-row', isDon);
   if(isDon){ document.getElementById('ndf-frais').value = ''; document.getElementById('ndf-categorie').value = ''; }
   document.getElementById('ndf-lbl-tva').textContent         = isDon ? 'N° d\'entreprise' : 'N° TVA (optionnel)';
@@ -2472,12 +2484,12 @@ window.ndfAcheteurChange = function(){ ndfApplyDonUI(); };
 /* Bouton « Nouveau document » : vide le formulaire (le type de document choisi est conservé) */
 window.ndfReset = function(){
   const val = id => (document.getElementById(id).value || '').trim();
-  const dirty = ndfFiles.length || ['ndf-montant','ndf-description','ndf-t-montant','ndf-t-comm','ndf-t-motif'].some(val) || (!ndfIsDon() && val('ndf-fournisseur'));
+  const dirty = ndfFiles.length || ['ndf-montant','ndf-description','ndf-reference','ndf-t-montant','ndf-t-comm','ndf-t-motif'].some(val) || (!ndfIsDon() && val('ndf-fournisseur'));
   if(dirty && !confirm('Effacer le formulaire et commencer un nouveau document ?')) return;
   ndfFiles = []; ndfRenderFiles();
   ['ndf-fournisseur','ndf-adresse','ndf-tva'].forEach(id => { document.getElementById(id).readOnly = false; });
   const set = (id, v) => { const e = document.getElementById(id); if(e) e.value = v; };
-  ['ndf-fournisseur','ndf-tva','ndf-adresse','ndf-montant','ndf-frais','ndf-description','ndf-t-montant','ndf-t-comm','ndf-t-motif'].forEach(id => set(id, ''));
+  ['ndf-fournisseur','ndf-tva','ndf-adresse','ndf-montant','ndf-frais','ndf-description','ndf-reference','ndf-t-montant','ndf-t-comm','ndf-t-motif'].forEach(id => set(id, ''));
   const today = new Date().toISOString().split('T')[0];
   set('ndf-date', today); set('ndf-t-date', today);
   set('ndf-categorie', ''); set('ndf-acheteur', 'zenconnect'); set('ndf-compte', ''); set('ndf-typej', 'sans'); set('ndf-don-banque', '');
@@ -2634,6 +2646,7 @@ window.generateNdfPDF = async function() {
   const montant    = parseFloat(document.getElementById('ndf-montant').value)||0;
   const description= ndfIsDon() ? ndfDonDescription() : (document.getElementById('ndf-description').value||'').trim();
   const acheteurSel= document.getElementById('ndf-acheteur').value;
+  const reference  = ndfIsDon() ? '' : (document.getElementById('ndf-reference').value||'').trim();
   let paiement     = document.querySelector('input[name="ndf-paiement"]:checked')?.value || 'Bancontact';
 
   const catSel = ndfIsDon() ? '' : (document.getElementById('ndf-categorie').value || '');
@@ -2690,8 +2703,9 @@ window.generateNdfPDF = async function() {
   /* ── Référence ── */
   y += 58;
   doc.setFontSize(8); doc.setFont('helvetica','normal'); doc.setTextColor(...NDF_MU);
-  doc.text(`Réf. ${refNum}   ·   Date : ${dateFr}   ·   Mode de paiement : ${paiement}${isDon ? '' : '   ·   Compte : ' + (compte ? compte.nom : 'aucun')}   ·   Généré le : ${genDate}`, 14, y);
-  y += 8;
+  const refLines = doc.splitTextToSize(`Réf. ${refNum}${reference ? '   ·   N° facture / référence : ' + reference : ''}   ·   Date : ${dateFr}   ·   Mode de paiement : ${paiement}${isDon ? '' : '   ·   Compte : ' + (compte ? compte.nom : 'aucun')}   ·   Généré le : ${genDate}`, 182);
+  doc.text(refLines, 14, y);
+  y += 8 + (refLines.length - 1) * 4;
 
   /* ── Tableau ── */
   // Mention fichier joint si présent
@@ -2702,6 +2716,7 @@ window.generateNdfPDF = async function() {
     startY: y,
     head: [['Description / Motif', 'Montant (EUR)']],
     body: isDon ? [bodyRow, ['Mode de paiement', paiement]] : [bodyRow,
+      ...(reference ? [['Référence / n° de facture', reference]] : []),
       ...(frais > 0 ? [['Frais bancaires présumés (paiement international)' + (compte ? ' — ' + compte.nom : ''), ndfFmtMontant(frais)]] : []),
       ['Mode de paiement', paiement], ['Compte débité', compteTxt]],
     foot: [[isDon ? 'TOTAL DONNÉ' : (frais > 0 ? 'TOTAL DÉBITÉ' : 'TOTAL PAYÉ'), ndfFmtMontant(isDon ? montant : totalDebite)]],
