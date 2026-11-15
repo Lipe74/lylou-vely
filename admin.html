@@ -153,7 +153,7 @@
     <input type="password" id="gate-pw" placeholder="Mot de passe" autocomplete="current-password">
     <button onclick="window.doLogin()">Connexion</button>
     <div class="err" id="gate-err"></div>
-    <div class="build-tag">Build 7.9</div>
+    <div class="build-tag">Build 7.10</div>
   </div>
 </div>
 
@@ -161,7 +161,7 @@
 <div id="app">
   <div class="sidebar">
     <div class="brand">Lylou-Vely</div>
-    <div class="brand-sub">Espace Admin · Build 7.9</div>
+    <div class="brand-sub">Espace Admin · Build 7.10</div>
 
     <div class="nav-section">🛍️ Lylou-Vely</div>
     <button class="nav-item active" data-panel="articles" onclick="window.showPanel('articles')"><span class="ic">🏷️</span> Articles</button>
@@ -179,7 +179,7 @@
 
     <div class="sidebar-foot">
       <button class="logout-btn" onclick="window.doLogout()">↩ Déconnexion</button>
-      <div style="text-align:center;margin-top:10px;font-size:11px;opacity:.85;letter-spacing:.5px">Build 7.9</div>
+      <div style="text-align:center;margin-top:10px;font-size:11px;opacity:.85;letter-spacing:.5px">Build 7.10</div>
     </div>
   </div>
 
@@ -590,11 +590,19 @@
             <option value="Autre">📝 Autre (description obligatoire)</option>
           </select>
         </div>
-        <div class="form-group">
+        <div class="form-group" id="ndf-don-periode-row" style="display:none">
+          <label>Don du mois de *</label>
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <select id="ndf-don-mois" class="form-input" style="flex:2;min-width:140px" onchange="window.ndfDonPreview()"></select>
+            <select id="ndf-don-annee" class="form-input" style="flex:1;min-width:100px" onchange="window.ndfDonPreview()"></select>
+          </div>
+          <div id="ndf-don-preview" style="font-size:13px;font-weight:600;color:var(--violet-d);margin-top:8px"></div>
+        </div>
+        <div class="form-group" id="ndf-desc-row">
           <label id="ndf-lbl-description">Description / motif *</label>
           <input type="text" id="ndf-description" class="form-input" placeholder="ex: Abonnement Amazon Prime — octobre 2026">
         </div>
-        <div class="form-group">
+        <div class="form-group" id="ndf-pay-row">
           <label>Mode de paiement</label>
           <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:4px">
             <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:10px 16px;border:1.5px solid var(--line);border-radius:10px;font-size:13px;font-weight:500;flex:1;min-width:110px;justify-content:center" id="ndf-pay-lbl-cash">
@@ -686,6 +694,10 @@
         <div class="form-group">
           <label>Communication (libre)</label>
           <input type="text" id="ndf-t-comm" class="form-input" placeholder="Alimentation du compte ING (par défaut)">
+        </div>
+        <div class="form-group">
+          <label>Motif / justification (facultatif — affiché sur le PDF)</label>
+          <input type="text" id="ndf-t-motif" class="form-input" placeholder="ex: Apport pour l'achat de la camionnette">
         </div>
       </div>
 
@@ -2002,7 +2014,7 @@ window.generateEtsyPDF = function() {
   const td = document.getElementById('ndf-t-date');
   if(td) td.value = new Date().toISOString().split('T')[0];
   // Init style radio par défaut
-  setTimeout(() => { if(window.ndfPayStyle) window.ndfPayStyle(); if(window.ndfTransfertSens) window.ndfTransfertSens(); }, 100);
+  setTimeout(() => { if(window.ndfPayStyle) window.ndfPayStyle(); if(window.ndfTransfertSens) window.ndfTransfertSens(); ndfDonPeriodInit(); }, 100);
 })();
 
 // Style radio sélectionné
@@ -2387,6 +2399,7 @@ window.ndfSwitchType = function(){
   document.getElementById('ndf-card-transfert').style.display = t ? '' : 'none';
   document.getElementById('ndf-btn-generate').textContent = t ? '📥 Générer le justificatif de transfert' : (type === 'don' ? '📥 Générer le justificatif de don' : '📥 Générer le justificatif PDF');
   ndfApplyDonUI();
+  if(ndfIsDon()) ndfDonPeriodDefault();
   if(t) window.ndfTransfertSens();
 };
 
@@ -2398,6 +2411,30 @@ window.ndfCategorieChange = function(){
   document.getElementById('ndf-description').placeholder = needed ? 'ex: Abonnement Amazon Prime — octobre 2026' : 'ex: repas avec un client, plein Shell… (facultatif)';
 };
 
+/* Description verrouillée du don : « Don Lylou-Vely – Octobre 2026 » (mois et année choisis dans les listes) */
+function ndfDonDescription(){
+  const nom = NDF_MONTHS[+document.getElementById('ndf-don-mois').value] || '';
+  return 'Don Lylou-Vely – ' + nom.charAt(0).toUpperCase() + nom.slice(1) + ' ' + document.getElementById('ndf-don-annee').value;
+}
+window.ndfDonPreview = function(){ document.getElementById('ndf-don-preview').textContent = '→ ' + ndfDonDescription(); };
+function ndfDonPeriodInit(){
+  const m = document.getElementById('ndf-don-mois'), y = document.getElementById('ndf-don-annee');
+  if(!m || !y || m.options.length) return;
+  m.innerHTML = NDF_MONTHS.map((n, i) => `<option value="${i}">${n.charAt(0).toUpperCase() + n.slice(1)}</option>`).join('');
+  const cur = new Date().getFullYear();
+  y.innerHTML = [cur - 1, cur, cur + 1].map(v => `<option value="${v}">${v}</option>`).join('');
+  ndfDonPeriodDefault();
+}
+/* Par défaut : le mois précédent */
+function ndfDonPeriodDefault(){
+  ndfDonPeriodInit();
+  const n = new Date(); let mo = n.getMonth() - 1, yr = n.getFullYear();
+  if(mo < 0){ mo = 11; yr--; }
+  document.getElementById('ndf-don-mois').value = String(mo);
+  document.getElementById('ndf-don-annee').value = String(yr);
+  window.ndfDonPreview();
+}
+
 /* Type « Don » : bénéficiaire pré-rempli (ASBL), paiement par virement, pas de catégorie ni d'acheteur */
 function ndfApplyDonUI(){
   const isDon = ndfIsDon();
@@ -2407,7 +2444,8 @@ function ndfApplyDonUI(){
   const show = (id, on) => { document.getElementById(id).style.display = on ? '' : 'none'; };
   show('ndf-don-banque-row', isDon);
   if(!isDon) document.getElementById('ndf-don-banque').value = '';
-  ['ndf-acheteur-row','ndf-compte-row','ndf-frais-row','ndf-typej-row','ndf-cat-row'].forEach(id => show(id, !isDon));
+  ['ndf-acheteur-row','ndf-compte-row','ndf-frais-row','ndf-typej-row','ndf-cat-row','ndf-pay-row','ndf-desc-row'].forEach(id => show(id, !isDon));
+  show('ndf-don-periode-row', isDon);
   if(isDon){ document.getElementById('ndf-frais').value = ''; document.getElementById('ndf-categorie').value = ''; }
   document.getElementById('ndf-lbl-tva').textContent         = isDon ? 'N° d\'entreprise' : 'N° TVA (optionnel)';
   document.getElementById('ndf-h-fournisseur').textContent   = isDon ? 'Bénéficiaire du don' : 'Fournisseur';
@@ -2434,12 +2472,12 @@ window.ndfAcheteurChange = function(){ ndfApplyDonUI(); };
 /* Bouton « Nouveau document » : vide le formulaire (le type de document choisi est conservé) */
 window.ndfReset = function(){
   const val = id => (document.getElementById(id).value || '').trim();
-  const dirty = ndfFiles.length || ['ndf-montant','ndf-description','ndf-t-montant','ndf-t-comm'].some(val) || (!ndfIsDon() && val('ndf-fournisseur'));
+  const dirty = ndfFiles.length || ['ndf-montant','ndf-description','ndf-t-montant','ndf-t-comm','ndf-t-motif'].some(val) || (!ndfIsDon() && val('ndf-fournisseur'));
   if(dirty && !confirm('Effacer le formulaire et commencer un nouveau document ?')) return;
   ndfFiles = []; ndfRenderFiles();
   ['ndf-fournisseur','ndf-adresse','ndf-tva'].forEach(id => { document.getElementById(id).readOnly = false; });
   const set = (id, v) => { const e = document.getElementById(id); if(e) e.value = v; };
-  ['ndf-fournisseur','ndf-tva','ndf-adresse','ndf-montant','ndf-frais','ndf-description','ndf-t-montant','ndf-t-comm'].forEach(id => set(id, ''));
+  ['ndf-fournisseur','ndf-tva','ndf-adresse','ndf-montant','ndf-frais','ndf-description','ndf-t-montant','ndf-t-comm','ndf-t-motif'].forEach(id => set(id, ''));
   const today = new Date().toISOString().split('T')[0];
   set('ndf-date', today); set('ndf-t-date', today);
   set('ndf-categorie', ''); set('ndf-acheteur', 'zenconnect'); set('ndf-compte', ''); set('ndf-typej', 'sans'); set('ndf-don-banque', '');
@@ -2594,7 +2632,7 @@ window.generateNdfPDF = async function() {
   const adresse    = (document.getElementById('ndf-adresse').value||'').trim();
   const dateVal    = document.getElementById('ndf-date').value;
   const montant    = parseFloat(document.getElementById('ndf-montant').value)||0;
-  const description= (document.getElementById('ndf-description').value||'').trim();
+  const description= ndfIsDon() ? ndfDonDescription() : (document.getElementById('ndf-description').value||'').trim();
   const acheteurSel= document.getElementById('ndf-acheteur').value;
   let paiement     = document.querySelector('input[name="ndf-paiement"]:checked')?.value || 'Bancontact';
 
@@ -2716,6 +2754,7 @@ async function ndfGenerateTransfert() {
   const dateVal = document.getElementById('ndf-t-date').value;
   const montant = parseFloat(document.getElementById('ndf-t-montant').value)||0;
   const comm    = (document.getElementById('ndf-t-comm').value||'').trim() || ndfCommDefaut();
+  const motif   = (document.getElementById('ndf-t-motif').value||'').trim();
 
   if(!dateVal || !montant) {
     alert('Veuillez remplir la date et le montant (*)');
@@ -2790,7 +2829,13 @@ async function ndfGenerateTransfert() {
     theme:'grid'
   });
 
-  const fn = doc.lastAutoTable.finalY + 12;
+  let fn = doc.lastAutoTable.finalY + 12;
+  if(motif){
+    doc.setFontSize(9); doc.setFont('helvetica','bold'); doc.setTextColor(44,34,51);
+    const ml = doc.splitTextToSize('Motif : ' + motif, 182);
+    doc.text(ml, 14, fn);
+    fn += ml.length * 5 + 6;
+  }
   doc.setFontSize(7.5); doc.setTextColor(...NDF_MU); doc.setFont('helvetica','italic');
   notes.forEach((n, i) => doc.text(n, 14, fn + i * 5));
 
