@@ -153,7 +153,7 @@
     <input type="password" id="gate-pw" placeholder="Mot de passe" autocomplete="current-password">
     <button onclick="window.doLogin()">Connexion</button>
     <div class="err" id="gate-err"></div>
-    <div class="build-tag">Build 7.12</div>
+    <div class="build-tag">Build 7.13</div>
   </div>
 </div>
 
@@ -161,7 +161,7 @@
 <div id="app">
   <div class="sidebar">
     <div class="brand">Lylou-Vely</div>
-    <div class="brand-sub">Espace Admin · Build 7.12</div>
+    <div class="brand-sub">Espace Admin · Build 7.13</div>
 
     <div class="nav-section">🛍️ Lylou-Vely</div>
     <button class="nav-item active" data-panel="articles" onclick="window.showPanel('articles')"><span class="ic">🏷️</span> Articles</button>
@@ -179,7 +179,7 @@
 
     <div class="sidebar-foot">
       <button class="logout-btn" onclick="window.doLogout()">↩ Déconnexion</button>
-      <div style="text-align:center;margin-top:10px;font-size:11px;opacity:.85;letter-spacing:.5px">Build 7.12</div>
+      <div style="text-align:center;margin-top:10px;font-size:11px;opacity:.85;letter-spacing:.5px">Build 7.13</div>
     </div>
   </div>
 
@@ -553,6 +553,8 @@
         <div class="form-group" id="ndf-save-row" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:0">
           <input type="checkbox" id="ndf-save-fourn" checked style="width:auto">
           <label for="ndf-save-fourn" style="margin:0">💾 Mémoriser ce fournisseur (TVA, adresse, acheteur, paiement)</label>
+          <input type="checkbox" id="ndf-save-recurrent" style="width:auto;margin-left:14px">
+          <label for="ndf-save-recurrent" style="margin:0">🔁 Paiement récurrent : mémoriser aussi catégorie, montant et description</label>
           <button type="button" class="btn btn-danger" id="ndf-del-fourn" style="display:none;padding:6px 12px;font-size:12px" onclick="window.ndfDeleteFournisseur()">🗑️ Supprimer ce fournisseur</button>
           <span id="ndf-save-status" style="font-size:12px;color:var(--muted)"></span>
         </div>
@@ -2183,7 +2185,7 @@ function ndfApplyParsed(p, overwrite){
     if(overwrite || force || !el.value){ if(el.value !== String(val)){ el.value = val; found.push(label); } }
   };
   set('ndf-fournisseur', p.fournisseur, 'Fournisseur');
-  if(p.fournisseur && window.ndfFournisseurPick) window.ndfFournisseurPick(); // reprend aussi TVA, compte, paiement mémorisés
+  if(p.fournisseur && window.ndfFournisseurPick) window.ndfFournisseurPick(true); // reprend aussi TVA, compte, paiement mémorisés
   set('ndf-tva', p.tva, 'TVA');
   set('ndf-adresse', p.adresse, 'Adresse');
   const dEl = document.getElementById('ndf-date');
@@ -2521,6 +2523,7 @@ window.ndfReset = function(){
   set('ndf-t-kind', 'interne'); set('ndf-t-sens', 'cbc-ing'); set('ndf-t-pro', 'cbc');
   document.getElementById('ndf-pay-bancontact').checked = true;
   document.getElementById('ndf-save-fourn').checked = true;
+  document.getElementById('ndf-save-recurrent').checked = false;
   document.getElementById('ndf-save-status').textContent = '';
   window.ndfPayStyle();
   window.ndfSwitchType();
@@ -2610,7 +2613,7 @@ window.ndfFournisseurChange = function(){
 };
 
 /* Nom reconnu : remplit TVA, adresse, acheteur et mode de paiement */
-window.ndfFournisseurPick = function(){
+window.ndfFournisseurPick = function(skipRecurrent){
   const el = document.getElementById('ndf-fournisseur');
   const f = el.readOnly ? null : ndfFindFournisseur(el.value);
   if(f){
@@ -2624,6 +2627,15 @@ window.ndfFournisseurPick = function(){
     if(f.compte && document.getElementById('ndf-compte')) document.getElementById('ndf-compte').value = f.compte;
     const radio = [...document.querySelectorAll('input[name="ndf-paiement"]')].find(r => r.value === f.paiement);
     if(radio){ radio.checked = true; window.ndfPayStyle(); }
+    /* Paiement récurrent : reprend aussi catégorie, montant et description (sauf si une facture PDF vient d'être lue) */
+    if(f.recurrent && !skipRecurrent && !ndfIsRef()){
+      const cat = document.getElementById('ndf-categorie');
+      if(f.categorie && [...cat.options].some(o => o.value === f.categorie)) cat.value = f.categorie;
+      if(f.montant) document.getElementById('ndf-montant').value = Number(f.montant).toFixed(2);
+      if(f.description) document.getElementById('ndf-description').value = f.description;
+      window.ndfCategorieChange();
+    }
+    document.getElementById('ndf-save-recurrent').checked = !!f.recurrent;
   }
   window.ndfFournisseurChange();
 };
@@ -2653,7 +2665,7 @@ async function ndfSaveFournisseurIfAsked(data){
     if(i >= 0) items[i] = entry; else items.push(entry);
     items.sort((a, b) => a.nom.localeCompare(b.nom, 'fr'));
     await window.ndfPersistFournisseurs(items);
-    st.textContent = '✓ Fournisseur mémorisé';
+    st.textContent = data.recurrent ? '✓ Fournisseur mémorisé (paiement récurrent)' : '✓ Fournisseur mémorisé';
   }catch(e){
     st.textContent = '⚠️ Fournisseur non mémorisé : ' + e.message;
   }
@@ -2792,7 +2804,8 @@ window.generateNdfPDF = async function() {
 
   const fname = `${isDon ? 'justificatif-don' : (isRef ? 'justificatif-remboursement' : 'justificatif')}_${ndfSlug(fournisseur).toLowerCase()}_${yr}-${mo}.pdf`;
   doc.save(fname);
-  if(!isDon && !isRef) await ndfSaveFournisseurIfAsked({ nom: fournisseur, tva, adresse, acheteur: acheteurSel, paiement, compte: compteSel });
+  if(!isDon && !isRef) await ndfSaveFournisseurIfAsked({ nom: fournisseur, tva, adresse, acheteur: acheteurSel, paiement, compte: compteSel,
+    ...(document.getElementById('ndf-save-recurrent').checked ? { recurrent: true, categorie: catSel, montant, description } : {}) });
 };
 
 /* ---- Transferts de comptes : interne CBC ↔ ING, apport / remboursement en compte courant d'associé ---- */
