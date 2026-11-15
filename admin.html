@@ -153,7 +153,7 @@
     <input type="password" id="gate-pw" placeholder="Mot de passe" autocomplete="current-password">
     <button onclick="window.doLogin()">Connexion</button>
     <div class="err" id="gate-err"></div>
-    <div class="build-tag">Build 7.11</div>
+    <div class="build-tag">Build 7.12</div>
   </div>
 </div>
 
@@ -161,7 +161,7 @@
 <div id="app">
   <div class="sidebar">
     <div class="brand">Lylou-Vely</div>
-    <div class="brand-sub">Espace Admin · Build 7.11</div>
+    <div class="brand-sub">Espace Admin · Build 7.12</div>
 
     <div class="nav-section">🛍️ Lylou-Vely</div>
     <button class="nav-item active" data-panel="articles" onclick="window.showPanel('articles')"><span class="ic">🏷️</span> Articles</button>
@@ -179,7 +179,7 @@
 
     <div class="sidebar-foot">
       <button class="logout-btn" onclick="window.doLogout()">↩ Déconnexion</button>
-      <div style="text-align:center;margin-top:10px;font-size:11px;opacity:.85;letter-spacing:.5px">Build 7.11</div>
+      <div style="text-align:center;margin-top:10px;font-size:11px;opacity:.85;letter-spacing:.5px">Build 7.12</div>
     </div>
   </div>
 
@@ -510,7 +510,7 @@
     <!-- PANEL NOTE DE FRAIS ZEN CONNECT -->
     <div class="panel" id="panel-notedfrais">
       <div class="panel-title">Note de frais</div>
-      <div class="panel-sub">Justificatifs PDF pour Billit : dépense sans facture (Amazon, AXA, abonnements…), transfert de comptes (CBC ↔ ING, compte courant d'associé) ou don à l'ASBL</div>
+      <div class="panel-sub">Justificatifs PDF pour Billit : dépense sans facture (Amazon, AXA, abonnements…), remboursement reçu d'un fournisseur, transfert de comptes (CBC ↔ ING, compte courant d'associé) ou don à l'ASBL</div>
 
       <div class="card">
         <h3>Type de document</h3>
@@ -519,6 +519,7 @@
             <option value="depense">🧾 Dépense (justificatif)</option>
             <option value="transfert">🔁 Transfert de comptes</option>
             <option value="don">🐾 Don à l'ASBL</option>
+            <option value="remboursement_fourn">↩️ Remboursement reçu (fournisseur)</option>
           </select>
         </div>
       </div>
@@ -606,7 +607,7 @@
           <input type="text" id="ndf-description" class="form-input" placeholder="ex: Abonnement Amazon Prime — octobre 2026">
         </div>
         <div class="form-group" id="ndf-ref-row">
-          <label>N° de facture / référence (facultatif)</label>
+          <label id="ndf-lbl-ref">N° de facture / référence (facultatif)</label>
           <input type="text" id="ndf-reference" class="form-input" placeholder="ex: 11553345 78 (repris dans la communication bancaire)">
         </div>
         <div class="form-group" id="ndf-pay-row">
@@ -627,7 +628,7 @@
           </div>
         </div>
         <div class="form-group" id="ndf-acheteur-row">
-          <label>Acheteur</label>
+          <label id="ndf-lbl-acheteur">Acheteur</label>
           <select id="ndf-acheteur" class="form-input" onchange="window.ndfAcheteurChange()">
             <option value="zenconnect">Zen-Connect SRL</option>
             <option value="philippe">Philippe Tomaszewsky pour Zen-Connect SRL</option>
@@ -638,7 +639,7 @@
           </select>
         </div>
         <div class="form-group" id="ndf-compte-row">
-          <label>Compte débité *</label>
+          <label id="ndf-lbl-compte">Compte débité *</label>
           <select id="ndf-compte" class="form-input">
             <option value="">— Choisir le compte —</option>
             <option value="cbc">CBC</option>
@@ -2381,6 +2382,7 @@ function ndfDrawBloc(doc, x, y, ent, label, lines, h = 44){
 /* Compte privé des associés (Rodrigues – Tomaszewsky) : apports et remboursements en compte courant d'associé */
 const NDF_PRIVE = { nom:'Compte privé (ING)', iban:'BE03 3632 8634 8484', bic:'BBRUBEBB', titulaire:'Rodrigues – Tomaszewsky' };
 const ndfIsDon = () => document.getElementById('ndf-type').value === 'don';
+const ndfIsRef = () => document.getElementById('ndf-type').value === 'remboursement_fourn';
 const ndfTKind = () => document.getElementById('ndf-t-kind').value;
 
 /* Communication par défaut du transfert selon son type */
@@ -2409,7 +2411,7 @@ window.ndfSwitchType = function(){
     document.getElementById(id).style.display = t ? 'none' : '';
   });
   document.getElementById('ndf-card-transfert').style.display = t ? '' : 'none';
-  document.getElementById('ndf-btn-generate').textContent = t ? '📥 Générer le justificatif de transfert' : (type === 'don' ? '📥 Générer le justificatif de don' : '📥 Générer le justificatif PDF');
+  document.getElementById('ndf-btn-generate').textContent = t ? '📥 Générer le justificatif de transfert' : (type === 'don' ? '📥 Générer le justificatif de don' : (type === 'remboursement_fourn' ? '📥 Générer le justificatif de remboursement' : '📥 Générer le justificatif PDF'));
   ndfApplyDonUI();
   if(ndfIsDon()) ndfDonPeriodDefault();
   if(t) window.ndfTransfertSens();
@@ -2420,7 +2422,7 @@ window.ndfCategorieChange = function(){
   const cat = document.getElementById('ndf-categorie').value;
   const needed = ndfIsDon() || !cat || cat === 'Autre';
   document.getElementById('ndf-lbl-description').textContent = needed ? 'Description / motif *' : 'Détails (optionnel — la catégorie suffit)';
-  document.getElementById('ndf-description').placeholder = needed ? 'ex: Abonnement Amazon Prime — octobre 2026' : 'ex: repas avec un client, plein Shell… (facultatif)';
+  document.getElementById('ndf-description').placeholder = ndfIsRef() ? 'ex: Remboursement partiel — erreur de montant sur la facture' : (needed ? 'ex: Abonnement Amazon Prime — octobre 2026' : 'ex: repas avec un client, plein Shell… (facultatif)');
 };
 
 /* Description verrouillée du don : « Don Lylou-Vely – Octobre 2026 » (mois et année choisis dans les listes) */
@@ -2478,6 +2480,29 @@ function ndfApplyDonUI(){
   }
   window.ndfCategorieChange();
   window.ndfFournisseurChange();
+  ndfApplyRefundUI();
+}
+
+/* Type « Remboursement reçu » : libellés adaptés (compte crédité, bénéficiaire…), sans frais ni mode de paiement */
+function ndfApplyRefundUI(){
+  const isRef = ndfIsRef();
+  const txt = (id, t) => { const e = document.getElementById(id); if(e) e.textContent = t; };
+  if(isRef){
+    ['ndf-frais-row','ndf-typej-row','ndf-pay-row'].forEach(id => { document.getElementById(id).style.display = 'none'; });
+    document.getElementById('ndf-frais').value = '';
+    txt('ndf-h-depense', 'Remboursement reçu');
+    txt('ndf-lbl-fournisseur', 'Fournisseur (qui rembourse) *');
+    txt('ndf-lbl-date', 'Date du remboursement *');
+    txt('ndf-lbl-montant', 'Montant remboursé (€) *');
+    txt('ndf-lbl-compte', 'Compte crédité *');
+    txt('ndf-lbl-acheteur', 'Bénéficiaire du remboursement');
+    txt('ndf-lbl-ref', 'N° de la facture ou commande d\'origine (facultatif)');
+  } else {
+    txt('ndf-lbl-compte', 'Compte débité *');
+    txt('ndf-lbl-acheteur', 'Acheteur');
+    txt('ndf-lbl-ref', 'N° de facture / référence (facultatif)');
+  }
+  window.ndfCategorieChange();
 }
 window.ndfAcheteurChange = function(){ ndfApplyDonUI(); };
 
@@ -2578,7 +2603,7 @@ window.ndfRenderFournisseurs = function(){
 
 /* Affiche la case « Mémoriser » (pas pour un don) et le bouton Supprimer si le fournisseur est déjà connu */
 window.ndfFournisseurChange = function(){
-  const isDon = ndfIsDon();
+  const isDon = ndfIsDon() || ndfIsRef();
   const known = ndfFindFournisseur(document.getElementById('ndf-fournisseur').value);
   document.getElementById('ndf-save-row').style.display = isDon ? 'none' : 'flex';
   document.getElementById('ndf-del-fourn').style.display = (known && !isDon) ? '' : 'none';
@@ -2660,24 +2685,25 @@ window.generateNdfPDF = async function() {
 
   /* Don à l'ASBL : le donateur est Lylou-Vely, le « fournisseur » devient le bénéficiaire */
   const isDon = ndfIsDon();
+  const isRef = ndfIsRef();
   const ach = NDF_ENT[isDon ? 'zen' : acheteurSel];
   /* Don : le compte débité (ING ou CBC) est obligatoire pour le comptable */
   const banqueDon = isDon ? NDF_BANQUES[document.getElementById('ndf-don-banque').value] : null;
   if(isDon && !banqueDon){ alert('Choisis le compte débité pour le don (CBC ou ING).'); return; }
   /* Dépense : compte débité obligatoire (CBC, ING ou aucun si espèces) */
   const compteSel = isDon ? '' : document.getElementById('ndf-compte').value;
-  if(!isDon && !compteSel){ alert('Choisis le compte débité (CBC, ING ou Aucun si espèces).'); return; }
+  if(!isDon && !compteSel){ alert(isRef ? 'Choisis le compte crédité (CBC, ING ou Aucun si espèces).' : 'Choisis le compte débité (CBC, ING ou Aucun si espèces).'); return; }
   const compte = NDF_BANQUES[compteSel] || null;
-  const frais = isDon ? 0 : Math.max(0, parseFloat(document.getElementById('ndf-frais').value) || 0);
+  const frais = (isDon || isRef) ? 0 : Math.max(0, parseFloat(document.getElementById('ndf-frais').value) || 0);
   const totalDebite = Math.round((montant + frais) * 100) / 100;
   const compteTxt = compte ? `${compte.nom} · ${compte.iban}` : 'Aucun (espèces)';
   if(isDon) paiement = `Virement (${banqueDon.nom})`;
-  const avecFacture = !isDon && document.getElementById('ndf-typej').value === 'avec';
+  const avecFacture = !isDon && !isRef && document.getElementById('ndf-typej').value === 'avec';
   const logo = await ndfLoadLogo(ach.logo);
 
   const [yr,mo,dy] = dateVal.split('-');
   const dateFr = `${parseInt(dy)} ${NDF_MONTHS[parseInt(mo)-1]} ${yr}`;
-  const refNum = `${isDon ? 'DON' : 'NDF'}-${yr}-${mo}-${ndfSlug(fournisseur).toUpperCase().substring(0,10).replace(/-+$/,'')}`;
+  const refNum = `${isDon ? 'DON' : (isRef ? 'RBT' : 'NDF')}-${yr}-${mo}-${ndfSlug(fournisseur).toUpperCase().substring(0,10).replace(/-+$/,'')}`;
   const now    = new Date();
   const genDate= `${now.getDate().toString().padStart(2,'0')}/${(now.getMonth()+1).toString().padStart(2,'0')}/${now.getFullYear()}`;
 
@@ -2686,8 +2712,8 @@ window.generateNdfPDF = async function() {
 
   /* ── Header ── */
   ndfDrawHeader(doc, PW, ach, logo,
-    isDon ? 'Justificatif de don' : 'Justificatif de dépense',
-    isDon ? 'Don par virement — aucune facture émise (don à une ASBL)' : (avecFacture ? 'Justificatif complémentaire de paiement – Facture fournisseur en annexe' : 'Document établi en l\'absence de facture officielle'),
+    isDon ? 'Justificatif de don' : (isRef ? 'Justificatif de remboursement' : 'Justificatif de dépense'),
+    isDon ? 'Don par virement — aucune facture émise (don à une ASBL)' : isRef ? 'Remboursement reçu du fournisseur — pas un revenu' : (avecFacture ? 'Justificatif complémentaire de paiement – Facture fournisseur en annexe' : 'Document établi en l\'absence de facture officielle'),
     dateFr);
 
   /* ── Fournisseur (ou bénéficiaire) / Acheteur (ou donateur) ── */
@@ -2695,7 +2721,7 @@ window.generateNdfPDF = async function() {
   ndfDrawBloc(doc, 12, y, ach, isDon ? 'BÉNÉFICIAIRE' : 'FOURNISSEUR',
     [fournisseur, adresse, tva ? (isDon ? 'N° d\'entreprise : ' : 'TVA : ')+tva : ''], 50);
   /* Achat par une personne pour Zen-Connect : nom de la personne + « pour le compte de la société » (sans ligne Tél. pour rester dans le bloc) */
-  ndfDrawBloc(doc, 110, y, ach, isDon ? 'DONATEUR' : 'ACHETEUR',
+  ndfDrawBloc(doc, 110, y, ach, isDon ? 'DONATEUR' : (isRef ? 'BÉNÉFICIAIRE' : 'ACHETEUR'),
     ach.societe
       ? [ach.nom, 'Pour le compte de ' + ach.societe, NDF_ADRESSE, ach.email, 'Facturation : ' + NDF_FACTURATION, 'TVA : ' + NDF_TVA]
       : [ach.nom, NDF_ADRESSE, ach.email, 'Facturation : ' + NDF_FACTURATION, 'Tél. : ' + NDF_TEL, 'TVA : ' + NDF_TVA], 50);
@@ -2703,7 +2729,7 @@ window.generateNdfPDF = async function() {
   /* ── Référence ── */
   y += 58;
   doc.setFontSize(8); doc.setFont('helvetica','normal'); doc.setTextColor(...NDF_MU);
-  const refLines = doc.splitTextToSize(`Réf. ${refNum}${reference ? '   ·   N° facture / référence : ' + reference : ''}   ·   Date : ${dateFr}   ·   Mode de paiement : ${paiement}${isDon ? '' : '   ·   Compte : ' + (compte ? compte.nom : 'aucun')}   ·   Généré le : ${genDate}`, 182);
+  const refLines = doc.splitTextToSize(`Réf. ${refNum}${reference ? '   ·   ' + (isRef ? 'Facture / commande d\'origine' : 'N° facture / référence') + ' : ' + reference : ''}   ·   Date : ${dateFr}${isRef ? '' : '   ·   Mode de paiement : ' + paiement}${isDon ? '' : '   ·   Compte : ' + (compte ? compte.nom : 'aucun')}   ·   Généré le : ${genDate}`, 182);
   doc.text(refLines, 14, y);
   y += 8 + (refLines.length - 1) * 4;
 
@@ -2715,15 +2741,17 @@ window.generateNdfPDF = async function() {
   doc.autoTable({
     startY: y,
     head: [['Description / Motif', 'Montant (EUR)']],
-    body: isDon ? [bodyRow, ['Mode de paiement', paiement]] : [bodyRow,
+    body: isDon ? [bodyRow, ['Mode de paiement', paiement]] : isRef ? [bodyRow,
+      ...(reference ? [['Facture / commande d\'origine', reference]] : []),
+      ['Nature', 'Remboursement reçu du fournisseur — à déduire de la dépense d\'origine'], ['Compte crédité', compteTxt]] : [bodyRow,
       ...(reference ? [['Référence / n° de facture', reference]] : []),
       ...(frais > 0 ? [['Frais bancaires présumés (paiement international)' + (compte ? ' — ' + compte.nom : ''), ndfFmtMontant(frais)]] : []),
       ['Mode de paiement', paiement], ['Compte débité', compteTxt]],
-    foot: [[isDon ? 'TOTAL DONNÉ' : (frais > 0 ? 'TOTAL DÉBITÉ' : 'TOTAL PAYÉ'), ndfFmtMontant(isDon ? montant : totalDebite)]],
+    foot: [[isDon ? 'TOTAL DONNÉ' : isRef ? 'TOTAL REMBOURSÉ' : (frais > 0 ? 'TOTAL DÉBITÉ' : 'TOTAL PAYÉ'), ndfFmtMontant(isDon ? montant : totalDebite)]],
     headStyles:{ fillColor:ach.c1, textColor:NDF_WH, fontSize:9, fontStyle:'bold' },
     footStyles:{ fillColor:ndfTint(ach.c1), textColor:ach.c1, fontSize:10, fontStyle:'bold' },
     bodyStyles:{ fontSize:9 },
-    columnStyles:{ 1:{ halign:'right', fontStyle:'bold', textColor:[192,71,94] } },
+    columnStyles:{ 1:{ halign:'right', fontStyle:'bold', textColor: isRef ? [26,143,94] : [192,71,94] } },
     margin:{ left:14, right:14 },
     theme:'grid'
   });
@@ -2747,6 +2775,11 @@ window.generateNdfPDF = async function() {
     doc.text('Don effectué par virement — aucune facture n\'est émise pour un don à une ASBL.', 14, fn+5);
     doc.text('À joindre dans Billit comme pièce justificative pour la transaction bancaire correspondante.', 14, fn+10);
     if(extra) doc.text(extra, 14, fn+15);
+  } else if(isRef){
+    doc.text(`Ce document est un justificatif de remboursement reçu par ${ach.societe || ach.nom} de la part de ${fournisseur}.`, 14, fn);
+    doc.text('Il vient en déduction de la dépense d\'origine : ce n\'est pas un revenu.', 14, fn+5);
+    doc.text('À joindre dans Billit pour justifier la ligne bancaire créditée.', 14, fn+10);
+    if(extra) doc.text(extra, 14, fn+15);
   } else {
     doc.text(avecFacture
       ? `Ce document est un justificatif complémentaire de paiement établi par ${ach.societe || ach.nom}. La facture du fournisseur est jointe en annexe.`
@@ -2757,9 +2790,9 @@ window.generateNdfPDF = async function() {
   }
   ndfAddAttachmentPages(doc, ach, attachPages);
 
-  const fname = `${isDon ? 'justificatif-don' : 'justificatif'}_${ndfSlug(fournisseur).toLowerCase()}_${yr}-${mo}.pdf`;
+  const fname = `${isDon ? 'justificatif-don' : (isRef ? 'justificatif-remboursement' : 'justificatif')}_${ndfSlug(fournisseur).toLowerCase()}_${yr}-${mo}.pdf`;
   doc.save(fname);
-  if(!isDon) await ndfSaveFournisseurIfAsked({ nom: fournisseur, tva, adresse, acheteur: acheteurSel, paiement, compte: compteSel });
+  if(!isDon && !isRef) await ndfSaveFournisseurIfAsked({ nom: fournisseur, tva, adresse, acheteur: acheteurSel, paiement, compte: compteSel });
 };
 
 /* ---- Transferts de comptes : interne CBC ↔ ING, apport / remboursement en compte courant d'associé ---- */
